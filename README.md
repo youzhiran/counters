@@ -21,7 +21,7 @@
 
 2. 构建应用
 
-    - android
+    - Android
 
         1. 安装 Android 环境
 
@@ -42,7 +42,7 @@
            flutter build apk --target-platform android-x64  # x86_64
            ```
 
-    - windows
+    - Windows
 
         调试阶段使用Windows正常，尚未测试打包，理论可以直接运行、打包。
 
