@@ -1,0 +1,220 @@
+import 'package:counters/screens/template_config_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../models.dart';
+import '../providers/score_provider.dart';
+import '../providers/template_provider.dart';
+import 'game_session_screen.dart';
+
+class TemplateScreen extends StatelessWidget {
+  const TemplateScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<TemplateProvider>(
+      builder: (context, provider, _) {
+        if (provider.templates.isEmpty) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        final templates = provider.templates;
+        return GridView.builder(
+          padding: EdgeInsets.all(16),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.2,
+          ),
+          itemCount: templates.length,
+          itemBuilder: (context, index) =>
+              _TemplateCard(template: templates[index]),
+        );
+      },
+    );
+  }
+}
+
+class _TemplateCard extends StatelessWidget {
+  final ScoreTemplate template;
+
+  const _TemplateCard({required this.template});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8.0), // 默认卡片圆角值
+      ),
+      child: InkWell(
+        onTap: () => _handleTap(context),
+        borderRadius: BorderRadius.circular(8.0),
+        child: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(template.templateName, style: TextStyle(fontSize: 18)),
+                  SizedBox(height: 8),
+                  Text('玩家数量: ${template.playerCount}'),
+                  Text('目标分数: ${template.targetScore}'),
+                ],
+              ),
+            ),
+            // 其他装饰性元素
+            Positioned(
+              right: 8,
+              top: 8,
+              child: template.isSystemTemplate
+                  ? Icon(Icons.lock, color: Colors.blue)
+                  : Icon(Icons.edit, color: Colors.green),
+            ),
+            Positioned(
+              left: 8,
+              bottom: 8,
+              child: template.isSystemTemplate
+                  ? Text('系统模板',
+                      style: TextStyle(fontSize: 10, color: Colors.grey))
+                  : Text('基于: ${_getRootBaseTemplateName(context)}',
+                      style: TextStyle(fontSize: 10, color: Colors.grey)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 添加获取根基础模板的方法
+  String _getRootBaseTemplateName(BuildContext context) {
+    String? baseId = template.baseTemplateId;
+    ScoreTemplate? current =
+        context.read<TemplateProvider>().getTemplate(baseId ?? '');
+
+    // 递归查找直到系统模板
+    while (current != null && !current.isSystemTemplate) {
+      baseId = current.baseTemplateId;
+      current = context.read<TemplateProvider>().getTemplate(baseId ?? '');
+    }
+
+    return current?.templateName ?? '系统模板';
+  }
+
+  // 添加删除确认对话框
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('删除模板'),
+        content: Text('确定要永久删除此模板吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<TemplateProvider>().deleteTemplate(template.id);
+              Navigator.pop(context);
+            },
+            child: Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleTap(BuildContext context) {
+    if (template.isSystemTemplate) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('系统模板操作'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('另存新模板'),
+                leading: Icon(Icons.edit),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          TemplateConfigScreen(baseTemplate: template),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                title: Text('开始计分'),
+                leading: Icon(Icons.play_arrow),
+                onTap: () {
+                  context.read<ScoreProvider>().startNewGame(template);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          GameSessionScreen(templateId: template.id),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('用户模板操作'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('编辑模板'),
+                leading: Icon(Icons.edit),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          TemplateConfigScreen(baseTemplate: template),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                title: Text('开始计分'),
+                leading: Icon(Icons.play_arrow),
+                onTap: () {
+                  context.read<ScoreProvider>().startNewGame(template);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          GameSessionScreen(templateId: template.id),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                title: Text('删除模板', style: TextStyle(color: Colors.red)),
+                leading: Icon(Icons.delete, color: Colors.red),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+}
