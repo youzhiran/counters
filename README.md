@@ -6,15 +6,6 @@
 
 ## 编译
 
-### arm64-v8a快速打包命令
-
-安装所需要依赖后
-
-  ```bash
-  dart .\generate_version.dart
-  flutter build apk --target-platform android-arm64  # arm64-v8a
-  ```
-
 ### 各平台打包方法
 
 1. 安装 Flutter 和对应平台环境
