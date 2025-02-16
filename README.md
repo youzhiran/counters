@@ -21,34 +21,25 @@
 
 2. 构建应用
 
-    - Android
+  ```bash
+  dart .\setup.dart
+  ```
 
-        1. 安装 Android 环境
+### 指定打包方法
 
-        2. 运行版本生成脚本
+```bash
+flutter build apk --target-platform android-arm64  # arm64-v8a
+```
 
-           ```bash
-           dart .\generate_version.dart
-           ```
-           
-        3. 分架构打包 apk
-           ```bash
-           flutter build apk --target-platform android-arm64  # arm64-v8a
-           ```
+```bash
+flutter build windows --release # Windows
+```
 
-           ```bash
-           flutter build apk --target-platform android-arm  # armeabi-v7a
-           flutter build apk --target-platform android-arm64  # arm64-v8a
-           flutter build apk --target-platform android-x64  # x86_64
-           ```
-
-    - Windows
-
-        调试阶段使用Windows正常，尚未测试打包，理论可以直接运行、打包。
-
-   -  其他平台
-
-        尚未测试。
+```bash
+flutter build apk --target-platform android-arm  # armeabi-v7a
+flutter build apk --target-platform android-arm64  # arm64-v8a
+flutter build apk --target-platform android-x64  # x86_64
+```
 
 
 ## todo list
@@ -56,7 +47,7 @@
 - [x] 计分功能
 - [x] 模板保存与编辑
 - [x] 快捷输入与高亮
+- [x] GitHub CI/CD
 - [ ] 组件模块化
-- [ ] GitHub CI/CD
 - [ ] 退出后保留计分
 - [ ] 局域网联机

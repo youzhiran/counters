@@ -1,2 +1,4 @@
-const String gitCommit = '8bd3685';
-const String buildTime = '2025-02-14 13:11:32';
+// Generated file - DO NOT EDIT
+const String gitCommit = '076016a';
+const String buildTime = '2025-02-16 13:24:36';
+const String appVersion = '0.8.0';

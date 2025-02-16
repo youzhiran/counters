@@ -46,3 +46,4 @@ app.*.map.json
 
 # 自定义
 ai-docs/
+dist/
