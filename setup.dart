@@ -1,8 +1,12 @@
 import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-void main() {
+void main(List<String> args) {
+  // 解析命令行参数
+  final architectures = _parseArguments(args);
+
   // 生成版本信息文件
   final pubspecVersion = _generateVersionFile();
 
@@ -12,20 +16,77 @@ void main() {
     distDir.createSync(recursive: true);
   }
 
+  print('打包架构名：$architectures');
+
   try {
-    if (Platform.isWindows) {
-      // 构建Windows版本并打包
-      _buildWindows(pubspecVersion);
-    } else {
-      // 构建Android各架构版本
-      _buildAndroid(pubspecVersion, 'android-arm', 'armeabi-v7a');
-      _buildAndroid(pubspecVersion, 'android-arm64', 'arm64-v8a');
-      _buildAndroid(pubspecVersion, 'android-x64', 'x86_64');
-    }
+    _buildWindows(pubspecVersion, architectures);
+    _buildAndroid(pubspecVersion, architectures);
   } catch (e) {
     print('Error occurred: $e');
     exitCode = 1;
   }
+}
+
+// 解析命令行参数
+Set<String> _parseArguments(List<String> args) {
+  const supportedArches = {'arm', 'arm64', 'x64', 'amd64', 'all'};
+  final architectures = <String>{};
+
+  for (var i = 0; i < args.length; i++) {
+    if (args[i] == '-a' || args[i] == '--arch') {
+      if (i + 1 >= args.length) {
+        _printHelp('Missing value for ${args[i]}');
+        exit(1);
+      }
+
+      // 分割逗号分隔的架构参数
+      final archValues = args[++i].toLowerCase().split(',');
+
+      for (final arch in archValues) {
+        if (arch == 'all') {
+          // 添加所有实际架构（排除 all 自身）
+          architectures.addAll({'arm', 'arm64', 'x64', 'amd64'});
+        } else if (!supportedArches.contains(arch)) {
+          _printHelp('Unsupported architecture: $arch');
+          exit(1);
+        } else {
+          architectures.add(arch);
+        }
+      }
+    } else if (args[i] == '-h' || args[i] == '--help') {
+      _printHelp();
+      exit(0);
+    }
+  }
+
+  // 默认构建逻辑
+  if (architectures.isEmpty) {
+    return Platform.isWindows ? {'amd64'} : {'arm', 'arm64', 'x64'};
+  }
+
+  // 过滤保留实际架构（兼容可能误输入的 all）
+  return architectures.where((a) => a != 'all').toSet();
+}
+
+// 帮助信息
+void _printHelp([String? error]) {
+  final message = '''
+Usage: dart build.dart [options]
+
+Options:
+  --arch <architecture>  Specify build architectures (comma-separated)
+                             Available: arm, arm64, x64, amd64, all
+  --help                 Show this help message
+
+Platform defaults:
+  Android: arm, arm64, x64
+  Windows: amd64
+''';
+
+  if (error != null) {
+    print('Error: $error\n');
+  }
+  print(message);
 }
 
 String _generateVersionFile() {
@@ -64,7 +125,7 @@ String _generateVersionFile() {
   }
 
   final content = '''
-// Generated file - DO NOT EDIT
+// Generated file - DO NOT EDIT. The information in this file may be out of date.
 const String gitCommit = '$gitCommit';
 const String buildTime = '$buildTime';
 const String appVersion = '$pubspecVersion';
@@ -77,41 +138,53 @@ const String appVersion = '$pubspecVersion';
   return pubspecVersion;
 }
 
-void _buildAndroid(String version, String platform, String arch) {
-  print('\nBuilding Android $arch...');
-  _runFlutterCommand('build apk --target-platform $platform');
+void _buildAndroid(String version, Set<String> architectures) {
+  const platformMap = {
+    'arm': {'platform': 'android-arm', 'arch': 'armeabi-v7a'},
+    'arm64': {'platform': 'android-arm64', 'arch': 'arm64-v8a'},
+    'x64': {'platform': 'android-x64', 'arch': 'x86_64'},
+  };
 
-  final source = File('build/app/outputs/apk/release/app-release.apk');
-  final dest = File(p.join('dist', 'counters-$version-android-$arch.apk'));
+  for (final arch in architectures) {
+    final config = platformMap[arch];
+    if (config == null) continue;
 
-  _copyAndRename(source, dest);
+    print('\nBuilding Android ${config['arch']}...');
+    _runFlutterCommand('build apk --target-platform ${config['platform']}');
+
+    final source = File('build/app/outputs/apk/release/app-release.apk');
+    final dest =
+        File(p.join('dist', 'counters-$version-android-${config['arch']}.apk'));
+    _copyAndRename(source, dest);
+  }
 }
 
-void _buildWindows(String pubspecVersion) {
-  print('\nCleaning Windows build...');
-  _runFlutterCommand('clean');
-
-  print('\nBuilding Windows...');
-  _runFlutterCommand('build windows --release');
-
-  final pwd = Directory('.');
-  final releaseDir = Directory('build/windows/x64/runner/Release');
-  final zipFile = File(p.join('./dist', 'counters-$pubspecVersion-windows-x64.zip'));
-
-  print('Compressing Windows build...');
-  if (zipFile.existsSync()) zipFile.deleteSync();
-
-  if (Platform.isWindows) {
-    _runCommand(
-      'powershell Compress-Archive -Path "${releaseDir.path}\\*" '
-      '-DestinationPath "${zipFile.path}" -Force',
-      workingDirectory: pwd.path,
-    );
-  } else {
+void _buildWindows(String version, Set<String> architectures) {
+  if (!Platform.isWindows) {
     print('\n请使用Windows打包Windows版程序！');
-  }
+  } else {
+    if (architectures.contains('amd64')) {
+      print('\nCleaning Windows build...');
+      _runFlutterCommand('clean');
 
-  print('Windows build compressed to ${zipFile.path}');
+      print('\nBuilding Windows...');
+      _runFlutterCommand('build windows --release');
+
+      final releaseDir = Directory('build/windows/x64/runner/Release');
+      final zipFile =
+          File(p.join('./dist', 'counters-$version-windows-x64.zip'));
+
+      print('Compressing Windows build...');
+      if (zipFile.existsSync()) zipFile.deleteSync();
+
+      _runCommand(
+        'powershell Compress-Archive -Path "${releaseDir.path}\\*" '
+        '-DestinationPath "${zipFile.path}" -Force',
+        workingDirectory: Directory.current.path,
+      );
+      print('Windows build compressed to ${zipFile.path}');
+    }
+  }
 }
 
 void _copyAndRename(File source, File destination) {

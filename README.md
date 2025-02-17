@@ -6,41 +6,56 @@
 
 ## 编译
 
-### arm64-v8a快速打包命令
-
-安装所需要依赖后
-
-  ```bash
-  dart .\generate_version.dart
-  flutter build apk --target-platform android-arm64  # arm64-v8a
-  ```
-
-### 各平台打包方法
+### 当前平台各架构打包方法
 
 1. 安装 Flutter 和对应平台环境
 
-2. 构建应用
+2. 构建当前平台各架构应用
 
   ```bash
   dart .\setup.dart
   ```
 
+3. 输出文件夹在项目根目录dist目录下
+
+
 ### 指定打包方法
 
+
+```txt
+PS D:\MyCode\> dart setup.dart --help # 显示帮助信息
+Usage: dart build.dart [options]
+
+Options:
+--arch <architecture>  Specify build architectures (comma-separated)
+Available: arm, arm64, x64, amd64, all
+--help                 Show this help message
+
+Platform defaults:
+Android: arm, arm64, x64
+Windows: amd64
+```
+
+
+
 ```bash
-flutter build apk --target-platform android-arm64  # arm64-v8a
+dart setup.dart --arch arm,arm64 # 构建指定架构
 ```
 
 ```bash
-flutter build windows --release # Windows
+
+dart setup.dart --arch all # 构建全部架构
 ```
 
 ```bash
-flutter build apk --target-platform android-arm  # armeabi-v7a
-flutter build apk --target-platform android-arm64  # arm64-v8a
-flutter build apk --target-platform android-x64  # x86_64
+
+dart setup.dart --arch amd64 # 构建Windows amd64
 ```
 
+```bash
+
+dart setup.dart --help # 显示帮助信息
+```
 
 ## todo list
 
