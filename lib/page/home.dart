@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
+import '../widgets/snackbar.dart';
 import 'game_session.dart';
 
 class _TemplateSelector extends StatelessWidget {
@@ -152,12 +153,7 @@ class HomeScreen extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context); // 先关闭对话框
               provider.resetGame();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('已结束当前游戏计分'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
+              AppSnackBar.show(context, '已结束当前游戏计分');
             },
             child: Text('确认结束', style: TextStyle(color: Colors.red)),
           ),
