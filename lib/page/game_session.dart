@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
+import '../widgets/snackbar.dart';
 
 class GameSessionScreen extends StatelessWidget {
   final String templateId;
@@ -299,14 +300,7 @@ class _ScoreColumn extends StatelessWidget {
         scoreProvider.addNewRound();
       } else {
         // 添加提示逻辑
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('请填写所有玩家的【第$currentRound轮】后再添加新回合！'),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.blue,
-          ),
-        );
+        AppSnackBar.show(context, '请填写所有玩家的【第$currentRound轮】后再添加新回合！');
         return;
       }
     }

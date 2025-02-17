@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models.dart';
 import '../providers/template_provider.dart';
+import '../widgets/snackbar.dart';
 
 class TemplateConfigScreen extends StatefulWidget {
   final ScoreTemplate baseTemplate;
@@ -100,9 +101,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     if (_playerCountError != null ||
         _targetScoreError != null ||
         _templateNameError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('请修正输入错误')),
-      );
+      AppSnackBar.error(context, '请修正输入错误');
       return;
     }
 
@@ -123,9 +122,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     if (_playerCountError != null ||
         _targetScoreError != null ||
         _templateNameError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('请修正输入错误')),
-      );
+      AppSnackBar.error(context, '请修正输入错误');
       return;
     }
 
