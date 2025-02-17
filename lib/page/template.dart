@@ -21,11 +21,11 @@ class TemplateScreen extends StatelessWidget {
         final templates = provider.templates;
         return GridView.builder(
           padding: EdgeInsets.all(16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 200, // 卡片最大宽度
+            mainAxisExtent: 150, // 直接指定卡片高度
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 1.2,
           ),
           itemCount: templates.length,
           itemBuilder: (context, index) =>
@@ -53,11 +53,18 @@ class _TemplateCard extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(template.templateName, style: TextStyle(fontSize: 18)),
+                  Expanded(
+                    child: Text(
+                      template.templateName,
+                      style: TextStyle(fontSize: 18),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                   SizedBox(height: 8),
                   Text('玩家数量: ${template.playerCount}'),
                   Text('目标分数: ${template.targetScore}'),
@@ -73,8 +80,8 @@ class _TemplateCard extends StatelessWidget {
                   : Icon(Icons.edit, color: Colors.green),
             ),
             Positioned(
-              left: 8,
-              bottom: 8,
+              left: 6,
+              bottom: 6,
               child: template.isSystemTemplate
                   ? Text('系统模板',
                       style: TextStyle(fontSize: 10, color: Colors.grey))
