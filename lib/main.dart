@@ -1,8 +1,8 @@
-import 'package:counters/screens/game_session_screen.dart';
-import 'package:counters/screens/home_screen.dart';
-import 'package:counters/screens/setting_screen.dart';
-import 'package:counters/screens/template_config_screen.dart';
-import 'package:counters/screens/template_screen.dart';
+import 'package:counters/page/game_session.dart';
+import 'package:counters/page/home.dart';
+import 'package:counters/page/setting.dart';
+import 'package:counters/page/template_config.dart';
+import 'package:counters/page/template.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';

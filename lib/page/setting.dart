@@ -79,7 +79,7 @@ class _SettingScreenState extends State<SettingScreen> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -100,7 +100,7 @@ class _SettingScreenState extends State<SettingScreen> {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
               Icon(icon, size: 24),

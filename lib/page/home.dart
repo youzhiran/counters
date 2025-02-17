@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../models.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
-import 'game_session_screen.dart';
+import 'game_session.dart';
 
 class _TemplateSelector extends StatelessWidget {
   @override
