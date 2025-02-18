@@ -24,13 +24,14 @@ class ScoreTemplateAdapter extends TypeAdapter<ScoreTemplate> {
       players: (fields[4] as List).cast<PlayerInfo>(),
       isSystemTemplate: fields[5] == null ? false : fields[5] as bool,
       baseTemplateId: fields[6] as String?,
+      isAllowNegative: fields[7] == null ? false : fields[7] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, ScoreTemplate obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class ScoreTemplateAdapter extends TypeAdapter<ScoreTemplate> {
       ..writeByte(5)
       ..write(obj.isSystemTemplate)
       ..writeByte(6)
-      ..write(obj.baseTemplateId);
+      ..write(obj.baseTemplateId)
+      ..writeByte(7)
+      ..write(obj.isAllowNegative);
   }
 
   @override

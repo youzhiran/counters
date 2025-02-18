@@ -19,6 +19,7 @@ class TemplateProvider with ChangeNotifier {
                 avatar: 'default_avatar.png',
               )),
       isSystemTemplate: true,
+      isAllowNegative: false
     )
   ];
 

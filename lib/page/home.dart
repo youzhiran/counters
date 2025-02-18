@@ -173,6 +173,7 @@ class HomeScreen extends StatelessWidget {
               id: 'emergency_$i',
               name: '玩家 ${i + 1}',
               avatar: 'default_avatar.png')),
+      isAllowNegative: false
     );
   }
 }

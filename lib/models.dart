@@ -26,6 +26,9 @@ class ScoreTemplate {
   @HiveField(6, defaultValue: null)
   final String? baseTemplateId;
 
+  @HiveField(7, defaultValue: false)
+  bool isAllowNegative;
+
   ScoreTemplate({
     String? id,
     required this.templateName,
@@ -34,6 +37,7 @@ class ScoreTemplate {
     required this.players,
     this.isSystemTemplate = false,  // 是否系统模板
     this.baseTemplateId,  // 来源字段
+    required this.isAllowNegative,
   }) : id = id ?? Uuid().v4();
 
   // 复制方法
@@ -43,6 +47,7 @@ class ScoreTemplate {
     int? playerCount,
     int? targetScore,
     List<PlayerInfo>? players,
+    bool? isAllowNegative,
     bool? isSystemTemplate,
     String? baseTemplateId,
   }) {
@@ -52,6 +57,7 @@ class ScoreTemplate {
       playerCount: playerCount ?? this.playerCount,
       targetScore: targetScore ?? this.targetScore,
       players: players ?? List.from(this.players),
+      isAllowNegative: isAllowNegative ?? this.isAllowNegative,
       isSystemTemplate: isSystemTemplate ?? this.isSystemTemplate,
       baseTemplateId: baseTemplateId ?? this.baseTemplateId,
     );

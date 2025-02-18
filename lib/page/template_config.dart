@@ -23,6 +23,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   late TextEditingController _playerCountController;
   late TextEditingController _targetScoreController;
   late List<PlayerInfo> _players;
+  late bool _allowNegative = false;
 
   // 错误提示状态
   String? _playerCountError;
@@ -39,6 +40,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     _targetScoreController =
         TextEditingController(text: widget.baseTemplate.targetScore.toString());
     _players = List.from(widget.baseTemplate.players);
+    _allowNegative = widget.baseTemplate.isAllowNegative;
   }
 
   void _validateInputs() {
@@ -51,6 +53,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   @override
   Widget build(BuildContext context) {
     final isSystem = widget.baseTemplate.isSystemTemplate;
+    final isAllowNegative = widget.baseTemplate.isAllowNegative;
 
     return Scaffold(
       appBar: AppBar(
@@ -77,7 +80,6 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
             message: '另存为新模板',
             child: IconButton(
               icon: Icon(Icons.save_as),
-              color: Colors.blue,
               onPressed: _saveAsTemplate,
             ),
           ),
@@ -88,6 +90,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
         child: Column(
           children: [
             _buildBasicSettings(),
+            _buildOtherList(),
             _buildPlayerList(),
           ],
         ),
@@ -109,6 +112,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
       templateName: _templateNameController.text,
       playerCount: int.parse(_playerCountController.text),
       targetScore: int.parse(_targetScoreController.text),
+      isAllowNegative:_allowNegative,
       players: _players,
     );
 
@@ -133,6 +137,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
       playerCount: int.parse(_playerCountController.text),
       targetScore: int.parse(_targetScoreController.text),
       players: _players,
+      isAllowNegative:_allowNegative,
       baseTemplateId: rootId,
     );
 
@@ -283,6 +288,32 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
             player: _players[index],
             onChanged: (newPlayer) => _players[index] = newPlayer,
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOtherList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 1,
+          itemBuilder: (context, index) {
+            return SwitchListTile(
+              title: const Text('计分允许输入负数'),
+              subtitle: const Text('启用后玩家计分可以输入负数值'),
+              value: _allowNegative,
+              onChanged: (bool value) {
+                setState(() {
+                  _allowNegative = value;
+                });
+              },
+            );
+          },
         ),
       ],
     );

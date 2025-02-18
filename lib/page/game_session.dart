@@ -100,7 +100,7 @@ class GameSessionScreen extends StatelessWidget {
 
     if (targetScore == null) {
       globalState.showCommonDialog(
-        child:  AlertDialog(
+        child: AlertDialog(
           title: Text('数据错误'),
           content: Text('未能获取目标分数配置，请检查模板设置'),
           actions: [
@@ -193,12 +193,14 @@ class GameSessionScreen extends StatelessWidget {
 
 /// 单个玩家得分列组件（垂直布局）
 class _ScoreColumn extends StatelessWidget {
+  final String templateId;
   final PlayerInfo player;
   final List<int?> scores;
   final int currentRound;
   final Map<String, GlobalKey> cellKeys;
 
   const _ScoreColumn({
+    required this.templateId,
     required this.player,
     required this.scores,
     required this.currentRound,
@@ -283,6 +285,7 @@ class _ScoreColumn extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => _ScoreEditDialog(
+        templateId: templateId,
         player: player,
         round: roundIndex + 1,
         initialValue: currentScore ?? 0,
@@ -313,7 +316,6 @@ class _ScoreBoard extends StatefulWidget {
 }
 
 class _ScoreBoardState extends State<_ScoreBoard> {
-
   final Map<String, GlobalKey> _cellKeys = {}; //滚动键管理
 
   @override
@@ -394,6 +396,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
                     );
 
                     return _ScoreColumn(
+                      templateId: widget.template.id,
                       player: player,
                       scores: score.roundScores,
                       currentRound: currentRound + 1,
@@ -417,12 +420,14 @@ class _ScoreBoardState extends State<_ScoreBoard> {
 /// [initialValue]: 初始分数值
 /// [onConfirm]: 确认修改回调
 class _ScoreEditDialog extends StatefulWidget {
+  final String templateId;
   final PlayerInfo player;
   final int round;
   final int initialValue;
   final ValueChanged<int> onConfirm;
 
   const _ScoreEditDialog({
+    required this.templateId,
     required this.player,
     required this.round,
     required this.initialValue,
@@ -444,6 +449,10 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final template =
+        context.read<TemplateProvider>().getTemplate(widget.templateId);
+    final isAllowNegative = template?.isAllowNegative ?? false;
+
     return AlertDialog(
       title: Text('修改分数'),
       content: Column(
@@ -471,9 +480,13 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
         TextButton(
           onPressed: () {
             final value = int.tryParse(_controller.text) ?? 0;
-            widget.onConfirm(value);
             Navigator.pop(context);
-            // 自动更新高亮位置
+            // 新增负数检查
+            if (!isAllowNegative && value < 0) {
+              AppSnackBar.show(context, '当前模板设置不允许输入负数！');
+              return;
+            }
+            widget.onConfirm(value);
             context.read<ScoreProvider>().updateHighlight();
           },
           child: Text('确认'),
@@ -526,7 +539,7 @@ class _ScoreCell extends StatelessWidget {
               right: 0,
               top: 0,
               child: Text(
-                '+$score',
+                score! >= 0 ? '+$score' : '$score',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.grey,

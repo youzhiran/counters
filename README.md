@@ -48,17 +48,18 @@ dart setup.dart --arch arm,arm64 # 构建指定架构
 ```
 
 ```bash
-
 dart setup.dart --arch all # 构建全部架构
 ```
 
 ```bash
+dart setup.dart --arch arm64 # 构建arm64
+```
 
+```bash
 dart setup.dart --arch amd64 # 构建Windows amd64
 ```
 
 ```bash
-
 dart setup.dart --help # 显示帮助信息
 ```
 
