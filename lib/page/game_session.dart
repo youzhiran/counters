@@ -192,23 +192,17 @@ class GameSessionScreen extends StatelessWidget {
 }
 
 /// 单个玩家得分列组件（垂直布局）
-/// 参数说明：
-/// [player]: 玩家信息
-/// [scores]: 回合得分列表
-/// [total]: 总得分
-/// [currentRound]: 当前回合数
-/// [isHighlighted]: 是否高亮显示
-/// [animation]: 高亮动画
-/// [onTap]: 点击回调
 class _ScoreColumn extends StatelessWidget {
   final PlayerInfo player;
   final List<int?> scores;
   final int currentRound;
+  final Map<String, GlobalKey> cellKeys;
 
   const _ScoreColumn({
     required this.player,
     required this.scores,
     required this.currentRound,
+    required this.cellKeys,
   });
 
   @override
@@ -226,12 +220,17 @@ class _ScoreColumn extends StatelessWidget {
                 highlight.value == index;
             final score = index < scores.length ? scores[index] : null;
 
+            // 为每个单元格生成唯一标识
+            final key = '${player.id}_$index';
+            final cellKey = cellKeys.putIfAbsent(key, () => GlobalKey());
+
             return Expanded(
               // 新增 Expanded
               child: GestureDetector(
                 onTap: () => _showEditDialog(context, index),
                 behavior: HitTestBehavior.opaque, // 新增点击行为
                 child: Container(
+                  key: isHighlight ? cellKey : null, // 仅高亮单元格设置 key
                   height: 48,
                   alignment: Alignment.center,
                   child: _ScoreCell(
@@ -314,6 +313,32 @@ class _ScoreBoard extends StatefulWidget {
 }
 
 class _ScoreBoardState extends State<_ScoreBoard> {
+
+  final Map<String, GlobalKey> _cellKeys = {}; //滚动键管理
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final highlight = context.watch<ScoreProvider>().currentHighlight;
+
+    if (highlight != null) {
+      // 在布局完成后执行滚动
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final key = '${highlight.key}_${highlight.value}';
+        final cellKey = _cellKeys[key];
+
+        if (cellKey?.currentContext != null) {
+          Scrollable.ensureVisible(
+            cellKey!.currentContext!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: 0.5, // 将单元格滚动到视图中央
+          );
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentRound =
@@ -372,6 +397,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
                       player: player,
                       scores: score.roundScores,
                       currentRound: currentRound + 1,
+                      cellKeys: _cellKeys, // 传递 key 集合
                     );
                   }),
                 ],
