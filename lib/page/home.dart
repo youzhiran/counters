@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
+import '../state.dart';
 import '../widgets/snackbar.dart';
 import 'game_session.dart';
 
@@ -82,28 +83,27 @@ class HomeScreen extends StatelessWidget {
     return Column(
       children: [
         Expanded(
-          child: ListView.builder(
-            itemCount: session.scores.length,
-            itemBuilder: (context, index) {
-              final score = session.scores[index];
-              // 添加容错处理
-              final player = template.players.firstWhere(
-                    (p) => p.id == score.playerId,
-                orElse: () => PlayerInfo(
-                    id: 'default_$index',
-                    name: '玩家 ${index + 1}',
-                    avatar: 'default_avatar.png'),
-              );
+            child: ListView.builder(
+          itemCount: session.scores.length,
+          itemBuilder: (context, index) {
+            final score = session.scores[index];
+            // 添加容错处理
+            final player = template.players.firstWhere(
+              (p) => p.id == score.playerId,
+              orElse: () => PlayerInfo(
+                  id: 'default_$index',
+                  name: '玩家 ${index + 1}',
+                  avatar: 'default_avatar.png'),
+            );
 
-              return ListTile(
-                leading: CircleAvatar(child: Text(player.name[0])),
-                title: Text(player.name),
-                subtitle: Text('总得分: ${score.totalScore}'),
-                trailing: Text('+${score.roundScores.lastOrNull ?? 0}'),
-              );
-            },
-          )
-        ),
+            return ListTile(
+              leading: CircleAvatar(child: Text(player.name[0])),
+              title: Text(player.name),
+              subtitle: Text('总得分: ${score.totalScore}'),
+              trailing: Text('+${score.roundScores.lastOrNull ?? 0}'),
+            );
+          },
+        )),
         // 继续本轮&结束本轮按钮
         Padding(
           padding: EdgeInsets.all(16),
@@ -139,9 +139,8 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _showEndConfirmation(BuildContext context, ScoreProvider provider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+    globalState.showCommonDialog(
+      child: AlertDialog(
         title: Text('结束本轮游戏'),
         content: Text('确定要结束当前游戏吗？所有未保存的进度将会丢失！'),
         actions: [

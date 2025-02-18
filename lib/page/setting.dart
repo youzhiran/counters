@@ -1,9 +1,7 @@
+import 'package:counters/state.dart';
+import 'package:counters/version.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
-
-import '../version.dart';
-import '../widgets/snackbar.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
@@ -43,19 +41,30 @@ class _SettingScreenState extends State<SettingScreen> {
                 _buildListTile(
                   icon: Icons.info,
                   title: '关于应用',
-                  onTap: () => _showAbout(context),
+                  // onTap: () => _showAbout(context),
+                  onTap: () => globalState.showMessage(
+                    title: '关于',
+                    message: TextSpan(
+                      text: '一个flutter计分板应用，支持多平台运行。\n'
+                          'https://github.com/youzhiran/counters\n'
+                          '欢迎访问我的网站：devyi.com\n\n'
+                          '版本 $_versionName($_versionCode)\n'
+                          'Git版本号: $gitCommit\n'
+                          '编译时间: $buildTime',
+                    ),
+                  ),
                 ),
                 _buildListTile(
                   icon: Icons.update,
                   title: '检查更新',
-                  onTap: () => _launchUrl(
+                  onTap: () => globalState.openUrl(
                     'https://github.com/youzhiran/counters/releases/latest',
                   ),
                 ),
                 _buildListTile(
                   icon: Icons.bug_report,
                   title: '问题反馈',
-                  onTap: () => _launchUrl(
+                  onTap: () => globalState.openUrl(
                     'https://github.com/youzhiran/counters/',
                   ),
                 ),
@@ -84,9 +93,9 @@ class _SettingScreenState extends State<SettingScreen> {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.w500,
-        ),
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w500,
+            ),
       ),
     );
   }
@@ -120,38 +129,4 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  Future<void> _launchUrl(String url) async {
-    try {
-      await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackBar.error(context, '打开失败: ${e.toString()}');
-    }
-  }
-
-  void _showAbout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('关于'),
-        content: Text(
-          '一个flutter计分板应用，支持多平台运行。\n'
-              'https://github.com/youzhiran/counters\n'
-              '欢迎访问我的网站：devyi.com\n\n'
-              '版本 $_versionName($_versionCode)\n'
-              'Git版本号: $gitCommit\n'
-              '编译时间: $buildTime',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('确认'),
-          ),
-        ],
-      ),
-    );
-  }
 }

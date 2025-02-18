@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+
 import '../models.dart';
 import '../providers/template_provider.dart';
+import '../state.dart';
 
 /// 游戏得分状态管理类
 /// 职责：
@@ -49,7 +51,8 @@ class ScoreProvider with ChangeNotifier {
 
     for (int round = 0; round < _currentRound + 1; round++) {
       for (var player in _currentSession!.scores) {
-        if (player.roundScores.length <= round || player.roundScores[round] == null) {
+        if (player.roundScores.length <= round ||
+            player.roundScores[round] == null) {
           _currentHighlight = MapEntry(player.playerId, round);
           notifyListeners();
           return;
@@ -73,7 +76,6 @@ class ScoreProvider with ChangeNotifier {
     notifyListeners();
     updateHighlight();
   }
-
 
   void _updateCurrentRound() {
     if (_currentSession == null) return;
@@ -118,9 +120,8 @@ class ScoreProvider with ChangeNotifier {
     notifyListeners();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
+      globalState.showCommonDialog(
+        child: AlertDialog(
           title: const Text('游戏结束'),
           content: const Text('已有玩家达到目标分数！'),
           actions: [
@@ -140,7 +141,7 @@ class ScoreProvider with ChangeNotifier {
   /// [newScore]: 新分数值
   void updateScore(String playerId, int roundIndex, int newScore) {
     final playerScore =
-    currentSession!.scores.firstWhere((s) => s.playerId == playerId);
+        currentSession!.scores.firstWhere((s) => s.playerId == playerId);
 
     // 新增数组扩展逻辑
     while (playerScore.roundScores.length <= roundIndex) {

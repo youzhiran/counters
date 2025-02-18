@@ -1,3 +1,4 @@
+import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -14,9 +15,7 @@ class GameSessionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final template = context.read<TemplateProvider>().getTemplate(templateId);
-    final session = context
-        .watch<ScoreProvider>()
-        .currentSession;
+    final session = context.watch<ScoreProvider>().currentSession;
 
     if (template == null || session == null) {
       return Scaffold(
@@ -26,14 +25,11 @@ class GameSessionScreen extends StatelessWidget {
     }
 
     var failureScore =
-        context
-            .read<TemplateProvider>()
-            .getTemplate(templateId)
-            ?.targetScore;
+        context.read<TemplateProvider>().getTemplate(templateId)?.targetScore;
 
     // 检查游戏是否结束
     final overPlayers =
-    session.scores.where((s) => s.totalScore >= failureScore!).toList();
+        session.scores.where((s) => s.totalScore >= failureScore!).toList();
     if (overPlayers.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showGameResult(context);
@@ -68,30 +64,28 @@ class GameSessionScreen extends StatelessWidget {
   }
 
   void _showResetConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: Text('重置游戏'),
-            content: Text('确定要重置当前游戏吗？所有进度将会丢失！'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('取消'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // 先关闭对话框
-                  final template =
-                  context.read<TemplateProvider>().getTemplate(templateId);
-                  context.read<ScoreProvider>()
-                    ..resetGame()
-                    ..startNewGame(template!);
-                },
-                child: Text('确定重置', style: TextStyle(color: Colors.red)),
-              ),
-            ],
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text('重置游戏'),
+        content: Text('确定要重置当前游戏吗？所有进度将会丢失！'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('取消'),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // 先关闭对话框
+              final template =
+                  context.read<TemplateProvider>().getTemplate(templateId);
+              context.read<ScoreProvider>()
+                ..resetGame()
+                ..startNewGame(template!);
+            },
+            child: Text('确定重置', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -102,36 +96,27 @@ class GameSessionScreen extends StatelessWidget {
   /// 3. 当无失败玩家时，胜利者为全体最低分玩家，失败者为全体最高分玩家（可能多人并列）
   void _showGameResult(BuildContext context) {
     final targetScore =
-        context
-            .read<TemplateProvider>()
-            .getTemplate(templateId)
-            ?.targetScore;
+        context.read<TemplateProvider>().getTemplate(templateId)?.targetScore;
 
     if (targetScore == null) {
-      showDialog(
-        context: context,
-        builder: (context) =>
-            AlertDialog(
-              title: Text('数据错误'),
-              content: Text('未能获取目标分数配置，请检查模板设置'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('确定'))
-              ],
-            ),
+      globalState.showCommonDialog(
+        child:  AlertDialog(
+          title: Text('数据错误'),
+          content: Text('未能获取目标分数配置，请检查模板设置'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context), child: Text('确定'))
+          ],
+        ),
       );
       return;
     }
 
-    final scores = context
-        .read<ScoreProvider>()
-        .currentSession
-        ?.scores ?? [];
+    final scores = context.read<ScoreProvider>().currentSession?.scores ?? [];
 
     // 划分失败玩家（分数>=目标分数）
     final failScores =
-    scores.where((s) => s.totalScore >= targetScore).toList();
+        scores.where((s) => s.totalScore >= targetScore).toList();
     final hasFailures = failScores.isNotEmpty;
 
     // 确定胜利者和失败者
@@ -141,10 +126,10 @@ class GameSessionScreen extends StatelessWidget {
     if (hasFailures) {
       // 存在失败玩家时，胜利者为未失败玩家中的最低分
       final potentialWins =
-      scores.where((s) => s.totalScore < targetScore).toList();
+          scores.where((s) => s.totalScore < targetScore).toList();
       potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
       final minWinScore =
-      potentialWins.isNotEmpty ? potentialWins.first.totalScore : 0;
+          potentialWins.isNotEmpty ? potentialWins.first.totalScore : 0;
       winners =
           potentialWins.where((s) => s.totalScore == minWinScore).toList();
       losers = failScores;
@@ -158,44 +143,35 @@ class GameSessionScreen extends StatelessWidget {
       losers = scores.where((s) => s.totalScore == maxScore).toList();
     }
 
-    showDialog(
-      context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: Text(hasFailures ? '游戏结果' : '当前游戏结果'), // 修改点：动态标题
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 显示失败/最高分玩家
-                if (losers.isNotEmpty) ...[
-                  Text('${hasFailures ? '😓 失败' : '⚠️ 最多计分'}：',
-                      style: TextStyle(
-                          color: hasFailures ? Colors.red : Colors.orange)),
-                  ...losers.map((s) =>
-                      Text(
-                          '${_getPlayerName(s.playerId, context)}（${s
-                              .totalScore}分）')),
-                  SizedBox(height: 16),
-                ],
-
-                // 显示胜利者
-                Text('👑 胜利：', style: TextStyle(color: Colors.green)),
-                ...winners.map((s) =>
-                    Text(
-                        '${_getPlayerName(s.playerId, context)}（${s
-                            .totalScore}分）')),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: Navigator
-                    .of(context)
-                    .pop,
-                child: Text('确定'),
-              ),
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text(hasFailures ? '游戏结果' : '当前游戏结果'), // 修改点：动态标题
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 显示失败/最高分玩家
+            if (losers.isNotEmpty) ...[
+              Text('${hasFailures ? '😓 失败' : '⚠️ 最多计分'}：',
+                  style: TextStyle(
+                      color: hasFailures ? Colors.red : Colors.orange)),
+              ...losers.map((s) => Text(
+                  '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
+              SizedBox(height: 16),
             ],
+            // 显示胜利者
+            Text('👑 胜利：', style: TextStyle(color: Colors.green)),
+            ...winners.map((s) => Text(
+                '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: Navigator.of(context).pop,
+            child: Text('确定'),
           ),
+        ],
+      ),
     );
   }
 
@@ -205,12 +181,12 @@ class GameSessionScreen extends StatelessWidget {
   /// 返回：玩家名称或"未知玩家"
   String _getPlayerName(String playerId, BuildContext context) {
     return context
-        .read<TemplateProvider>()
-        .getTemplate(templateId)
-        ?.players
-        .firstWhere((p) => p.id == playerId,
-        orElse: () => PlayerInfo(name: '未知玩家', avatar: 'default'))
-        .name ??
+            .read<TemplateProvider>()
+            .getTemplate(templateId)
+            ?.players
+            .firstWhere((p) => p.id == playerId,
+                orElse: () => PlayerInfo(name: '未知玩家', avatar: 'default'))
+            .name ??
         '未知玩家';
   }
 }
@@ -237,9 +213,7 @@ class _ScoreColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final highlight = context
-        .watch<ScoreProvider>()
-        .currentHighlight;
+    final highlight = context.watch<ScoreProvider>().currentHighlight;
 
     return SizedBox(
       width: 80,
@@ -309,19 +283,18 @@ class _ScoreColumn extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) =>
-          _ScoreEditDialog(
-            player: player,
-            round: roundIndex + 1,
-            initialValue: currentScore ?? 0,
-            onConfirm: (newValue) {
-              scoreProvider.updateScore(
-                player.id,
-                roundIndex,
-                newValue,
-              );
-            },
-          ),
+      builder: (context) => _ScoreEditDialog(
+        player: player,
+        round: roundIndex + 1,
+        initialValue: currentScore ?? 0,
+        onConfirm: (newValue) {
+          scoreProvider.updateScore(
+            player.id,
+            roundIndex,
+            newValue,
+          );
+        },
+      ),
     );
   }
 }
@@ -344,7 +317,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   @override
   Widget build(BuildContext context) {
     final currentRound =
-    context.select<ScoreProvider, int>((p) => p.currentRound);
+        context.select<ScoreProvider, int>((p) => p.currentRound);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -357,8 +330,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
             Row(
               children: [
                 const SizedBox(width: 50),
-                ...widget.template.players.map((player) =>
-                    SizedBox(
+                ...widget.template.players.map((player) => SizedBox(
                       width: 80,
                       child: Column(
                         children: [
@@ -380,20 +352,19 @@ class _ScoreBoardState extends State<_ScoreBoard> {
                   Column(
                     children: List.generate(
                       currentRound + 1,
-                          (index) =>
-                          Container(
-                            width: 50,
-                            height: 48,
-                            alignment: Alignment.center,
-                            child: Text('第${index + 1}轮'), // 直接显示回合标签
-                          ),
+                      (index) => Container(
+                        width: 50,
+                        height: 48,
+                        alignment: Alignment.center,
+                        child: Text('第${index + 1}轮'), // 直接显示回合标签
+                      ),
                     ),
                   ),
 
                   // 玩家得分列
                   ...widget.template.players.map((player) {
                     final score = widget.session.scores.firstWhere(
-                          (s) => s.playerId == player.id,
+                      (s) => s.playerId == player.id,
                       orElse: () => PlayerScore(playerId: player.id),
                     );
 
@@ -564,46 +535,44 @@ class _QuickInputPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
-                  '快捷输入', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('快捷输入', style: TextStyle(fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 alignment: WrapAlignment.center,
                 children: quickNumbers
-                    .map((number) =>
-                    ActionChip(
-                      label: Text('+$number'),
-                      onPressed: () {
-                        final provider = context.read<ScoreProvider>();
-                        final highlight = provider.currentHighlight;
-                        final session = provider.currentSession;
+                    .map((number) => ActionChip(
+                          label: Text('+$number'),
+                          onPressed: () {
+                            final provider = context.read<ScoreProvider>();
+                            final highlight = provider.currentHighlight;
+                            final session = provider.currentSession;
 
-                        if (highlight != null && session != null) {
-                          final playerScore = session.scores.firstWhere(
+                            if (highlight != null && session != null) {
+                              final playerScore = session.scores.firstWhere(
                                 (s) => s.playerId == highlight.key,
-                            orElse: () =>
-                                PlayerScore(
+                                orElse: () => PlayerScore(
                                     playerId: 'invalid', roundScores: []),
-                          );
+                              );
 
-                          if (playerScore.playerId != 'invalid') {
-                            // 移除长度校验
-                            final currentValue = playerScore
-                                .roundScores.length >
-                                highlight.value
-                                ? playerScore.roundScores[highlight.value] ??
-                                0
-                                : 0; // 安全获取当前值
-                            provider.updateScore(
-                              highlight.key,
-                              highlight.value,
-                              currentValue + number,
-                            );
-                          }
-                        }
-                      },
-                    ))
+                              if (playerScore.playerId != 'invalid') {
+                                // 移除长度校验
+                                final currentValue =
+                                    playerScore.roundScores.length >
+                                            highlight.value
+                                        ? playerScore
+                                                .roundScores[highlight.value] ??
+                                            0
+                                        : 0; // 安全获取当前值
+                                provider.updateScore(
+                                  highlight.key,
+                                  highlight.value,
+                                  currentValue + number,
+                                );
+                              }
+                            }
+                          },
+                        ))
                     .toList(),
               ),
             ],

@@ -4,6 +4,11 @@
 
 个人学习作品。本大量项目使用 ai 辅助编程，代码中注释可能由ai生成，仅供参考。
 
+## 下载
+
+<a href="https://github.com/youzhiran/counters/releases"><img alt="Get it on GitHub" src="snapshots/get-it-on-github.svg" width="200px"/></a>
+
+
 ## 编译
 
 ### 当前平台各架构打包方法

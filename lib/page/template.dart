@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
+import '../state.dart';
 import 'game_session.dart';
 
 class TemplateScreen extends StatelessWidget {
@@ -111,9 +112,8 @@ class _TemplateCard extends StatelessWidget {
 
   // 添加删除确认对话框
   void _confirmDelete(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+    globalState.showCommonDialog(
+      child: AlertDialog(
         title: Text('删除模板'),
         content: Text('确定要永久删除此模板吗？'),
         actions: [
@@ -135,9 +135,8 @@ class _TemplateCard extends StatelessWidget {
 
   void _handleTap(BuildContext context) {
     if (template.isSystemTemplate) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
+      globalState.showCommonDialog(
+        child: AlertDialog(
           title: Text('系统模板操作'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -175,9 +174,8 @@ class _TemplateCard extends StatelessWidget {
         ),
       );
     } else {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
+      globalState.showCommonDialog(
+        child: AlertDialog(
           title: Text('用户模板操作'),
           content: Column(
             mainAxisSize: MainAxisSize.min,

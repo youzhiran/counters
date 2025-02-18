@@ -3,6 +3,7 @@ import 'package:counters/page/home.dart';
 import 'package:counters/page/setting.dart';
 import 'package:counters/page/template_config.dart';
 import 'package:counters/page/template.dart';
+import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
@@ -47,6 +48,7 @@ class MyApp extends StatelessWidget {
           ChangeNotifierProvider(create: (_) => ScoreProvider()),
         ],
         child: MaterialApp(
+          navigatorKey: globalState.navigatorKey,
           title: '桌游计分器',
           theme: ThemeData(
             primarySwatch: Colors.blue,
