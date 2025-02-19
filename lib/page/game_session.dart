@@ -282,9 +282,8 @@ class _ScoreColumn extends StatelessWidget {
 
     final currentScore = roundIndex < scores.length ? scores[roundIndex] : null;
 
-    showDialog(
-      context: context,
-      builder: (context) => _ScoreEditDialog(
+    globalState.showCommonDialog(
+      child: _ScoreEditDialog(
         templateId: templateId,
         player: player,
         round: roundIndex + 1,
@@ -444,7 +443,9 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialValue.toString());
+    final initialText =
+        widget.initialValue != 0 ? widget.initialValue.toString() : '';
+    _controller = TextEditingController(text: initialText);
   }
 
   @override
@@ -481,7 +482,6 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
           onPressed: () {
             final value = int.tryParse(_controller.text) ?? 0;
             Navigator.pop(context);
-            // 新增负数检查
             if (!isAllowNegative && value < 0) {
               AppSnackBar.show(context, '当前模板设置不允许输入负数！');
               return;

@@ -53,7 +53,6 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   @override
   Widget build(BuildContext context) {
     final isSystem = widget.baseTemplate.isSystemTemplate;
-    final isAllowNegative = widget.baseTemplate.isAllowNegative;
 
     return Scaffold(
       appBar: AppBar(
@@ -92,6 +91,17 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
             _buildBasicSettings(),
             _buildOtherList(),
             _buildPlayerList(),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                '模板名：${widget.baseTemplate.templateName}\nID：${widget.baseTemplate.id}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+            )
           ],
         ),
       ),
