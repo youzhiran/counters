@@ -100,19 +100,31 @@ class PlayerInfo {
 @HiveType(typeId: 2)
 class GameSession {
   @HiveField(0)
-  final String templateId;
+  final String id; // 唯一ID
 
   @HiveField(1)
-  final List<PlayerScore> scores;
+  final String templateId;
 
   @HiveField(2)
+  final List<PlayerScore> scores;
+
+  @HiveField(3)
   final DateTime startTime;
 
+  @HiveField(4)
+  DateTime? endTime; // 结束时间
+
+  @HiveField(5, defaultValue: false)
+  bool isCompleted; // 是否已完成
+
   GameSession({
+    String? id,
     required this.templateId,
     required this.scores,
     required this.startTime,
-  });
+    this.endTime,
+    this.isCompleted = false,
+  }) : id = id ?? Uuid().v4();
 }
 
 @HiveType(typeId: 3)

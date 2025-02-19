@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -13,16 +14,67 @@ import '../state.dart';
 /// - 处理得分增减操作
 /// - 处理游戏结束逻辑
 class ScoreProvider with ChangeNotifier {
+  late final Box<GameSession> _sessionBox;
   GameSession? _currentSession;
   int _currentRound = 0; //当前轮次索引，从0开始
 
-  int get currentRound => _currentRound;
-
   GameSession? get currentSession => _currentSession;
+  int get currentRound => _currentRound;
 
   MapEntry<String, int>? _currentHighlight;
 
   MapEntry<String, int>? get currentHighlight => _currentHighlight;
+
+  ScoreProvider() {
+    _initialize();
+    _loadActiveSession();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      if (!Hive.isBoxOpen('gameSessions')) {
+        _sessionBox = await Hive.openBox<GameSession>('gameSessions');
+      } else {
+        _sessionBox = Hive.box<GameSession>('gameSessions');
+      }
+      _loadActiveSession();
+    } catch (e) {
+      print('Hive初始化失败: $e');
+      _sessionBox = await Hive.openBox<GameSession>('gameSessions');
+    }
+  }
+
+  // 加载未完成的会话
+  void _loadActiveSession() {
+    final sessions = _sessionBox.values.where((s) => !s.isCompleted).toList();
+    if (sessions.isNotEmpty) {
+      _currentSession = sessions.last;
+      _currentRound = _calculateCurrentRound();
+      updateHighlight();
+    }
+  }
+
+  int _calculateCurrentRound() {
+    return _currentSession?.scores
+        .map((s) => s.roundScores.length)
+        .reduce((a, b) => a > b ? a : b) ?? 0;
+  }
+
+  // 保存会话到Hive
+  void _saveSession() {
+    if (_currentSession != null) {
+      _sessionBox.put(_currentSession!.id, _currentSession!);
+    }
+  }
+
+  // 加载会话的公共方法
+  void loadSession(GameSession session) {
+    _currentSession = session;
+    _currentRound = session.scores
+        .map((s) => s.roundScores.length)
+        .reduce((a, b) => a > b ? a : b);
+    notifyListeners();
+  }
 
   void startNewGame(ScoreTemplate template) {
     final validatedPlayers = template.players
@@ -75,6 +127,12 @@ class ScoreProvider with ChangeNotifier {
     _checkGameEnd(context);
     notifyListeners();
     updateHighlight();
+    _saveSession();
+  }
+
+  void deleteSession(String sessionId) {
+    _sessionBox.delete(sessionId);
+    notifyListeners();
   }
 
   void _updateCurrentRound() {
@@ -119,6 +177,11 @@ class ScoreProvider with ChangeNotifier {
     _currentSession = null;
     notifyListeners();
 
+    // 标记为已完成
+    _currentSession!.isCompleted = true;
+    _currentSession!.endTime = DateTime.now();
+    _saveSession();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       globalState.showCommonDialog(
         child: AlertDialog(
@@ -133,6 +196,7 @@ class ScoreProvider with ChangeNotifier {
         ),
       );
     });
+
   }
 
   /// 更新指定玩家的特定回合得分
@@ -152,6 +216,7 @@ class ScoreProvider with ChangeNotifier {
     _updateCurrentRound();
     notifyListeners();
     updateHighlight();
+    _saveSession();
   }
 
   // 为所有玩家添加新回合
@@ -168,5 +233,20 @@ class ScoreProvider with ChangeNotifier {
     _currentSession = null;
     _currentRound = 0;
     notifyListeners();
+  }
+
+  // 获取所有会话
+  List<GameSession> getAllSessions() {
+    // 添加类型转换和空值保护
+    try {
+      return _sessionBox.values
+          .whereType<GameSession>() // 类型过滤
+          .toList()
+          .reversed // 按时间倒序
+          .toList();
+    } catch (e) {
+      debugPrint('获取会话列表失败: $e');
+      return [];
+    }
   }
 }

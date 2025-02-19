@@ -112,22 +112,31 @@ class GameSessionAdapter extends TypeAdapter<GameSession> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return GameSession(
-      templateId: fields[0] as String,
-      scores: (fields[1] as List).cast<PlayerScore>(),
-      startTime: fields[2] as DateTime,
+      id: fields[0] as String?,
+      templateId: fields[1] as String,
+      scores: (fields[2] as List).cast<PlayerScore>(),
+      startTime: fields[3] as DateTime,
+      endTime: fields[4] as DateTime?,
+      isCompleted: fields[5] == null ? false : fields[5] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, GameSession obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(6)
       ..writeByte(0)
-      ..write(obj.templateId)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.scores)
+      ..write(obj.templateId)
       ..writeByte(2)
-      ..write(obj.startTime);
+      ..write(obj.scores)
+      ..writeByte(3)
+      ..write(obj.startTime)
+      ..writeByte(4)
+      ..write(obj.endTime)
+      ..writeByte(5)
+      ..write(obj.isCompleted);
   }
 
   @override

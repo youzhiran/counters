@@ -18,11 +18,18 @@ void main() async {
   // 初始化Hive
   await Hive.initFlutter();
 
+  // 清除Hive数据，调试使用！！
+  // await Hive.deleteBoxFromDisk('gameSessions');
+  // await Hive.deleteBoxFromDisk('templates');
+
   // 注册适配器
   Hive.registerAdapter(ScoreTemplateAdapter());
   Hive.registerAdapter(PlayerInfoAdapter());
   Hive.registerAdapter(GameSessionAdapter());
   Hive.registerAdapter(PlayerScoreAdapter());
+
+  // 会话存储初始化
+  await Hive.openBox<GameSession>('gameSessions');
 
   // 打开模板盒子
   final templateBox = await Hive.openBox<ScoreTemplate>('templates');

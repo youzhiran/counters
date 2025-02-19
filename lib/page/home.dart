@@ -44,34 +44,240 @@ class HomeScreen extends StatelessWidget {
     return Consumer<ScoreProvider>(
       builder: (context, provider, _) {
         if (provider.currentSession == null) {
-          return _buildEmptyState(context);
+          return _buildHomeWithHistory(context); // 修改后的主页
         }
         return _buildScoringBoard(context, provider);
       },
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('没有进行中的游戏', style: TextStyle(fontSize: 18)),
-          SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => Scaffold(
-                  appBar: AppBar(title: Text('选择模板')),
-                  body: _TemplateSelector(),
-                ),
-              ),
-            ),
-            child: Text('选择计分模板'),
-          )
-        ],
+  Widget _buildHomeWithHistory(BuildContext context) {
+
+    return Column(
+      children: [
+        _buildEmptyState(context),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime dt) => "${dt.year}-"
+      "${dt.month.toString().padLeft(2, '0')}-"
+      "${dt.day.toString().padLeft(2, '0')} "
+      "${dt.hour.toString().padLeft(2, '0')}:"
+      "${dt.minute.toString().padLeft(2, '0')}:"
+      "${dt.second.toString().padLeft(2, '0')}";
+
+  void _resumeSession(BuildContext context, GameSession session) {
+    context.read<ScoreProvider>().loadSession(session);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameSessionScreen(templateId: session.templateId),
       ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Expanded(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('没有进行中的游戏', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 20),
+            // 新增按钮容器
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildTemplateButton(context), // 选择模板按钮
+                SizedBox(height: 12),
+                _buildHistoryButton(context), // 历史游戏按钮
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTemplateButton(BuildContext context) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        minimumSize: Size(200, 48),
+      ),
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: Text('选择模板')),
+            body: _TemplateSelector(),
+          ),
+        ),
+      ),
+      child: Text('选择计分模板'),
+    );
+  }
+
+  Widget _buildHistoryButton(BuildContext context) {
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        minimumSize: Size(200, 48),
+      ),
+      onPressed: () => _showHistorySessionDialog(context),
+      child: Text('选择历史计分'),
+    );
+  }
+
+  // 历史会话对话框
+  void _showHistorySessionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final sessions = context.read<ScoreProvider>().getAllSessions()
+              ..sort((a, b) => b.startTime.compareTo(a.startTime));
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Text('历史计分记录'),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => setState(() {}),
+                  )
+                ],
+              ),
+              content: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: MediaQuery.of(context).size.height * 0.7,
+                child: sessions.isEmpty
+                    ? const Center(child: Text('暂无历史记录'))
+                    : ListView.separated(
+                        itemCount: sessions.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final session = sessions[index];
+                          final template = context
+                              .read<TemplateProvider>()
+                              .getTemplateBySession(session);
+
+                          return Dismissible(
+                            key: Key(session.id),
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child:
+                                  const Icon(Icons.delete, color: Colors.white),
+                            ),
+                            confirmDismiss: (direction) async {
+                              return await showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('确认删除'),
+                                  content: const Text('确定要删除这条记录吗？'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('取消'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('删除',
+                                          style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            onDismissed: (_) {
+                              context
+                                  .read<ScoreProvider>()
+                                  .deleteSession(session.id);
+                            },
+                            child: ListTile(
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              title: Text(
+                                template?.templateName ?? "未知模板",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                      "${_formatDate(session.startTime)}"),
+                                  if (session.endTime != null)
+                                    Text(
+                                        "结束时间：${_formatDate(session.endTime!)}"),
+                                  Text(
+                                    "状态：${session.isCompleted ? '已完成' : '进行中'}",
+                                    style: TextStyle(
+                                      color: session.isCompleted
+                                          ? Colors.green
+                                          : Colors.orange,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline,
+                                    color: Colors.red),
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('确认删除'),
+                                      content: const Text('确定要删除这条记录吗？'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          child: const Text('取消'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          child: const Text('删除',
+                                              style:
+                                                  TextStyle(color: Colors.red)),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
+                                    context
+                                        .read<ScoreProvider>()
+                                        .deleteSession(session.id);
+                                    setState(() {});
+                                  }
+                                },
+                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _resumeSession(context, session);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('关闭'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -142,7 +348,7 @@ class HomeScreen extends StatelessWidget {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('结束本轮游戏'),
-        content: Text('确定要结束当前游戏吗？所有未保存的进度将会丢失！'),
+        content: Text('确定要结束当前游戏吗？进度将会保存'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -164,16 +370,15 @@ class HomeScreen extends StatelessWidget {
   // 创建应急模板
   ScoreTemplate _createFallbackTemplate() {
     return ScoreTemplate(
-      templateName: '应急模板',
-      playerCount: 3,
-      targetScore: 50,
-      players: List.generate(
-          3,
-          (i) => PlayerInfo(
-              id: 'emergency_$i',
-              name: '玩家 ${i + 1}',
-              avatar: 'default_avatar.png')),
-      isAllowNegative: false
-    );
+        templateName: '应急模板',
+        playerCount: 3,
+        targetScore: 50,
+        players: List.generate(
+            3,
+            (i) => PlayerInfo(
+                id: 'emergency_$i',
+                name: '玩家 ${i + 1}',
+                avatar: 'default_avatar.png')),
+        isAllowNegative: false);
   }
 }

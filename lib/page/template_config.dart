@@ -94,7 +94,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
             Padding(
               padding: const EdgeInsets.all(8),
               child: Text(
-                '模板名：${widget.baseTemplate.templateName}\nID：${widget.baseTemplate.id}',
+                '原模板名：${widget.baseTemplate.templateName}\nID：${widget.baseTemplate.id}',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey[600],

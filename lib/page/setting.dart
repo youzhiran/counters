@@ -74,7 +74,8 @@ class _SettingScreenState extends State<SettingScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              '版本 $_versionName($_versionCode)',
+              '版本 $_versionName($_versionCode)\n'
+                  'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除数据或重装程序。',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.grey[600],

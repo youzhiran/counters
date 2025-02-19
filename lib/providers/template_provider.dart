@@ -27,7 +27,12 @@ class TemplateProvider with ChangeNotifier {
     _checkSystemTemplates();
   }
 
-  // 新增方法：检查系统模板初始化
+  // 通过会话获取模板的方法
+  ScoreTemplate? getTemplateBySession(GameSession session) {
+    return getTemplate(session.templateId);
+  }
+
+  // 检查系统模板初始化
   void _checkSystemTemplates() {
     for (final t in _systemTemplates) {
       _templateBox.put(t.id, t);
