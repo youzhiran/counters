@@ -5,6 +5,8 @@ import '../models.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
+import '../widgets/confirmation_dialog.dart';
+import '../widgets/history_session_item.dart';
 import '../widgets/snackbar.dart';
 import 'game_session.dart';
 
@@ -52,20 +54,12 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildHomeWithHistory(BuildContext context) {
-
     return Column(
       children: [
         _buildEmptyState(context),
       ],
     );
   }
-
-  String _formatDate(DateTime dt) => "${dt.year}-"
-      "${dt.month.toString().padLeft(2, '0')}-"
-      "${dt.day.toString().padLeft(2, '0')} "
-      "${dt.hour.toString().padLeft(2, '0')}:"
-      "${dt.minute.toString().padLeft(2, '0')}:"
-      "${dt.second.toString().padLeft(2, '0')}";
 
   void _resumeSession(BuildContext context, GameSession session) {
     context.read<ScoreProvider>().loadSession(session);
@@ -92,7 +86,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 _buildTemplateButton(context), // 选择模板按钮
                 SizedBox(height: 12),
-                _buildHistoryButton(context), // 历史游戏按钮
+                _buildHistoryButton(), // 历史游戏按钮
               ],
             )
           ],
@@ -119,37 +113,28 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryButton(BuildContext context) {
+  Widget _buildHistoryButton() {
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
         minimumSize: Size(200, 48),
       ),
-      onPressed: () => _showHistorySessionDialog(context),
+      onPressed: () => _showHistorySessionDialog(),
       child: Text('选择历史计分'),
     );
   }
 
   void _showClearConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('确认清除'),
-        content: const Text('这将永久删除所有历史记录!\n此操作不可撤销!'),
-        actions: [
-          TextButton(
-            child: const Text('取消'),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-          TextButton(
-            child: const Text('确认清除', style: TextStyle(color: Colors.red)),
-            onPressed: () {
-              Navigator.pop(ctx); // 关闭对话框
-              _clearAllHistory(context); // 执行清除操作
-            },
-          ),
-        ],
+    globalState.showCommonDialog(
+      child:  ConfirmationDialog(
+        title: '确认清除',
+        content: '这将永久删除所有历史记录!\n此操作不可撤销!',
+        confirmText: '确认清除',
       ),
-    );
+    ).then((confirmed) {
+      if (confirmed == true) {
+        _clearAllHistory(context);
+      }
+    });
   }
 
   void _clearAllHistory(BuildContext context) async {
@@ -160,22 +145,19 @@ class HomeScreen extends StatelessWidget {
 
     // 关闭当前对话框并重新打开以刷新列表
     Navigator.pop(context); // 关闭清除确认对话框
-    _showHistorySessionDialog(context); // 重新打开历史记录对话框
+    // _showHistorySessionDialog(); // 重新打开历史记录对话框
 
-    // // 显示操作反馈
-    // AppSnackBar.show(context, '已清除所有历史记录');
+    // 显示操作反馈
+    AppSnackBar.show(context, '已清除所有历史记录');
   }
 
   // 历史会话对话框
-  void _showHistorySessionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
+  void _showHistorySessionDialog() {
+    globalState.showCommonDialog(
+      child:  StatefulBuilder(
           builder: (context, setState) {
             final sessions = context.read<ScoreProvider>().getAllSessions()
               ..sort((a, b) => b.startTime.compareTo(a.startTime));
-
             return AlertDialog(
               title: Row(
                 children: [
@@ -188,7 +170,7 @@ class HomeScreen extends StatelessWidget {
                   )
                 ],
               ),
-              content: Container(
+              content: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.9,
                 height: MediaQuery.of(context).size.height * 0.7,
                 child: sessions.isEmpty
@@ -198,111 +180,56 @@ class HomeScreen extends StatelessWidget {
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final session = sessions[index];
-                          final template = context
-                              .read<TemplateProvider>()
-                              .getTemplateBySession(session);
 
                           return Dismissible(
-                            key: Key(session.id),
-                            background: Container(
-                              color: Colors.red,
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              child:
-                                  const Icon(Icons.delete, color: Colors.white),
-                            ),
-                            confirmDismiss: (direction) async {
-                              return await showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: const Text('确认删除'),
-                                  content: const Text('确定要删除这条记录吗？'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(ctx, false),
-                                      child: const Text('取消'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx, true),
-                                      child: const Text('删除',
-                                          style: TextStyle(color: Colors.red)),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            onDismissed: (_) {
-                              context
-                                  .read<ScoreProvider>()
-                                  .deleteSession(session.id);
-                            },
-                            child: ListTile(
-                              contentPadding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              title: Text(
-                                template?.templateName ?? "未知模板",
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
+                              key: Key(session.id),
+                              background: Container(
+                                color: Colors.red,
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                child: const Icon(Icons.delete,
+                                    color: Colors.white),
                               ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                      "${_formatDate(session.startTime)}"),
-                                  if (session.endTime != null)
-                                    Text(
-                                        "${_formatDate(session.endTime!)}"),
-                                  Text(
-                                    "状态：${session.isCompleted ? '已完成' : '进行中'}",
-                                    style: TextStyle(
-                                      color: session.isCompleted
-                                          ? Colors.green
-                                          : Colors.orange,
-                                    ),
+                              confirmDismiss: (direction) async {
+                                return await globalState.showCommonDialog(
+                                  child:  AlertDialog(
+                                    title: const Text('确认删除'),
+                                    content: const Text('确定要删除这条记录吗？'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context),
+                                        child: const Text('取消'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context),
+                                        child: const Text('删除',
+                                            style:
+                                                TextStyle(color: Colors.red)),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.red),
-                                onPressed: () async {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text('确认删除'),
-                                      content: const Text('确定要删除这条记录吗？'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, false),
-                                          child: const Text('取消'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, true),
-                                          child: const Text('删除',
-                                              style:
-                                                  TextStyle(color: Colors.red)),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-
-                                  if (confirm == true) {
-                                    context
-                                        .read<ScoreProvider>()
-                                        .deleteSession(session.id);
-                                    setState(() {});
-                                  }
-                                },
-                              ),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _resumeSession(context, session);
+                                );
                               },
-                            ),
-                          );
+                              onDismissed: (_) {
+                                context
+                                    .read<ScoreProvider>()
+                                    .deleteSession(session.id);
+                              },
+                              child: HistorySessionItem(
+                                session: session,
+                                onDelete: () {
+                                  context
+                                      .read<ScoreProvider>()
+                                      .deleteSession(session.id);
+                                  setState(() {});
+                                },
+                                onResume: () {
+                                  Navigator.pop(context);
+                                  _resumeSession(context, session);
+                                },
+                              ));
                         },
                       ),
               ),
@@ -314,8 +241,7 @@ class HomeScreen extends StatelessWidget {
               ],
             );
           },
-        );
-      },
+        )
     );
   }
 
