@@ -64,6 +64,21 @@ class ScoreProvider with ChangeNotifier {
         0;
   }
 
+  Future<void> clearAllHistory() async {
+    // 清除内存中的状态
+    _currentSession = null;
+    _currentRound = 0;
+
+    // 清除持久化存储
+    await _sessionBox.clear();
+    await Hive.deleteBoxFromDisk('sessions'); // 彻底删除数据库文件
+
+    // // 重新初始化数据库
+    // _sessionBox = await Hive.openBox<ScoreSession>('sessions');
+
+    notifyListeners();
+  }
+
   // 保存会话到Hive
   void _saveSession() {
     if (_currentSession != null) {

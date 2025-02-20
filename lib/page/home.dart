@@ -129,6 +129,43 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  void _showClearConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认清除'),
+        content: const Text('这将永久删除所有历史记录!\n此操作不可撤销!'),
+        actions: [
+          TextButton(
+            child: const Text('取消'),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          TextButton(
+            child: const Text('确认清除', style: TextStyle(color: Colors.red)),
+            onPressed: () {
+              Navigator.pop(ctx); // 关闭对话框
+              _clearAllHistory(context); // 执行清除操作
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _clearAllHistory(BuildContext context) async {
+    final provider = Provider.of<ScoreProvider>(context, listen: false);
+
+    // 执行清除操作
+    await provider.clearAllHistory();
+
+    // 关闭当前对话框并重新打开以刷新列表
+    Navigator.pop(context); // 关闭清除确认对话框
+    _showHistorySessionDialog(context); // 重新打开历史记录对话框
+
+    // // 显示操作反馈
+    // AppSnackBar.show(context, '已清除所有历史记录');
+  }
+
   // 历史会话对话框
   void _showHistorySessionDialog(BuildContext context) {
     showDialog(
@@ -145,8 +182,9 @@ class HomeScreen extends StatelessWidget {
                   const Text('历史计分记录'),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () => setState(() {}),
+                    icon: const Icon(Icons.delete_forever),
+                    tooltip: '清除所有记录',
+                    onPressed: () => _showClearConfirmation(context),
                   )
                 ],
               ),
