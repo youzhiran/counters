@@ -112,14 +112,14 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
     const SettingScreen(),
   ];
 
-  // 新增初始化方法
+  // 初始化方法
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
   }
 
-  // 新增销毁方法
+  // 销毁方法
   @override
   void dispose() {
     _pageController.dispose();

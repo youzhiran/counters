@@ -214,7 +214,7 @@ class HomeScreen extends StatelessWidget {
                                       "${_formatDate(session.startTime)}"),
                                   if (session.endTime != null)
                                     Text(
-                                        "结束时间：${_formatDate(session.endTime!)}"),
+                                        "${_formatDate(session.endTime!)}"),
                                   Text(
                                     "状态：${session.isCompleted ? '已完成' : '进行中'}",
                                     style: TextStyle(

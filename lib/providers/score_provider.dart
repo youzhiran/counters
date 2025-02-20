@@ -19,6 +19,7 @@ class ScoreProvider with ChangeNotifier {
   int _currentRound = 0; //当前轮次索引，从0开始
 
   GameSession? get currentSession => _currentSession;
+
   int get currentRound => _currentRound;
 
   MapEntry<String, int>? _currentHighlight;
@@ -46,7 +47,9 @@ class ScoreProvider with ChangeNotifier {
 
   // 加载未完成的会话
   void _loadActiveSession() {
-    final sessions = _sessionBox.values.where((s) => !s.isCompleted).toList();
+    final sessions = _sessionBox.values
+        .where((s) => !s.isCompleted) // 只加载未完成的会话
+        .toList();
     if (sessions.isNotEmpty) {
       _currentSession = sessions.last;
       _currentRound = _calculateCurrentRound();
@@ -56,8 +59,9 @@ class ScoreProvider with ChangeNotifier {
 
   int _calculateCurrentRound() {
     return _currentSession?.scores
-        .map((s) => s.roundScores.length)
-        .reduce((a, b) => a > b ? a : b) ?? 0;
+            .map((s) => s.roundScores.length)
+            .reduce((a, b) => a > b ? a : b) ??
+        0;
   }
 
   // 保存会话到Hive
@@ -196,7 +200,6 @@ class ScoreProvider with ChangeNotifier {
         ),
       );
     });
-
   }
 
   /// 更新指定玩家的特定回合得分
@@ -230,6 +233,13 @@ class ScoreProvider with ChangeNotifier {
   }
 
   void resetGame() {
+    if (_currentSession != null) {
+      // 标记会话为已完成
+      _currentSession!.isCompleted = true;
+      _currentSession!.endTime = DateTime.now();
+      _saveSession(); // 保存修改到Hive
+    }
+
     _currentSession = null;
     _currentRound = 0;
     notifyListeners();
