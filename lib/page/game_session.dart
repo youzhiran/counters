@@ -7,14 +7,20 @@ import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../widgets/snackbar.dart';
 
-class GameSessionScreen extends StatelessWidget {
+class GameSessionScreen extends StatefulWidget {
   final String templateId;
 
   const GameSessionScreen({super.key, required this.templateId});
 
   @override
+  State<GameSessionScreen> createState() => _GameSessionScreenState();
+}
+
+class _GameSessionScreenState extends State<GameSessionScreen> {
+  @override
   Widget build(BuildContext context) {
-    final template = context.read<TemplateProvider>().getTemplate(templateId);
+    final template =
+        context.read<TemplateProvider>().getTemplate(widget.templateId);
     final session = context.watch<ScoreProvider>().currentSession;
 
     if (template == null || session == null) {
@@ -24,8 +30,10 @@ class GameSessionScreen extends StatelessWidget {
       );
     }
 
-    var failureScore =
-        context.read<TemplateProvider>().getTemplate(templateId)?.targetScore;
+    var failureScore = context
+        .read<TemplateProvider>()
+        .getTemplate(widget.templateId)
+        ?.targetScore;
 
     // 检查游戏是否结束
     final overPlayers =
@@ -76,8 +84,9 @@ class GameSessionScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(context); // 先关闭对话框
-              final template =
-                  context.read<TemplateProvider>().getTemplate(templateId);
+              final template = context
+                  .read<TemplateProvider>()
+                  .getTemplate(widget.templateId);
               context.read<ScoreProvider>()
                 ..resetGame()
                 ..startNewGame(template!);
@@ -95,8 +104,10 @@ class GameSessionScreen extends StatelessWidget {
   /// 2. 当存在失败玩家时，胜利者为未失败玩家中分数最低者（可能多人并列）
   /// 3. 当无失败玩家时，胜利者为全体最低分玩家，失败者为全体最高分玩家（可能多人并列）
   void _showGameResult(BuildContext context) {
-    final targetScore =
-        context.read<TemplateProvider>().getTemplate(templateId)?.targetScore;
+    final targetScore = context
+        .read<TemplateProvider>()
+        .getTemplate(widget.templateId)
+        ?.targetScore;
 
     if (targetScore == null) {
       globalState.showCommonDialog(
@@ -145,7 +156,7 @@ class GameSessionScreen extends StatelessWidget {
 
     globalState.showCommonDialog(
       child: AlertDialog(
-        title: Text(hasFailures ? '游戏结果' : '当前游戏结果'), // 修改点：动态标题
+        title: Text(hasFailures ? '游戏结束' : '当前游戏情况'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,7 +171,8 @@ class GameSessionScreen extends StatelessWidget {
               SizedBox(height: 16),
             ],
             // 显示胜利者
-            Text('👑 胜利：', style: TextStyle(color: Colors.green)),
+            Text('${hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
+                style: TextStyle(color: Colors.green)),
             ...winners.map((s) => Text(
                 '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
           ],
@@ -182,12 +194,18 @@ class GameSessionScreen extends StatelessWidget {
   String _getPlayerName(String playerId, BuildContext context) {
     return context
             .read<TemplateProvider>()
-            .getTemplate(templateId)
+            .getTemplate(widget.templateId)
             ?.players
             .firstWhere((p) => p.id == playerId,
                 orElse: () => PlayerInfo(name: '未知玩家', avatar: 'default'))
             .name ??
         '未知玩家';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<ScoreProvider>().updateHighlight();
   }
 }
 
@@ -300,10 +318,7 @@ class _ScoreColumn extends StatelessWidget {
   }
 }
 
-/// 计分板组件（水平滚动布局）
-/// 参数说明：
-/// [template]: 游戏模板数据
-/// [session]: 当前游戏会话
+
 class _ScoreBoard extends StatefulWidget {
   final ScoreTemplate template;
   final GameSession session;
@@ -315,7 +330,14 @@ class _ScoreBoard extends StatefulWidget {
 }
 
 class _ScoreBoardState extends State<_ScoreBoard> {
-  final Map<String, GlobalKey> _cellKeys = {}; //滚动键管理
+  final Map<String, GlobalKey> _cellKeys = {};
+  final ScrollController _horizontalScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -323,17 +345,15 @@ class _ScoreBoardState extends State<_ScoreBoard> {
     final highlight = context.watch<ScoreProvider>().currentHighlight;
 
     if (highlight != null) {
-      // 在布局完成后执行滚动
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final key = '${highlight.key}_${highlight.value}';
         final cellKey = _cellKeys[key];
-
         if (cellKey?.currentContext != null) {
           Scrollable.ensureVisible(
             cellKey!.currentContext!,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
-            alignment: 0.5, // 将单元格滚动到视图中央
+            alignment: 0.5,
           );
         }
       });
@@ -343,70 +363,88 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   @override
   Widget build(BuildContext context) {
     final currentRound =
-        context.select<ScoreProvider, int>((p) => p.currentRound);
+    context.select<ScoreProvider, int>((p) => p.currentRound);
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 玩家标题行
-            Row(
-              children: [
-                const SizedBox(width: 50),
-                ...widget.template.players.map((player) => SizedBox(
-                      width: 80,
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                              child: Text(player.name.substring(0, 1))),
-                          Text(player.name, overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    )),
-              ],
+    return Column(
+      children: [
+        // 冻结的标题行（独立水平滚动视图）
+        SizedBox(
+          height: 80, // 固定标题行高度
+          child: SingleChildScrollView(
+            controller: _horizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            child: _buildHeaderRow(),
+          ),
+        ),
+        // 内容区域（垂直+水平滚动）
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              controller: _horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              child: _buildContentRow(currentRound),
             ),
+          ),
+        ),
+      ],
+    );
+  }
 
-            // 修改后的回合行
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 左侧回合标签列
-                  Column(
-                    children: List.generate(
-                      currentRound + 1,
-                      (index) => Container(
-                        width: 50,
-                        height: 48,
-                        alignment: Alignment.center,
-                        child: Text('第${index + 1}轮'), // 直接显示回合标签
-                      ),
-                    ),
-                  ),
-
-                  // 玩家得分列
-                  ...widget.template.players.map((player) {
-                    final score = widget.session.scores.firstWhere(
-                      (s) => s.playerId == player.id,
-                      orElse: () => PlayerScore(playerId: player.id),
-                    );
-
-                    return _ScoreColumn(
-                      templateId: widget.template.id,
-                      player: player,
-                      scores: score.roundScores,
-                      currentRound: currentRound + 1,
-                      cellKeys: _cellKeys, // 传递 key 集合
-                    );
-                  }),
-                ],
+  Widget _buildHeaderRow() {
+    return Row(
+      children: [
+        const SizedBox(width: 50),
+        ...widget.template.players.map((player) => SizedBox(
+          width: 80,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircleAvatar(child: Text(player.name.substring(0, 1))),
+              Text(
+                player.name,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(height: 1.2),
+              ),
+            ],
+          ),
+        )),
+      ],
+    );
+  }
+  Widget _buildContentRow(int currentRound) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 左侧回合标签列
+          Column(
+            children: List.generate(
+              currentRound + 1,
+                  (index) => Container(
+                width: 50,
+                height: 48,
+                alignment: Alignment.center,
+                child: Text('第${index + 1}轮'),
               ),
             ),
-          ],
-        ),
+          ),
+          // 玩家得分列
+          ...widget.template.players.map((player) {
+            final score = widget.session.scores.firstWhere(
+                  (s) => s.playerId == player.id,
+              orElse: () => PlayerScore(playerId: player.id),
+            );
+            return _ScoreColumn(
+              templateId: widget.template.id,
+              player: player,
+              scores: score.roundScores,
+              currentRound: currentRound + 1,
+              cellKeys: _cellKeys,
+            );
+          }),
+        ],
       ),
     );
   }
@@ -529,7 +567,7 @@ class _ScoreCell extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Text(
-            score == null ? '--' : (score == 0 ? '👑' : '$total'),
+            score == null ? '--' : (score == 0 ? '🏆' : '$total'),
             style: TextStyle(
               fontSize: 18,
             ),
