@@ -145,12 +145,13 @@ void _buildAndroid(String version, Set<String> architectures) {
     'x64': {'platform': 'android-x64', 'arch': 'x86_64'},
   };
 
+
+  print('\nCleaning Android build...');
+  _runFlutterCommand('clean');
+
   for (final arch in architectures) {
     final config = platformMap[arch];
     if (config == null) continue;
-
-    print('\nCleaning Android build...');
-    _runFlutterCommand('clean');
 
     print('\nBuilding Android ${config['arch']}...');
     _runFlutterCommand('build apk --target-platform ${config['platform']}');
