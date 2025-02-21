@@ -205,7 +205,9 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<ScoreProvider>().updateHighlight();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ScoreProvider>().updateHighlight();
+    });
   }
 }
 
