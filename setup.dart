@@ -149,6 +149,9 @@ void _buildAndroid(String version, Set<String> architectures) {
     final config = platformMap[arch];
     if (config == null) continue;
 
+    print('\nCleaning Android build...');
+    _runFlutterCommand('clean');
+
     print('\nBuilding Android ${config['arch']}...');
     _runFlutterCommand('build apk --target-platform ${config['platform']}');
 
@@ -167,7 +170,7 @@ void _buildWindows(String version, Set<String> architectures) {
       print('\nCleaning Windows build...');
       _runFlutterCommand('clean');
 
-      print('\nBuilding Windows...');
+      print('\nBuilding Windows amd64...');
       _runFlutterCommand('build windows --release');
 
       final releaseDir = Directory('build/windows/x64/runner/Release');
