@@ -540,7 +540,7 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
 /// 参数说明：
 /// [score]: 当前回合得分（可选）
 /// [total]: 累计总得分
-/// [isCurrent]: 是否为当前回合
+/// [isHighlighted]: 是否高亮
 class _ScoreCell extends StatelessWidget {
   final int? score;
   final int total;
@@ -557,9 +557,9 @@ class _ScoreCell extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         // 新增装饰
-        color: isHighlighted ? Colors.blue[100] : null,
+        color: isHighlighted ? Theme.of(context).colorScheme.primaryContainer: null,
         border: isHighlighted
-            ? Border.all(color: Colors.blueAccent, width: 2)
+            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
             : null,
       ),
       width: 80,

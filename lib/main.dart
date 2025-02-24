@@ -58,10 +58,33 @@ class MyApp extends StatelessWidget {
           navigatorKey: globalState.navigatorKey,
           title: '桌游计分器',
           theme: ThemeData(
-            primarySwatch: Colors.blue,
+            useMaterial3: true, // 启用 MD3
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.blue, // 动态颜色种子
+              brightness: Brightness.light,
+            ),
             appBarTheme: const AppBarTheme(
-              elevation: 0, // 统一阴影效果
-              centerTitle: true, // 标题居中
+              elevation: 1, // MD3 推荐轻微阴影
+              scrolledUnderElevation: 3, // 滚动时阴影
+            ),
+            // 更新其他组件主题
+            filledButtonTheme: FilledButtonThemeData(style: ButtonStyle()),
+            navigationBarTheme: NavigationBarThemeData(
+              height: 70, // 推荐高度
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            ),
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+              },
+            ),
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.blue,
+              brightness: Brightness.dark,
             ),
           ),
           routes: {
@@ -147,28 +170,23 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
         controller: _pageController,
         children: _screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Colors.blue,
-        // 选中颜色
-        unselectedItemColor: Colors.grey,
-        // 未选中颜色
-        showUnselectedLabels: true,
-        // 始终显示标签
-        type: BottomNavigationBarType.fixed,
-        // 固定布局
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onItemTapped,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
             label: '主页',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
+          NavigationDestination(
+            icon: Icon(Icons.view_list_outlined),
+            selectedIcon: Icon(Icons.view_list),
             label: '模板',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
             label: '设置',
           ),
         ],
