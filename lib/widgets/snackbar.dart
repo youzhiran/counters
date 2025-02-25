@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppSnackBar {
-  // 基础通用样式（蓝色浮动样式）
+  // 基础通用样式（蓝色）
   static void show(BuildContext context, String message, {
     Duration duration = const Duration(seconds: 2),
   }) {
@@ -14,7 +14,16 @@ class AppSnackBar {
     );
   }
 
-  // 错误样式（红色固定样式）
+  // 警告样式（橙色）
+  static void warn(BuildContext context, String message) {
+    _showSnackBar(
+      context,
+      content: Text(message),
+      backgroundColor: Colors.orange,
+    );
+  }
+
+  // 错误样式（红色）
   static void error(BuildContext context, String message) {
     _showSnackBar(
       context,

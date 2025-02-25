@@ -22,6 +22,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   late TextEditingController _templateNameController;
   late TextEditingController _playerCountController;
   late TextEditingController _targetScoreController;
+  late List<TextEditingController> _nameControllers;
   late List<PlayerInfo> _players;
   late bool _allowNegative = false;
 
@@ -39,6 +40,9 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
         TextEditingController(text: widget.baseTemplate.playerCount.toString());
     _targetScoreController =
         TextEditingController(text: widget.baseTemplate.targetScore.toString());
+    _nameControllers = widget.baseTemplate.players
+        .map((p) => TextEditingController(text: p.name))
+        .toList();
     _players = List.from(widget.baseTemplate.players);
     _allowNegative = widget.baseTemplate.isAllowNegative;
   }
@@ -109,6 +113,12 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   }
 
   void _updateTemplate() {
+    for (int i = 0; i < _nameControllers.length; i++) {
+      _players[i] = _players[i].copyWith(
+          name: _nameControllers[i].text.trim()
+      );
+    }
+
     _validateInputs();
 
     if (_playerCountError != null ||
@@ -139,6 +149,12 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   }
 
   void _saveAsTemplate() {
+    for (int i = 0; i < _nameControllers.length; i++) {
+      _players[i] = _players[i].copyWith(
+          name: _nameControllers[i].text.trim()
+      );
+    }
+
     _validateInputs();
 
     if (_playerCountError != null ||
@@ -311,8 +327,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
           physics: NeverScrollableScrollPhysics(),
           itemCount: _players.length,
           itemBuilder: (context, index) => _PlayerItemEditor(
-            player: _players[index],
-            onChanged: (newPlayer) => _players[index] = newPlayer,
+            controller: _nameControllers[index], // 传递控制器
           ),
         ),
       ],
@@ -347,56 +362,22 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
 
   void _updatePlayerCount(int newCount) {
     if (newCount > _players.length) {
-      // 添加新玩家
       for (int i = _players.length; i < newCount; i++) {
-        _players.add(PlayerInfo(
-          name: '玩家 ${i + 1}',
-          avatar: 'default_avatar.png',
-        ));
+        _players.add(PlayerInfo(name: '玩家 ${i + 1}', avatar: 'default_avatar.png'));
+        _nameControllers.add(TextEditingController(text: '玩家 ${i + 1}')); // 新增控制器
       }
     } else if (newCount < _players.length) {
-      // 移除多余玩家
       _players.removeRange(newCount, _players.length);
+      _nameControllers.removeRange(newCount, _nameControllers.length); // 移除多余控制器
     }
     setState(() {});
   }
 }
 
-class _PlayerItemEditor extends StatefulWidget {
-  final PlayerInfo player;
-  final Function(PlayerInfo) onChanged;
+class _PlayerItemEditor extends StatelessWidget { // 改为无状态组件
+  final TextEditingController controller;
 
-  const _PlayerItemEditor({required this.player, required this.onChanged});
-
-  @override
-  __PlayerItemEditorState createState() => __PlayerItemEditorState();
-}
-
-class __PlayerItemEditorState extends State<_PlayerItemEditor> {
-  late TextEditingController _controller;
-  String? _errorText;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.player.name.trim());
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _validateName(String value) {
-    if (value.isEmpty) {
-      setState(() => _errorText = '名称不能为空');
-    } else if (value.length > 10) {
-      setState(() => _errorText = '名称最多10个字符');
-    } else {
-      setState(() => _errorText = null);
-    }
-  }
+  const _PlayerItemEditor({required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -404,25 +385,17 @@ class __PlayerItemEditorState extends State<_PlayerItemEditor> {
       padding: EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24,
-            child: Icon(Icons.person),
-          ),
+          CircleAvatar(radius: 24, child: Icon(Icons.person)),
           SizedBox(width: 16),
           Expanded(
             child: TextField(
-              controller: _controller,
+              controller: controller,
               decoration: InputDecoration(
                 labelText: '玩家名称',
                 border: OutlineInputBorder(),
-                errorText: _errorText, // 添加错误提示
-                counterText: '${_controller.text.length}/10', // 添加字符计数器
+                counterText: '${controller.text.length}/10',
               ),
-              maxLength: 10, // 添加最大长度限制
-              onChanged: (value) {
-                _validateName(value);
-                widget.onChanged(widget.player..name = value.trim());
-              },
+              maxLength: 10,
             ),
           ),
         ],

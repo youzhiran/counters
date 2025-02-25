@@ -523,7 +523,7 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
             final value = int.tryParse(_controller.text) ?? 0;
             Navigator.pop(context);
             if (!isAllowNegative && value < 0) {
-              AppSnackBar.show(context, '当前模板设置不允许输入负数！');
+              AppSnackBar.warn(context, '当前模板设置不允许输入负数！');
               return;
             }
             widget.onConfirm(value);
