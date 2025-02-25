@@ -116,6 +116,8 @@ jobs:
           git add CHANGELOG.md
           if ! git diff --cached --quiet; then
             echo "Commit pushing"
+            git config --local user.email "2668760098@qq.com"
+            git config --local user.name "yooyi"
             git commit -m "Update changelog"
             git push
             if [ $? -eq 0 ]; then
