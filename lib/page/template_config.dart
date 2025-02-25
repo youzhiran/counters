@@ -126,6 +126,14 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
       players: _players,
     );
 
+    // 检查每个名称是否为空
+    for (final player in updated.players) {
+      if (player.name.trim().isEmpty) {
+        AppSnackBar.error(context, '玩家名称不能为空或全是空格');
+        return;
+      }
+    }
+
     context.read<TemplateProvider>().updateTemplate(updated);
     Navigator.pop(context);
   }
@@ -150,6 +158,14 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
       isAllowNegative:_allowNegative,
       baseTemplateId: rootId,
     );
+
+    // 检查每个名称是否为空
+    for (final player in newTemplate.players) {
+      if (player.name.trim().isEmpty) {
+        AppSnackBar.error(context, '玩家名称不能为空或全是空格');
+        return;
+      }
+    }
 
     context.read<TemplateProvider>().saveUserTemplate(newTemplate, rootId);
     Navigator.pop(context);
@@ -347,7 +363,6 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
 }
 
 class _PlayerItemEditor extends StatefulWidget {
-  // 改为StatefulWidget
   final PlayerInfo player;
   final Function(PlayerInfo) onChanged;
 
@@ -364,7 +379,7 @@ class __PlayerItemEditorState extends State<_PlayerItemEditor> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.player.name);
+    _controller = TextEditingController(text: widget.player.name.trim());
   }
 
   @override
@@ -406,9 +421,7 @@ class __PlayerItemEditorState extends State<_PlayerItemEditor> {
               maxLength: 10, // 添加最大长度限制
               onChanged: (value) {
                 _validateName(value);
-                if (_errorText == null) {
-                  widget.onChanged(widget.player..name = value);
-                }
+                widget.onChanged(widget.player..name = value.trim());
               },
             ),
           ),
