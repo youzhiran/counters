@@ -127,6 +127,8 @@ jobs:
               exit 1
             fi
           fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.COMMIT_TOKEN }}
 
   upload:
     permissions: write-all
