@@ -270,7 +270,12 @@ class HomeScreen extends StatelessWidget {
               leading: CircleAvatar(child: Text(player.name[0])),
               title: Text(player.name),
               subtitle: Text('总得分: ${score.totalScore}'),
-              trailing: Text('+${score.roundScores.lastOrNull ?? 0}'),
+              trailing: () {
+                final lastScore = score.roundScores.lastOrNull;
+                final displayScore = lastScore ?? 0;
+                final prefix = displayScore >= 0 ? '+' : '';
+                return Text('$prefix$displayScore');
+              }(),
             );
           },
         )),
