@@ -320,7 +320,6 @@ class _ScoreColumn extends StatelessWidget {
   }
 }
 
-
 class _ScoreBoard extends StatefulWidget {
   final ScoreTemplate template;
   final GameSession session;
@@ -334,6 +333,8 @@ class _ScoreBoard extends StatefulWidget {
 class _ScoreBoardState extends State<_ScoreBoard> {
   final Map<String, GlobalKey> _cellKeys = {};
   final ScrollController _horizontalScrollController = ScrollController();
+  late final ScrollController _headerHorizontalController = ScrollController();
+  late final ScrollController _contentHorizontalController = ScrollController();
 
   @override
   void dispose() {
@@ -363,30 +364,53 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // 监听内容区域的滚动事件，同步到标题行
+    _contentHorizontalController.addListener(() {
+      _headerHorizontalController.jumpTo(_contentHorizontalController.offset);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final currentRound =
-    context.select<ScoreProvider, int>((p) => p.currentRound);
+    final currentRound = context.select<ScoreProvider, int>((p) => p.currentRound);
 
     return Column(
       children: [
-        // 冻结的标题行（独立水平滚动视图）
+        // 标题行（禁用用户手动滚动）
         SizedBox(
-          height: 80, // 固定标题行高度
+          height: 80,
           child: SingleChildScrollView(
-            controller: _horizontalScrollController,
+            controller: _headerHorizontalController,
             scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
             child: _buildHeaderRow(),
           ),
         ),
-        // 内容区域（垂直+水平滚动）
+        // 内容区域（垂直 + 水平滚动）
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              controller: _horizontalScrollController,
-              scrollDirection: Axis.horizontal,
-              child: _buildContentRow(currentRound),
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: SizedBox(
+                  // 动态设置内容区域的最小宽度（确保水平滚动可用）
+                  width: constraints.maxWidth, // 保持与父级同宽
+                  child: SingleChildScrollView(
+                    controller: _contentHorizontalController,
+                    scrollDirection: Axis.horizontal,
+                    physics: const AlwaysScrollableScrollPhysics(), // 强制允许滚动
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth, // 最小宽度填满父容器
+                      ),
+                      child: _buildContentRow(currentRound),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -398,33 +422,35 @@ class _ScoreBoardState extends State<_ScoreBoard> {
       children: [
         const SizedBox(width: 50),
         ...widget.template.players.map((player) => SizedBox(
-          width: 80,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              CircleAvatar(child: Text(player.name.substring(0, 1))),
-              Text(
-                player.name,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(height: 1.2),
+              width: 80,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CircleAvatar(child: Text(player.name.substring(0, 1))),
+                  Text(
+                    player.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(height: 1.2),
+                  ),
+                ],
               ),
-            ],
-          ),
-        )),
+            )),
       ],
     );
   }
+
   Widget _buildContentRow(int currentRound) {
     return IntrinsicHeight(
       child: Row(
+        mainAxisSize: MainAxisSize.min, // 让 Row 根据子项自动扩展宽度
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 左侧回合标签列
           Column(
             children: List.generate(
               currentRound + 1,
-                  (index) => Container(
+              (index) => Container(
                 width: 50,
                 height: 48,
                 alignment: Alignment.center,
@@ -435,7 +461,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
           // 玩家得分列
           ...widget.template.players.map((player) {
             final score = widget.session.scores.firstWhere(
-                  (s) => s.playerId == player.id,
+              (s) => s.playerId == player.id,
               orElse: () => PlayerScore(playerId: player.id),
             );
             return _ScoreColumn(
@@ -557,7 +583,9 @@ class _ScoreCell extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         // 新增装饰
-        color: isHighlighted ? Theme.of(context).colorScheme.primaryContainer: null,
+        color: isHighlighted
+            ? Theme.of(context).colorScheme.primaryContainer
+            : null,
         border: isHighlighted
             ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
             : null,

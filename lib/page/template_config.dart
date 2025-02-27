@@ -140,7 +140,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     final provider = context.read<ScoreProvider>();
 
     if (provider.currentSession != null) {
-      final result = await globalState.showCommonDialog<bool>(
+      await globalState.showCommonDialog<bool>(
         child: AlertDialog(
           title: const Text('警告'),
           content: const Text('当前模板已有正在计分的记录，请完成再修改！'),
