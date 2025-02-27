@@ -1,8 +1,10 @@
+import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models.dart';
+import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../widgets/snackbar.dart';
 
@@ -25,6 +27,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   late List<TextEditingController> _nameControllers;
   late List<PlayerInfo> _players;
   late bool _allowNegative = false;
+  late bool _hasHistory = false;
 
   // 错误提示状态
   String? _playerCountError;
@@ -45,6 +48,10 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
         .toList();
     _players = List.from(widget.baseTemplate.players);
     _allowNegative = widget.baseTemplate.isAllowNegative;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkHistoryTemp();
+    });
   }
 
   void _validateInputs() {
@@ -57,7 +64,6 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   @override
   Widget build(BuildContext context) {
     final isSystem = widget.baseTemplate.isSystemTemplate;
-
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -75,7 +81,8 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
             Tooltip(
               message: '保存模板',
               child: IconButton(
-                icon: Icon(Icons.save),
+                icon:
+                    Icon(Icons.save, color: _hasHistory ? Colors.orange : null),
                 onPressed: _updateTemplate,
               ),
             ),
@@ -112,11 +119,73 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     );
   }
 
-  void _updateTemplate() {
-    for (int i = 0; i < _nameControllers.length; i++) {
-      _players[i] = _players[i].copyWith(
-          name: _nameControllers[i].text.trim()
+  void _checkHistoryTemp() {
+    final id = widget.baseTemplate.id;
+    final provider = context.read<ScoreProvider>();
+    final hasHistory = provider.checkSessionExists(id);
+    if (hasHistory) {
+      AppSnackBar.warn(context, '当前模板已有关联计分记录，保存时需清除该记录');
+      setState(() {
+        _hasHistory = true;
+      });
+    } else {
+      setState(() {
+        _hasHistory = false;
+      });
+    }
+  }
+
+  Future<bool> confirmCheckHistory() async {
+    final id = widget.baseTemplate.id;
+    final provider = context.read<ScoreProvider>();
+
+    if (provider.currentSession != null) {
+      final result = await globalState.showCommonDialog<bool>(
+        child: AlertDialog(
+          title: const Text('警告'),
+          content: const Text('当前模板已有正在计分的记录，请完成再修改！'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('确认'),
+            ),
+          ],
+        ),
       );
+      return false;
+    }
+
+    if (provider.checkSessionExists(id)) {
+      final result = await globalState.showCommonDialog<bool>(
+        child: AlertDialog(
+          title: const Text('警告'),
+          content: const Text('当前模板已有关联计分记录，保存后会清除所有关联记录。\n是否继续？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                provider.clearSessionsByTemplate(id);
+                Navigator.pop(context, true);
+              },
+              child:
+                  const Text('保存并清除关联计分', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+
+      return result ?? false; // 处理可能的 null 值
+    }
+
+    return true; // 没有关联记录时直接允许保存
+  }
+
+  Future<void> _updateTemplate() async {
+    for (int i = 0; i < _nameControllers.length; i++) {
+      _players[i] = _players[i].copyWith(name: _nameControllers[i].text.trim());
     }
 
     _validateInputs();
@@ -132,7 +201,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
       templateName: _templateNameController.text,
       playerCount: int.parse(_playerCountController.text),
       targetScore: int.parse(_targetScoreController.text),
-      isAllowNegative:_allowNegative,
+      isAllowNegative: _allowNegative,
       players: _players,
     );
 
@@ -144,15 +213,18 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
       }
     }
 
-    context.read<TemplateProvider>().updateTemplate(updated);
-    Navigator.pop(context);
+    // 等待用户确认
+    final shouldProceed = await confirmCheckHistory();
+
+    if (shouldProceed) {
+      context.read<TemplateProvider>().updateTemplate(updated);
+      Navigator.pop(context);
+    } // 用户取消时不执行任何操作
   }
 
   void _saveAsTemplate() {
     for (int i = 0; i < _nameControllers.length; i++) {
-      _players[i] = _players[i].copyWith(
-          name: _nameControllers[i].text.trim()
-      );
+      _players[i] = _players[i].copyWith(name: _nameControllers[i].text.trim());
     }
 
     _validateInputs();
@@ -171,7 +243,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
       playerCount: int.parse(_playerCountController.text),
       targetScore: int.parse(_targetScoreController.text),
       players: _players,
-      isAllowNegative:_allowNegative,
+      isAllowNegative: _allowNegative,
       baseTemplateId: rootId,
     );
 
@@ -363,18 +435,22 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   void _updatePlayerCount(int newCount) {
     if (newCount > _players.length) {
       for (int i = _players.length; i < newCount; i++) {
-        _players.add(PlayerInfo(name: '玩家 ${i + 1}', avatar: 'default_avatar.png'));
-        _nameControllers.add(TextEditingController(text: '玩家 ${i + 1}')); // 新增控制器
+        _players
+            .add(PlayerInfo(name: '玩家 ${i + 1}', avatar: 'default_avatar.png'));
+        _nameControllers
+            .add(TextEditingController(text: '玩家 ${i + 1}')); // 新增控制器
       }
     } else if (newCount < _players.length) {
       _players.removeRange(newCount, _players.length);
-      _nameControllers.removeRange(newCount, _nameControllers.length); // 移除多余控制器
+      _nameControllers.removeRange(
+          newCount, _nameControllers.length); // 移除多余控制器
     }
     setState(() {});
   }
 }
 
-class _PlayerItemEditor extends StatelessWidget { // 改为无状态组件
+class _PlayerItemEditor extends StatelessWidget {
+  // 改为无状态组件
   final TextEditingController controller;
 
   const _PlayerItemEditor({required this.controller});

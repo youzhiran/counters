@@ -7,12 +7,6 @@ import '../models.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
 
-/// 游戏得分状态管理类
-/// 职责：
-/// - 管理当前游戏会话
-/// - 跟踪游戏回合状态
-/// - 处理得分增减操作
-/// - 处理游戏结束逻辑
 class ScoreProvider with ChangeNotifier {
   late final Box<GameSession> _sessionBox;
   GameSession? _currentSession;
@@ -162,7 +156,7 @@ class ScoreProvider with ChangeNotifier {
         .map((s) => s.roundScores.length)
         .reduce((a, b) => a > b ? a : b);
 
-    // 新增同步逻辑：保证所有玩家回合数相同
+    // 同步逻辑：保证所有玩家回合数相同
     for (var playerScore in _currentSession!.scores) {
       while (playerScore.roundScores.length < _currentRound) {
         playerScore.roundScores.add(null);
@@ -273,5 +267,20 @@ class ScoreProvider with ChangeNotifier {
       debugPrint('获取会话列表失败: $e');
       return [];
     }
+  }
+
+  // 检查指定ID的会话是否存在
+  bool checkSessionExists(String sessionId) {
+    return _sessionBox.values.any((session) => session.templateId == sessionId);
+  }
+
+  // 清除指定templateId关联的历史记录
+  void clearSessionsByTemplate(String id) {
+    final keysToDelete = _sessionBox.keys.where((key) {
+      final session = _sessionBox.get(key);
+      return session != null && session.templateId == id; // 显式空检查
+    }).toList();
+
+    _sessionBox.deleteAll(keysToDelete);
   }
 }
