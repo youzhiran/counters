@@ -12,6 +12,7 @@ import 'model/models.dart';
 import 'providers/score_provider.dart';
 import 'providers/template_provider.dart';
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -36,6 +37,10 @@ void main() async {
 
   // 打开模板盒子
   final templateBox = await Hive.openBox<ScoreTemplate>('templates');
+
+  //初始化组件化基础库, 所有友盟业务SDK都必须调用此初始化接口。
+  // UmengCommonSdk.initCommon('67c155ee9a16fe6dcd555f54', '67c155ee9a16fe6dcd555f54', 'Github');
+  // UmengCommonSdk.setPageCollectionModeAuto();
 
   runApp(
     MultiProvider(
@@ -65,7 +70,8 @@ class MyApp extends StatelessWidget {
           themeMode: state.themeMode,
           routes: {
             '/': (context) => const MainTabsScreen(),
-            '/game_session': (context) => Scaffold(
+            '/game_session': (context) =>
+                Scaffold(
                   // 为子页面包裹Scaffold
                   appBar: AppBar(
                     title: const Text('游戏进行中'),
@@ -73,10 +79,14 @@ class MyApp extends StatelessWidget {
                   ),
                   body: GameSessionScreen(
                     templateId:
-                        ModalRoute.of(context)!.settings.arguments as String,
+                    ModalRoute
+                        .of(context)!
+                        .settings
+                        .arguments as String,
                   ),
                 ),
-            '/template/config': (context) => Scaffold(
+            '/template/config': (context) =>
+                Scaffold(
                   appBar: AppBar(
                     title: const Text('模板配置'),
                     leading: BackButton(),
@@ -85,8 +95,11 @@ class MyApp extends StatelessWidget {
                     ],
                   ),
                   body: TemplateConfigScreen(
-                    baseTemplate: ModalRoute.of(context)!.settings.arguments
-                        as ScoreTemplate,
+                    baseTemplate: ModalRoute
+                        .of(context)!
+                        .settings
+                        .arguments
+                    as ScoreTemplate,
                   ),
                 ),
           },

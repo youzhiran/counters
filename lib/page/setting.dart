@@ -3,6 +3,8 @@ import 'package:counters/version.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../utils/net.dart';
+
 class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
 
@@ -91,9 +93,8 @@ class _SettingScreenState extends State<SettingScreen> {
   }
 
   void _showColorPickerDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+    globalState.showCommonDialog(
+      child: AlertDialog(
         title: const Text('选择主题颜色'),
         content: SizedBox(
           width: double.maxFinite,
@@ -182,12 +183,9 @@ class _SettingScreenState extends State<SettingScreen> {
                   ),
                 ),
                 _buildListTile(
-                  icon: Icons.update,
-                  title: '检查更新',
-                  onTap: () => globalState.openUrl(
-                    'https://github.com/youzhiran/counters/releases/latest',
-                  ),
-                ),
+                    icon: Icons.update,
+                    title: '检查更新',
+                    onTap: () => checkUpdate(context)),
                 _buildListTile(
                   icon: Icons.bug_report,
                   title: '问题反馈',
