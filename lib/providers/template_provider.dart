@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models.dart';
+import '../model/models.dart';
 
 class TemplateProvider with ChangeNotifier {
   final Box<ScoreTemplate> _templateBox;

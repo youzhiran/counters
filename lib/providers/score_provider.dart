@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models.dart';
+import '../model/models.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
 

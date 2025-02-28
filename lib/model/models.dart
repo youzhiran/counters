@@ -1,7 +1,7 @@
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-part 'models.g.dart'; // 生成文件引用
+part 'g/models.g.dart'; // 生成文件引用
 
 @HiveType(typeId: 0)
 class ScoreTemplate {

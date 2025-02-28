@@ -1,14 +1,14 @@
 import 'package:counters/page/game_session.dart';
 import 'package:counters/page/home.dart';
 import 'package:counters/page/setting.dart';
-import 'package:counters/page/template_config.dart';
 import 'package:counters/page/template.dart';
+import 'package:counters/page/template_config.dart';
 import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
-import 'models.dart';
+import 'model/models.dart';
 import 'providers/score_provider.dart';
 import 'providers/template_provider.dart';
 
@@ -31,62 +31,38 @@ void main() async {
   // 会话存储初始化
   await Hive.openBox<GameSession>('gameSessions');
 
+  // 初始化全局状态
+  await globalState.initialize();
+
   // 打开模板盒子
   final templateBox = await Hive.openBox<ScoreTemplate>('templates');
 
-  runApp(MyApp(templateBox: templateBox)); // 传入Box实例
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => globalState), // 添加全局状态提供者
+        ChangeNotifierProvider(create: (_) => TemplateProvider(templateBox)),
+        ChangeNotifierProvider(create: (_) => ScoreProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  final Box<ScoreTemplate> templateBox; // 添加构造函数参数
-
-  const MyApp({
-    required this.templateBox,
-    super.key, // 添加key参数
-  });
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-        providers: [
-          ChangeNotifierProvider(
-            create: (_) => TemplateProvider(templateBox),
-          ),
-          ChangeNotifierProvider(create: (_) => ScoreProvider()),
-        ],
-        child: MaterialApp(
+    return Consumer<GlobalState>(
+      // 监听主题变化
+      builder: (context, state, child) {
+        return MaterialApp(
           navigatorKey: globalState.navigatorKey,
           title: '桌游计分器',
-          theme: ThemeData(
-            useMaterial3: true, // 启用 MD3
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.blue, // 动态颜色种子
-              brightness: Brightness.light,
-            ),
-            appBarTheme: const AppBarTheme(
-              elevation: 1, // MD3 推荐轻微阴影
-              scrolledUnderElevation: 3, // 滚动时阴影
-            ),
-            // 更新其他组件主题
-            filledButtonTheme: FilledButtonThemeData(style: ButtonStyle()),
-            navigationBarTheme: NavigationBarThemeData(
-              height: 70, // 推荐高度
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            ),
-            pageTransitionsTheme: const PageTransitionsTheme(
-              builders: {
-                TargetPlatform.android: ZoomPageTransitionsBuilder(),
-                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-              },
-            ),
-          ),
-          darkTheme: ThemeData(
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.blue,
-              brightness: Brightness.dark,
-            ),
-          ),
+          theme: _buildTheme(state.themeColor, Brightness.light),
+          darkTheme: _buildTheme(state.themeColor, Brightness.dark),
+          themeMode: state.themeMode,
           routes: {
             '/': (context) => const MainTabsScreen(),
             '/game_session': (context) => Scaffold(
@@ -114,7 +90,34 @@ class MyApp extends StatelessWidget {
                   ),
                 ),
           },
-        ));
+        );
+      },
+    );
+  }
+
+  ThemeData _buildTheme(Color seedColor, Brightness brightness) {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: seedColor,
+        brightness: brightness,
+      ),
+      appBarTheme: const AppBarTheme(
+        elevation: 1,
+        scrolledUnderElevation: 3,
+      ),
+      filledButtonTheme: FilledButtonThemeData(style: ButtonStyle()),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 70,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
+    );
   }
 }
 

@@ -11,8 +11,19 @@ class SettingScreen extends StatefulWidget {
 }
 
 class _SettingScreenState extends State<SettingScreen> {
-  String _versionName = '1.0.0';
-  String _versionCode = '1';
+  String _versionName = '读取失败';
+  String _versionCode = '读取失败';
+
+  final List<Color> _themeColors = [
+    Colors.blue,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+    Colors.red,
+    Colors.pink,
+    Colors.brown,
+    Colors.teal,
+  ];
 
   @override
   void initState() {
@@ -28,6 +39,79 @@ class _SettingScreenState extends State<SettingScreen> {
     });
   }
 
+  String _getThemeModeText(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        return '自动';
+      case ThemeMode.light:
+        return '浅色';
+      case ThemeMode.dark:
+        return '深色';
+    }
+  }
+
+  void _showThemeModeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('深色模式'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: ThemeMode.values.map((mode) {
+            return RadioListTile<ThemeMode>(
+              title: Text(_getThemeModeText(mode)),
+              value: mode,
+              groupValue: globalState.themeMode,
+              onChanged: (value) {
+                globalState.setThemeMode(value!);
+                Navigator.pop(context);
+                setState(() {});
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showColorPickerDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('选择主题颜色'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            children: _themeColors.map((color) {
+              return InkWell(
+                onTap: () {
+                  globalState.setThemeColor(color);
+                  Navigator.pop(context);
+                  setState(() {});
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: color == globalState.themeColor
+                          ? Colors.white
+                          : Colors.grey,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,11 +121,38 @@ class _SettingScreenState extends State<SettingScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 0),
               children: [
+                _buildSectionHeader('主题'),
+                _buildListTile(
+                  icon: Icons.dark_mode,
+                  title: '深色模式',
+                  trailing: Text(
+                    _getThemeModeText(globalState.themeMode),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  onTap: _showThemeModeDialog,
+                ),
+                _buildListTile(
+                  icon: Icons.palette,
+                  title: '主题色彩',
+                  trailing: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: globalState.themeColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ),
+                  onTap: _showColorPickerDialog,
+                ),
                 _buildSectionHeader('关于'),
                 _buildListTile(
                   icon: Icons.info,
                   title: '关于应用',
-                  // onTap: () => _showAbout(context),
                   onTap: () => globalState.showMessage(
                     title: '关于',
                     message: TextSpan(
@@ -75,7 +186,7 @@ class _SettingScreenState extends State<SettingScreen> {
             padding: const EdgeInsets.all(16),
             child: Text(
               '版本 $_versionName($_versionCode)\n'
-                  'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除数据或重装程序。',
+              'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除数据或重装程序。',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.grey[600],
@@ -104,6 +215,7 @@ class _SettingScreenState extends State<SettingScreen> {
   Widget _buildListTile({
     required IconData icon,
     required String title,
+    Widget? trailing,
     VoidCallback? onTap,
   }) {
     return Material(
@@ -111,7 +223,7 @@ class _SettingScreenState extends State<SettingScreen> {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           child: Row(
             children: [
               Icon(icon, size: 24),
@@ -122,6 +234,10 @@ class _SettingScreenState extends State<SettingScreen> {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ),
+              if (trailing != null) ...[
+                trailing,
+                const SizedBox(width: 8),
+              ],
               const Icon(Icons.chevron_right, size: 24),
             ],
           ),
@@ -129,5 +245,4 @@ class _SettingScreenState extends State<SettingScreen> {
       ),
     );
   }
-
 }

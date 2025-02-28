@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../models.dart';
+import '../model/models.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../widgets/snackbar.dart';
