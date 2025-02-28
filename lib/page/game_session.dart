@@ -157,25 +157,26 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text(hasFailures ? '游戏结束' : '当前游戏情况'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 显示失败/最高分玩家
-            if (losers.isNotEmpty) ...[
-              Text('${hasFailures ? '😓 失败' : '⚠️ 最多计分'}：',
-                  style: TextStyle(
-                      color: hasFailures ? Colors.red : Colors.orange)),
-              ...losers.map((s) => Text(
+        content: SingleChildScrollView(
+          // 添加滚动视图
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (losers.isNotEmpty) ...[
+                Text('${hasFailures ? '😓 失败' : '⚠️ 最多计分'}：',
+                    style: TextStyle(
+                        color: hasFailures ? Colors.red : Colors.orange)),
+                ...losers.map((s) => Text(
+                    '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
+                SizedBox(height: 16),
+              ],
+              Text('${hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
+                  style: TextStyle(color: Colors.green)),
+              ...winners.map((s) => Text(
                   '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
-              SizedBox(height: 16),
             ],
-            // 显示胜利者
-            Text('${hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
-                style: TextStyle(color: Colors.green)),
-            ...winners.map((s) => Text(
-                '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
-          ],
+          ),
         ),
         actions: [
           TextButton(
@@ -374,7 +375,8 @@ class _ScoreBoardState extends State<_ScoreBoard> {
 
   @override
   Widget build(BuildContext context) {
-    final currentRound = context.select<ScoreProvider, int>((p) => p.currentRound);
+    final currentRound =
+        context.select<ScoreProvider, int>((p) => p.currentRound);
 
     return Column(
       children: [
