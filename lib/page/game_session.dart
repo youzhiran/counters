@@ -445,8 +445,9 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   Widget _buildContentRow(int currentRound) {
     return IntrinsicHeight(
       child: Row(
-        mainAxisSize: MainAxisSize.min, // 让 Row 根据子项自动扩展宽度
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max, // 扩展 Row 至最大可用宽度
+        mainAxisAlignment: MainAxisAlignment.center, // 子项水平居中
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // 左侧回合标签列
           Column(
