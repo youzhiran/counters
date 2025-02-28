@@ -50,28 +50,44 @@ class _SettingScreenState extends State<SettingScreen> {
     }
   }
 
-  void _showThemeModeDialog() {
-    showDialog(
+  void _showThemeModeMenu() {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+
+    showMenu<ThemeMode>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('深色模式'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: ThemeMode.values.map((mode) {
-            return RadioListTile<ThemeMode>(
-              title: Text(_getThemeModeText(mode)),
-              value: mode,
-              groupValue: globalState.themeMode,
-              onChanged: (value) {
-                globalState.setThemeMode(value!);
-                Navigator.pop(context);
-                setState(() {});
-              },
-            );
-          }).toList(),
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(
+          button.localToGlobal(Offset.zero, ancestor: overlay),
+          button.localToGlobal(button.size.bottomRight(Offset.zero),
+              ancestor: overlay),
         ),
+        Offset.zero & overlay.size,
       ),
-    );
+      items: ThemeMode.values.map((mode) {
+        return PopupMenuItem<ThemeMode>(
+          value: mode,
+          child: Row(
+            children: [
+              Icon(
+                Icons.check,
+                color: globalState.themeMode == mode
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
+              ),
+              const SizedBox(width: 12),
+              Text(_getThemeModeText(mode)),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((value) {
+      if (value != null) {
+        globalState.setThemeMode(value);
+        setState(() {});
+      }
+    });
   }
 
   void _showColorPickerDialog() {
@@ -131,7 +147,7 @@ class _SettingScreenState extends State<SettingScreen> {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  onTap: _showThemeModeDialog,
+                  onTap: _showThemeModeMenu,
                 ),
                 _buildListTile(
                   icon: Icons.palette,
