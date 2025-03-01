@@ -1,5 +1,6 @@
 import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../model/models.dart';
@@ -657,6 +658,8 @@ class _QuickInputPanel extends StatelessWidget {
                             final provider = context.read<ScoreProvider>();
                             final highlight = provider.currentHighlight;
                             final session = provider.currentSession;
+
+                            HapticFeedback.mediumImpact();
 
                             if (highlight != null && session != null) {
                               final playerScore = session.scores.firstWhere(
