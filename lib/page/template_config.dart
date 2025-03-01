@@ -142,8 +142,8 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     if (provider.currentSession != null) {
       await globalState.showCommonDialog<bool>(
         child: AlertDialog(
-          title: const Text('警告'),
-          content: const Text('当前模板已有正在计分的记录，请完成再修改！'),
+          title: const Text('提示'),
+          content: const Text('当前模板正在计分，请结束计分后再修改！'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),

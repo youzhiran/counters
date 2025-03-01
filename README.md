@@ -42,3 +42,12 @@
 - [ ] 🚧升级 Material Design 3 风格
 - [ ] 局域网联机
 - [ ] 快捷输入栏加入更多控制功能
+
+## 统计
+
+支持开发最简单的方法是点击页面顶部的星号（⭐）
+
+或点击[下载](https://github.com/youzhiran/counters/releases/latest)体验
+
+![](https://img.shields.io/github/downloads/youzhiran/counters/total)
+

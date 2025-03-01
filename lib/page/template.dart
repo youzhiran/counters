@@ -112,25 +112,62 @@ class _TemplateCard extends StatelessWidget {
 
   // 添加删除确认对话框
   void _confirmDelete(BuildContext context) {
-    globalState.showCommonDialog(
-      child: AlertDialog(
-        title: Text('删除模板'),
-        content: Text('确定要永久删除此模板吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              context.read<TemplateProvider>().deleteTemplate(template.id);
-              Navigator.pop(context);
-            },
-            child: Text('删除', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    final provider = context.read<ScoreProvider>();
+    if (provider.currentSession != null) {
+      globalState.showCommonDialog<bool>(
+        child: AlertDialog(
+          title: const Text('删除模板'),
+          content: const Text('无法删除该模板，当前模板正在计分，请结束计分后再删除！'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('确认'),
+            ),
+          ],
+        ),
+      );
+    } else if (provider.checkSessionExists(template.id)) {
+      globalState.showCommonDialog(
+        child: AlertDialog(
+          title: Text('删除模板'),
+          content: Text('当前模板已有关联计分记录，会同步清除所有关联记录。\n是否继续删除？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                context.read<TemplateProvider>().deleteTemplate(template.id);
+                provider.clearSessionsByTemplate(template.id);
+                Navigator.pop(context);
+              },
+              child: Text('删除并清除关联计分', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      globalState.showCommonDialog(
+        child: AlertDialog(
+          title: Text('删除模板'),
+          content: Text('确定要永久删除此模板吗？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                context.read<TemplateProvider>().deleteTemplate(template.id);
+                Navigator.pop(context);
+              },
+              child: Text('删除', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _handleTap(BuildContext context) {
