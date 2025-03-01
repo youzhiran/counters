@@ -38,10 +38,6 @@ void main() async {
   // 打开模板盒子
   final templateBox = await Hive.openBox<ScoreTemplate>('templates');
 
-  //初始化组件化基础库, 所有友盟业务SDK都必须调用此初始化接口。
-  // UmengCommonSdk.initCommon('67c155ee9a16fe6dcd555f54', '67c155ee9a16fe6dcd555f54', 'Github');
-  // UmengCommonSdk.setPageCollectionModeAuto();
-
   runApp(
     MultiProvider(
       providers: [

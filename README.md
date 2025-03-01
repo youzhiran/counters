@@ -23,45 +23,12 @@
 
 3. 输出文件夹在项目根目录dist目录下
 
+### Windows打包安卓和Windows
 
-### 指定打包方法
+  ```bash
+  dart .\setup.dart all
+  ```
 
-
-```txt
-PS D:\MyCode\> dart setup.dart --help # 显示帮助信息
-Usage: dart build.dart [options]
-
-Options:
---arch <architecture>  Specify build architectures (comma-separated)
-Available: arm, arm64, x64, amd64, all
---help                 Show this help message
-
-Platform defaults:
-Android: arm, arm64, x64
-Windows: amd64
-```
-
-
-
-```bash
-dart setup.dart --arch arm,arm64 # 构建指定架构
-```
-
-```bash
-dart setup.dart --arch all # 构建全部架构
-```
-
-```bash
-dart setup.dart --arch arm64 # 构建arm64
-```
-
-```bash
-dart setup.dart --arch amd64 # 构建Windows amd64
-```
-
-```bash
-dart setup.dart --help # 显示帮助信息
-```
 
 ## todo list
 

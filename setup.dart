@@ -5,89 +5,51 @@ import 'package:yaml/yaml.dart';
 
 void main(List<String> args) {
   // 解析命令行参数
-  final architectures = _parseArguments(args);
+  final buildAll = _parseArguments(args);
 
-  // 生成版本信息文件
   final pubspecVersion = _generateVersionFile();
 
-  // 创建dist目录
   final distDir = Directory('dist');
   if (!distDir.existsSync()) {
     distDir.createSync(recursive: true);
   }
 
-  print('打包架构名：$architectures');
-
   try {
-    _buildWindows(pubspecVersion, architectures);
-    _buildAndroid(pubspecVersion, architectures);
+    if (buildAll) {
+      _buildWindows(pubspecVersion);
+      _buildAndroid(pubspecVersion);
+    } else {
+      // 根据当前平台构建
+      if (Platform.isWindows) {
+        _buildWindows(pubspecVersion);
+      } else {
+        _buildAndroid(pubspecVersion);
+      }
+    }
   } catch (e) {
-    print('Error occurred: $e');
+    print('发生错误: $e');
     exitCode = 1;
   }
 }
 
-// 解析命令行参数
-Set<String> _parseArguments(List<String> args) {
-  const supportedArches = {'arm', 'arm64', 'x64', 'amd64', 'all'};
-  final architectures = <String>{};
+bool _parseArguments(List<String> args) {
+  if (args.isEmpty) {
+    return false;
+  }
 
-  for (var i = 0; i < args.length; i++) {
-    if (args[i] == '-a' || args[i] == '--arch') {
-      if (i + 1 >= args.length) {
-        _printHelp('Missing value for ${args[i]}');
-        exit(1);
-      }
-
-      // 分割逗号分隔的架构参数
-      final archValues = args[++i].toLowerCase().split(',');
-
-      for (final arch in archValues) {
-        if (arch == 'all') {
-          // 添加所有实际架构（排除 all 自身）
-          architectures.addAll({'arm', 'arm64', 'x64', 'amd64'});
-        } else if (!supportedArches.contains(arch)) {
-          _printHelp('Unsupported architecture: $arch');
-          exit(1);
-        } else {
-          architectures.add(arch);
-        }
-      }
-    } else if (args[i] == '-h' || args[i] == '--help') {
-      _printHelp();
-      exit(0);
+  if (args.length == 1 && args[0] == 'all') {
+    if (Platform.isWindows) {
+      return true;
+    } else {
+      print('错误："all" 参数仅在 Windows 系统下有效');
+      exit(1);
     }
   }
 
-  // 默认构建逻辑
-  if (architectures.isEmpty) {
-    return Platform.isWindows ? {'amd64'} : {'arm', 'arm64', 'x64'};
-  }
-
-  // 过滤保留实际架构（兼容可能误输入的 all）
-  return architectures.where((a) => a != 'all').toSet();
+  print('无效参数，请使用 "all" 或留空');
+  exit(1);
 }
 
-// 帮助信息
-void _printHelp([String? error]) {
-  final message = '''
-Usage: dart build.dart [options]
-
-Options:
-  --arch <architecture>  Specify build architectures (comma-separated)
-                             Available: arm, arm64, x64, amd64, all
-  --help                 Show this help message
-
-Platform defaults:
-  Android: arm, arm64, x64
-  Windows: amd64
-''';
-
-  if (error != null) {
-    print('Error: $error\n');
-  }
-  print(message);
-}
 
 String _generateVersionFile() {
   final versionFile = File(p.join('lib', 'version.dart'));
@@ -138,57 +100,56 @@ const String appVersion = '$pubspecVersion';
   return pubspecVersion;
 }
 
-void _buildAndroid(String version, Set<String> architectures) {
-  const platformMap = {
-    'arm': {'platform': 'android-arm', 'arch': 'armeabi-v7a'},
-    'arm64': {'platform': 'android-arm64', 'arch': 'arm64-v8a'},
-    'x64': {'platform': 'android-x64', 'arch': 'x86_64'},
-  };
-
-
+void _buildAndroid(String version) {
   print('\nCleaning Android build...');
   _runFlutterCommand('clean');
 
-  for (final arch in architectures) {
-    final config = platformMap[arch];
-    if (config == null) continue;
+  print('\nBuilding Android with all ABIs...');
+  _runFlutterCommand('build apk --split-per-abi'); // 使用split-per-abi
 
-    print('\nBuilding Android ${config['arch']}...');
-    _runFlutterCommand('build apk --target-platform ${config['platform']}');
+  final releaseDir = Directory('build/app/outputs/apk/release');
+  final apkFiles = releaseDir.listSync().whereType<File>().where((file) {
+    return file.path.endsWith('.apk') &&
+        p.basename(file.path).startsWith('app-');
+  }).toList();
 
-    final source = File('build/app/outputs/apk/release/app-release.apk');
-    final dest =
-        File(p.join('dist', 'counters-$version-android-${config['arch']}.apk'));
-    _copyAndRename(source, dest);
+  final pattern = RegExp(r'app-([\w-]+)-release\.apk');
+
+  for (final apkFile in apkFiles) {
+    final filename = p.basename(apkFile.path);
+    final match = pattern.firstMatch(filename);
+    if (match != null) {
+      final abi = match.group(1);
+      final dest = File(p.join('dist', 'counters-$version-android-$abi.apk'));
+      _copyAndRename(apkFile, dest);
+    }
   }
 }
 
-void _buildWindows(String version, Set<String> architectures) {
+void _buildWindows(String version) {
   if (!Platform.isWindows) {
     print('\n请使用Windows打包Windows版程序！');
-  } else {
-    if (architectures.contains('amd64')) {
-      print('\nCleaning Windows build...');
-      _runFlutterCommand('clean');
-
-      print('\nBuilding Windows amd64...');
-      _runFlutterCommand('build windows --release');
-
-      final releaseDir = Directory('build/windows/x64/runner/Release');
-      final zipFile =
-          File(p.join('./dist', 'counters-$version-windows-x64.zip'));
-
-      print('Compressing Windows build...');
-      if (zipFile.existsSync()) zipFile.deleteSync();
-
-      _runCommand(
-        'powershell Compress-Archive -Path "${releaseDir.path}\\*" '
-        '-DestinationPath "${zipFile.path}" -Force',
-        workingDirectory: Directory.current.path,
-      );
-      print('Windows build compressed to ${zipFile.path}');
-    }
+    return;
   }
+
+  print('\nCleaning Windows build...');
+  _runFlutterCommand('clean');
+
+  print('\nBuilding Windows amd64...');
+  _runFlutterCommand('build windows --release');
+
+  final releaseDir = Directory('build/windows/x64/runner/Release');
+  final zipFile = File(p.join('./dist', 'counters-$version-windows-x64.zip'));
+
+  print('Compressing Windows build...');
+  if (zipFile.existsSync()) zipFile.deleteSync();
+
+  _runCommand(
+    'powershell Compress-Archive -Path "${releaseDir.path}\\*" '
+        '-DestinationPath "${zipFile.path}" -Force',
+    workingDirectory: Directory.current.path,
+  );
+  print('Windows build compressed to ${zipFile.path}');
 }
 
 void _copyAndRename(File source, File destination) {
@@ -213,6 +174,8 @@ String _runCommand(String command, {String? workingDirectory}) {
   final parts = command.split(' ');
   final executable = parts.first;
   final args = parts.sublist(1);
+
+  print('==>Command:'+command);
 
   final result = Process.runSync(
     executable,
