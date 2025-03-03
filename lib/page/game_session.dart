@@ -649,42 +649,57 @@ class _QuickInputPanel extends StatelessWidget {
               const Text('快捷输入', style: TextStyle(fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
               Wrap(
-                spacing: 8,
+                spacing: 0,
+                runSpacing: 0,
                 alignment: WrapAlignment.center,
                 children: quickNumbers
-                    .map((number) => ActionChip(
-                          label: Text('+$number'),
-                          onPressed: () {
-                            final provider = context.read<ScoreProvider>();
-                            final highlight = provider.currentHighlight;
-                            final session = provider.currentSession;
+                    .map((number) => SizedBox(
+                          width: 80, // 固定按钮宽度
+                          child: ActionChip(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.zero, // 直角
+                              side: BorderSide.none, // 移除边框
+                            ),
+                            label: Container(
+                              width: double.infinity, // 标签填满宽度
+                              alignment: Alignment.center,
+                              child: Text('+$number'),
+                            ),
+                            labelPadding: EdgeInsets.zero,
+                            // 移除标签内边距
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            onPressed: () {
+                              final provider = context.read<ScoreProvider>();
+                              final highlight = provider.currentHighlight;
+                              final session = provider.currentSession;
 
-                            HapticFeedback.mediumImpact();
+                              HapticFeedback.mediumImpact();
 
-                            if (highlight != null && session != null) {
-                              final playerScore = session.scores.firstWhere(
-                                (s) => s.playerId == highlight.key,
-                                orElse: () => PlayerScore(
-                                    playerId: 'invalid', roundScores: []),
-                              );
-
-                              if (playerScore.playerId != 'invalid') {
-                                // 移除长度校验
-                                final currentValue =
-                                    playerScore.roundScores.length >
-                                            highlight.value
-                                        ? playerScore
-                                                .roundScores[highlight.value] ??
-                                            0
-                                        : 0; // 安全获取当前值
-                                provider.updateScore(
-                                  highlight.key,
-                                  highlight.value,
-                                  currentValue + number,
+                              if (highlight != null && session != null) {
+                                final playerScore = session.scores.firstWhere(
+                                  (s) => s.playerId == highlight.key,
+                                  orElse: () => PlayerScore(
+                                      playerId: 'invalid', roundScores: []),
                                 );
+
+                                if (playerScore.playerId != 'invalid') {
+                                  final currentValue = playerScore
+                                              .roundScores.length >
+                                          highlight.value
+                                      ? playerScore
+                                              .roundScores[highlight.value] ??
+                                          0
+                                      : 0;
+                                  provider.updateScore(
+                                    highlight.key,
+                                    highlight.value,
+                                    currentValue + number,
+                                  );
+                                }
                               }
-                            }
-                          },
+                            },
+                          ),
                         ))
                     .toList(),
               ),
