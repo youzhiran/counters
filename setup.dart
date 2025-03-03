@@ -120,8 +120,13 @@ void _buildAndroid(String version) {
     final match = pattern.firstMatch(filename);
     if (match != null) {
       final abi = match.group(1);
-      final dest = File(p.join('dist', 'counters-$version-android-$abi.apk'));
-      _copyAndRename(apkFile, dest);
+      // 仅排除精确匹配 universal 的架构
+      if (abi != 'universal') {
+        final dest = File(p.join('dist', 'counters-$version-android-$abi.apk'));
+        _copyAndRename(apkFile, dest);
+      } else {
+        print('跳过 universal 架构安装包: $filename');
+      }
     }
   }
 }
