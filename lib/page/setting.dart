@@ -51,47 +51,49 @@ class _SettingScreenState extends State<SettingScreen> {
         return '深色';
     }
   }
-
   void _showThemeModeMenu() {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-
-    showMenu<ThemeMode>(
-      context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromPoints(
-          button.localToGlobal(Offset.zero, ancestor: overlay),
-          button.localToGlobal(button.size.bottomRight(Offset.zero),
-              ancestor: overlay),
-        ),
-        Offset.zero & overlay.size,
-      ),
-      items: ThemeMode.values.map((mode) {
-        return PopupMenuItem<ThemeMode>(
-          value: mode,
-          child: Row(
-            children: [
-              Icon(
-                Icons.check,
-                color: globalState.themeMode == mode
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.transparent,
-              ),
-              const SizedBox(width: 12),
-              Text(_getThemeModeText(mode)),
-            ],
-          ),
-        );
-      }).toList(),
-    ).then((value) {
-      if (value != null) {
-        globalState.setThemeMode(value);
-        setState(() {});
-      }
-    });
-  }
-
+      // 获取当前点击的列表项的位置信息
+      final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+      if (renderBox == null) return;
+      
+      // 计算菜单显示位置，使其显示在列表项的右侧
+      final offset = renderBox.localToGlobal(Offset.zero);
+      final size = renderBox.size;
+      
+      final position = RelativeRect.fromLTRB(
+        offset.dx + size.width - 200, // 从右侧200像素处显示
+        offset.dy + 50, // 垂直方向稍微偏下
+        offset.dx + size.width,
+        offset.dy + size.height,
+      );
+  
+      showMenu<ThemeMode>(
+        context: context,
+        position: position,
+        items: ThemeMode.values.map((mode) {
+          return PopupMenuItem<ThemeMode>(
+            value: mode,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check,
+                  color: globalState.themeMode == mode
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.transparent,
+                ),
+                const SizedBox(width: 12),
+                Text(_getThemeModeText(mode)),
+              ],
+            ),
+          );
+        }).toList(),
+      ).then((value) {
+        if (value != null) {
+          globalState.setThemeMode(value);
+          setState(() {});
+        }
+      });
+    }
   void _showColorPickerDialog() {
     globalState.showCommonDialog(
       child: AlertDialog(
