@@ -1,8 +1,8 @@
 import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../fragments/input_panel.dart';
 import '../model/models.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
@@ -66,7 +66,7 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
             child: _ScoreBoard(template: template, session: session),
           ),
           // 固定快捷输入
-          _QuickInputPanel(),
+          QuickInputPanel(key: ValueKey('Panel')),
         ],
       ),
     );
@@ -625,87 +625,6 @@ class _ScoreCell extends StatelessWidget {
               child: Text('--', style: TextStyle(color: Colors.grey)),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// 快捷输入面板组件
-/// 提供常用数值的快速输入按钮
-class _QuickInputPanel extends StatelessWidget {
-  final List<int> quickNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text('快捷输入', style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              Wrap(
-                spacing: 0,
-                runSpacing: 0,
-                alignment: WrapAlignment.center,
-                children: quickNumbers
-                    .map((number) => SizedBox(
-                          width: 80, // 固定按钮宽度
-                          child: ActionChip(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.zero, // 直角
-                              side: BorderSide.none, // 移除边框
-                            ),
-                            label: Container(
-                              width: double.infinity, // 标签填满宽度
-                              alignment: Alignment.center,
-                              child: Text('+$number'),
-                            ),
-                            labelPadding: EdgeInsets.zero,
-                            // 移除标签内边距
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                            onPressed: () {
-                              final provider = context.read<ScoreProvider>();
-                              final highlight = provider.currentHighlight;
-                              final session = provider.currentSession;
-
-                              HapticFeedback.mediumImpact();
-
-                              if (highlight != null && session != null) {
-                                final playerScore = session.scores.firstWhere(
-                                  (s) => s.playerId == highlight.key,
-                                  orElse: () => PlayerScore(
-                                      playerId: 'invalid', roundScores: []),
-                                );
-
-                                if (playerScore.playerId != 'invalid') {
-                                  final currentValue = playerScore
-                                              .roundScores.length >
-                                          highlight.value
-                                      ? playerScore
-                                              .roundScores[highlight.value] ??
-                                          0
-                                      : 0;
-                                  provider.updateScore(
-                                    highlight.key,
-                                    highlight.value,
-                                    currentValue + number,
-                                  );
-                                }
-                              }
-                            },
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
