@@ -258,6 +258,13 @@ class _QuickInputPanelState extends State<QuickInputPanel>
     final playerColors = <String, Color>{};
     final playerNames = <String, String>{};
 
+    // 提前获取模板数据
+    final template =
+        context.read<TemplateProvider>().getTemplate(session.templateId);
+    final playersMap = <String, PlayerInfo>{
+      for (var p in template?.players ?? []) p.id: p
+    };
+
     // 计算每个玩家每轮的累计得分
     for (var i = 0; i < session.scores.length; i++) {
       final score = session.scores[i];
@@ -275,10 +282,9 @@ class _QuickInputPanelState extends State<QuickInputPanel>
       playerScoreHistory[score.playerId] = scoreHistory;
       playerColors[score.playerId] =
           Colors.primaries[i % Colors.primaries.length];
-      // 从TemplateProvider获取玩家信息
-      final player = context.read<TemplateProvider>().getPlayer(score.playerId);
-      playerNames[score.playerId] =
-          player?.name ?? '获取失败：玩家 ${i + 1}'; // 添加默认名称
+      // 从缓存Map获取玩家信息
+      final player = playersMap[score.playerId];
+      playerNames[score.playerId] = player?.name ?? '玩家 ${i + 1}';
     }
 
     // 找出最大轮次和最大分数，用于绘图比例计算
