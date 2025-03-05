@@ -51,80 +51,103 @@ class _SettingScreenState extends State<SettingScreen> {
         return '深色';
     }
   }
+
   void _showThemeModeMenu() {
-      // 获取当前点击的列表项的位置信息
-      final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-      if (renderBox == null) return;
-      
-      // 计算菜单显示位置，使其显示在列表项的右侧
-      final offset = renderBox.localToGlobal(Offset.zero);
-      final size = renderBox.size;
-      
-      final position = RelativeRect.fromLTRB(
-        offset.dx + size.width - 200, // 从右侧200像素处显示
-        offset.dy + 50, // 垂直方向稍微偏下
-        offset.dx + size.width,
-        offset.dy + size.height,
-      );
-  
-      showMenu<ThemeMode>(
-        context: context,
-        position: position,
-        items: ThemeMode.values.map((mode) {
-          return PopupMenuItem<ThemeMode>(
-            value: mode,
-            child: Row(
-              children: [
-                Icon(
-                  Icons.check,
-                  color: globalState.themeMode == mode
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.transparent,
-                ),
-                const SizedBox(width: 12),
-                Text(_getThemeModeText(mode)),
-              ],
-            ),
-          );
-        }).toList(),
-      ).then((value) {
-        if (value != null) {
-          globalState.setThemeMode(value);
-          setState(() {});
-        }
-      });
-    }
+    // 获取当前点击的列表项的位置信息
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    // 计算菜单显示位置，使其显示在列表项的右侧
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+
+    final position = RelativeRect.fromLTRB(
+      offset.dx + size.width - 200, // 从右侧200像素处显示
+      offset.dy + 50, // 垂直方向稍微偏下
+      offset.dx + size.width,
+      offset.dy + size.height,
+    );
+
+    showMenu<ThemeMode>(
+      context: context,
+      position: position,
+      items: ThemeMode.values.map((mode) {
+        return PopupMenuItem<ThemeMode>(
+          value: mode,
+          child: Row(
+            children: [
+              Icon(
+                Icons.check,
+                color: globalState.themeMode == mode
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
+              ),
+              const SizedBox(width: 12),
+              Text(_getThemeModeText(mode)),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((value) {
+      if (value != null) {
+        globalState.setThemeMode(value);
+        setState(() {});
+      }
+    });
+  }
+
   void _showColorPickerDialog() {
     globalState.showCommonDialog(
-      child: AlertDialog(
-        title: const Text('选择主题颜色'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: GridView.count(
-            crossAxisCount: 4,
-            shrinkWrap: true,
-            children: _themeColors.map((color) {
-              return InkWell(
-                onTap: () {
-                  globalState.setThemeColor(color);
-                  Navigator.pop(context);
-                  setState(() {});
-                },
-                child: Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: color == globalState.themeColor
-                          ? Colors.white
-                          : Colors.grey,
-                      width: 2,
-                    ),
-                  ),
+      child: Dialog(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 320),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '选择主题颜色',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-              );
-            }).toList(),
+                const SizedBox(height: 16),
+                GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 18,
+                  crossAxisSpacing: 18,
+                  children: _themeColors.map((color) {
+                    return InkWell(
+                      onTap: () {
+                        globalState.setThemeColor(color);
+                        Navigator.pop(context);
+                        setState(() {});
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: color == globalState.themeColor
+                                ? Colors.white
+                                : Colors.grey,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('取消'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
