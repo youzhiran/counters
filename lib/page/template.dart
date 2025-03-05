@@ -109,11 +109,12 @@ class _TemplateCard extends StatelessWidget {
 
     return current?.templateName ?? '系统模板';
   }
-
   // 添加删除确认对话框
   void _confirmDelete(BuildContext context) {
     final provider = context.read<ScoreProvider>();
-    if (provider.currentSession != null) {
+    
+    // 使用新方法检查模板是否正在计分
+    if (provider.isTemplateInUse(template.id)) {
       globalState.showCommonDialog<bool>(
         child: AlertDialog(
           title: const Text('删除模板'),

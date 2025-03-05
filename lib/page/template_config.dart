@@ -138,8 +138,8 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
   Future<bool> confirmCheckHistory() async {
     final id = widget.baseTemplate.id;
     final provider = context.read<ScoreProvider>();
-
-    if (provider.currentSession != null) {
+    // 使用新方法检查模板是否正在计分
+    if (provider.isTemplateInUse(id)) {
       await globalState.showCommonDialog<bool>(
         child: AlertDialog(
           title: const Text('提示'),
@@ -154,7 +154,6 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
       );
       return false;
     }
-
     if (provider.checkSessionExists(id)) {
       final result = await globalState.showCommonDialog<bool>(
         child: AlertDialog(

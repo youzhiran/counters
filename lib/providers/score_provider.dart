@@ -25,6 +25,10 @@ class ScoreProvider with ChangeNotifier {
     _loadActiveSession();
   }
 
+  bool isTemplateInUse(String templateId) {
+    return currentSession != null && currentSession!.templateId == templateId;
+  }
+
   Future<void> _initialize() async {
     try {
       if (!Hive.isBoxOpen('gameSessions')) {
