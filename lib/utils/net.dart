@@ -1,17 +1,15 @@
 import 'dart:convert';
 
 import 'package:counters/state.dart';
-import 'package:counters/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class UpdateChecker {
-  static const String RELEASES_URL =
+  static const String releasesUrl =
       'https://api.github.com/repos/youzhiran/counters/releases';
-  static const String LATEST_URL =
-      'https://github.com/youzhiran/counters/releases/latest';
+  static String latestReleaseUrl = ''; // 新增URL存储字段
 
   String versionExtra = '';
 
@@ -20,18 +18,20 @@ class UpdateChecker {
     return packageInfo.version; // 格式如：1.0.0
   }
 
-  static Future<String?> getLatestVersion() async {
+  static Future<String?> getLatestVersion(
+      {bool includePrereleases = false}) async {
     try {
-      final response = await http.get(
-        Uri.parse(RELEASES_URL),
-      );
+      final response = await http.get(Uri.parse(releasesUrl));
       if (response.statusCode == 200) {
         final releases = json.decode(response.body) as List;
         if (releases.isEmpty) return null;
-        final latestRelease = releases.first; // 假设第一个是最新版本
-        return latestRelease['tag_name']
-            .toString()
-            .replaceAll('v', ''); // 移除可能存在的v前缀
+        final filtered = includePrereleases
+            ? releases
+            : releases.where((r) => r['name'].toString().contains('rc'));
+        if (filtered.isEmpty) return null;
+        final latestRelease = filtered.first;
+        latestReleaseUrl = latestRelease['html_url'].toString(); // 获取html_url
+        return latestRelease['name'].toString().replaceAll('v', '');
       }
       return null;
     } catch (e) {
@@ -39,9 +39,11 @@ class UpdateChecker {
     }
   }
 
-  static Future<String> isUpdateAvailable() async {
+  static Future<String> isUpdateAvailable(
+      {bool includePrereleases = false}) async {
     final currentVersion = await getCurrentVersion();
-    final latestVersion = await getLatestVersion();
+    final latestVersion =
+        await getLatestVersion(includePrereleases: includePrereleases);
     if (latestVersion == null) return '网络错误';
     var command = _compareVersions(currentVersion, latestVersion);
     switch (command) {
@@ -96,44 +98,30 @@ class UpdateChecker {
     return result;
   }
 
-  static void showUpdateDialog(BuildContext context, String versionInfo) {
+  static void showUpdateResultDialog(
+      BuildContext context, String versionInfo, bool hasUpdate) {
     globalState.showCommonDialog(
       child: AlertDialog(
-        title: Text('发现新版本'),
-        content: Text('可更新到最新版本以获得更好体验：\n'
-            '$versionInfo'),
+        title: Text(hasUpdate ? '发现新版本' : '未发现新版本'),
+        content: Text(hasUpdate
+            ? '可更新到最新版本以获得更好体验：\n$versionInfo'
+            : '未检查到新版本\n$versionInfo'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('稍后'),
+            child: Text(hasUpdate ? '稍后' : '确定'),
           ),
-          TextButton(
-            onPressed: () async {
-              if (await canLaunchUrl(Uri.parse(RELEASES_URL))) {
-                await launchUrl(Uri.parse(LATEST_URL));
-              }
-              Navigator.pop(context);
-            },
-            child: Text('立即更新'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static void showNoUpdateDialog(BuildContext context, String versionInfo) {
-    globalState.showCommonDialog(
-      child: AlertDialog(
-        title: Text('未发现新版本'),
-        content: Text('未检查到新版本\n'
-            '$versionInfo'),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-            },
-            child: Text('确定'),
-          ),
+          if (hasUpdate)
+            TextButton(
+              onPressed: () async {
+                if (await canLaunchUrl(
+                    Uri.parse(UpdateChecker.latestReleaseUrl))) {
+                  await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
+                }
+                Navigator.pop(context);
+              },
+              child: Text('立即更新'),
+            ),
         ],
       ),
     );
@@ -141,11 +129,85 @@ class UpdateChecker {
 }
 
 void checkUpdate(BuildContext context) async {
-  AppSnackBar.show(context, '检查更新中...');
-  final versionInfo = await UpdateChecker.isUpdateAvailable();
-  if (versionInfo.startsWith('v')) {
-    UpdateChecker.showUpdateDialog(context, versionInfo);
-  } else {
-    UpdateChecker.showNoUpdateDialog(context, versionInfo);
-  }
+  bool checkBeta = false;
+  bool isLoading = true;
+  String versionInfo = '';
+  bool hasUpdate = false;
+  await showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        // 初始加载检查
+        if (isLoading) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            final result = await UpdateChecker.isUpdateAvailable(
+                includePrereleases: checkBeta);
+            setState(() {
+              isLoading = false;
+              versionInfo = result;
+              hasUpdate = result.startsWith('v');
+            });
+          });
+        }
+
+        return AlertDialog(
+          title: Text('检查更新'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CheckboxListTile(
+                title: Text('包含测试版本'),
+                value: checkBeta,
+                onChanged: isLoading
+                    ? null
+                    : (v) {
+                        setState(() {
+                          checkBeta = v ?? false;
+                          isLoading = true;
+                          versionInfo = '';
+                        });
+                        WidgetsBinding.instance.addPostFrameCallback((_) async {
+                          final result = await UpdateChecker.isUpdateAvailable(
+                              includePrereleases: checkBeta);
+                          setState(() {
+                            isLoading = false;
+                            versionInfo = result;
+                            hasUpdate = result.startsWith('v');
+                          });
+                        });
+                      },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: isLoading
+                    ? CircularProgressIndicator()
+                    : Text(
+                        hasUpdate ? '发现新版本：$versionInfo' : versionInfo,
+                        textAlign: TextAlign.center,
+                      ),
+              )
+            ],
+          ),
+          actions: [
+            if (!isLoading)
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(hasUpdate ? '稍后再说' : '关闭'),
+              ),
+            if (hasUpdate)
+              TextButton(
+                onPressed: () async {
+                  if (await canLaunchUrl(
+                      Uri.parse(UpdateChecker.releasesUrl))) {
+                    await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
+                  }
+                  Navigator.pop(context);
+                },
+                child: Text('立即更新'),
+              ),
+          ],
+        );
+      },
+    ),
+  );
 }
