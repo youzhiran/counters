@@ -133,9 +133,8 @@ void checkUpdate(BuildContext context) async {
   bool isLoading = true;
   String versionInfo = '';
   bool hasUpdate = false;
-  await showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
+  await globalState.showCommonDialog(
+    child: StatefulBuilder(
       builder: (context, setState) {
         // 初始加载检查
         if (isLoading) {

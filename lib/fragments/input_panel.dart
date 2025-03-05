@@ -39,6 +39,9 @@ class _QuickInputPanelState extends State<QuickInputPanel>
   static const double _handleHeight = 20.0;
   static const double _tabHeight = 30.0;
 
+  // 添加固定高度选项
+  static const List<double> _snapHeights = [140.0, 240.0, 320.0];
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +61,103 @@ class _QuickInputPanelState extends State<QuickInputPanel>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  // 添加一个状态变量来跟踪是否正在拖动
+  bool _isDragging = false;
+
+  // 构建拖动手柄
+  Widget _buildDragHandle() {
+    return GestureDetector(
+      onVerticalDragStart: (_) {
+        setState(() {
+          _isDragging = true; // 开始拖动
+        });
+      },
+      onVerticalDragUpdate: (details) {
+        if (_isPanelExpanded) {
+          setState(() {
+            // 跟随手指移动调整高度
+            _panelHeight = (_panelHeight - details.delta.dy).clamp(
+              _defaultPanelHeight, // 最小高度
+              _maxPanelHeight, // 最大高度
+            );
+          });
+        }
+      },
+      onVerticalDragEnd: (details) {
+        // 释放时吸附到最近的固定高度
+        if (_isPanelExpanded) {
+          _snapToNearestHeight();
+          // 延迟一小段时间后再显示图表内容
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              setState(() {
+                _isDragging = false; // 结束拖动
+              });
+            }
+          });
+        } else if (details.velocity.pixelsPerSecond.dy < -300) {
+          // 快速向上滑动时展开面板
+          setState(() => _isPanelExpanded = true);
+          // 延迟一小段时间后再显示图表内容
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              setState(() {
+                _isDragging = false; // 结束拖动
+              });
+            }
+          });
+        }
+      },
+      onTap: () {
+        // 点击切换展开/收起状态
+        setState(() => _isPanelExpanded = !_isPanelExpanded);
+      },
+      child: Container(
+        width: double.infinity,
+        height: _handleHeight,
+        color: Colors.transparent,
+        child: Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 添加吸附到最近高度的方法
+  void _snapToNearestHeight() {
+    // 过滤出不超过最大高度的吸附点
+    final validSnapHeights =
+        _snapHeights.where((height) => height <= _maxPanelHeight).toList();
+
+    if (validSnapHeights.isEmpty) {
+      return;
+    }
+
+    // 找出最接近当前高度的吸附点
+    double nearestHeight = validSnapHeights.first;
+    double minDistance = (_panelHeight - nearestHeight).abs();
+
+    for (final height in validSnapHeights) {
+      final distance = (_panelHeight - height).abs();
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestHeight = height;
+      }
+    }
+
+    // 使用动画平滑过渡到吸附高度
+    setState(() {
+      _panelHeight = nearestHeight;
+    });
   }
 
   @override
@@ -84,53 +184,6 @@ class _QuickInputPanelState extends State<QuickInputPanel>
             _buildTabBar(context),
             _buildContentArea(),
           ],
-        ),
-      ),
-    );
-  }
-
-  // 构建拖动手柄
-  Widget _buildDragHandle() {
-    return GestureDetector(
-      onVerticalDragEnd: (details) {
-        // 根据拖动速度决定展开或收起
-        if (details.velocity.pixelsPerSecond.dy > 0) {
-          // 向下拖动，收起面板
-          setState(() => _isPanelExpanded = false);
-        } else if (details.velocity.pixelsPerSecond.dy < 0) {
-          // 向上拖动，展开面板
-          setState(() => _isPanelExpanded = true);
-        }
-      },
-      onVerticalDragUpdate: (details) {
-        // 仅在图表标签页且面板已展开时允许调整高度
-        if (_isPanelExpanded && _tabController.index == 1) {
-          setState(() {
-            // 减去拖动距离（向上拖动为负值，所以用减法会增加高度）
-            _panelHeight = (_panelHeight - details.delta.dy).clamp(
-              _defaultPanelHeight, // 最小高度
-              _maxPanelHeight, // 最大高度
-            );
-          });
-        }
-      },
-      onTap: () {
-        // 点击切换展开/收起状态
-        setState(() => _isPanelExpanded = !_isPanelExpanded);
-      },
-      child: Container(
-        width: double.infinity,
-        height: _handleHeight,
-        color: Colors.transparent,
-        child: Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
         ),
       ),
     );
@@ -178,6 +231,11 @@ class _QuickInputPanelState extends State<QuickInputPanel>
   Widget _buildChartTab() {
     final scoreProvider = context.read<ScoreProvider>();
     final currentSession = scoreProvider.currentSession;
+
+    // 如果正在拖动，显示占位符
+    if (_isDragging) {
+      return const Center(child: Text('调整面板高度中...'));
+    }
 
     return currentSession != null
         ? _buildScoreLineChart(currentSession)
@@ -251,7 +309,7 @@ class _QuickInputPanelState extends State<QuickInputPanel>
     }
   }
 
-  // 构建得分折线图 - 保持原有实现
+  // 构建得分折线图
   Widget _buildScoreLineChart(GameSession session) {
     // 获取所有玩家的得分历史
     final playerScoreHistory = <String, List<int>>{};
@@ -369,8 +427,8 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
           // 显示提示框
           if (_activePoint != null)
             Positioned(
-              left: _activePoint!.position.dx - 60,
-              top: _activePoint!.position.dy - 50,
+              left: _calculateTooltipX(_activePoint!.position.dx),
+              top: _calculateTooltipY(_activePoint!.position.dy),
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -401,6 +459,20 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
         ],
       ),
     );
+  }
+
+  // 计算X轴位置（考虑右侧边界）
+  double _calculateTooltipX(double x) {
+    const double tooltipWidth = 80.0;
+    final maxX = widget.size.width - tooltipWidth;
+    return x.clamp(0.0, maxX);
+  }
+
+  // 计算Y轴位置（考虑顶部边界）
+  double _calculateTooltipY(double y) {
+    const double tooltipHeight = 80.0;
+    final maxY = widget.size.height - tooltipHeight;
+    return y.clamp(0.0, maxY);
   }
 
   // 定时隐藏方法
@@ -484,14 +556,15 @@ class ScoreLineChartPainter extends CustomPainter {
     final axisPaint = Paint()
       ..color = Colors.grey
       ..strokeWidth = 1.0;
-
+    // 调整坐标轴位置，使原点距离左下角15dp
+    const double margin = 15.0;
     // 绘制坐标轴
     // X轴（轮次）
-    canvas.drawLine(
-        Offset(30, height - 20), Offset(width, height - 20), axisPaint);
+    canvas.drawLine(Offset(margin, height - margin),
+        Offset(width, height - margin), axisPaint);
     // Y轴（得分）
-    canvas.drawLine(Offset(30, 0), Offset(30, height - 20), axisPaint);
-
+    canvas.drawLine(
+        Offset(margin, 0), Offset(margin, height - margin), axisPaint);
     // 绘制每个玩家的折线
     playerScoreHistory.forEach((playerId, scores) {
       final path = Path();
@@ -499,20 +572,16 @@ class ScoreLineChartPainter extends CustomPainter {
         ..color = playerColors[playerId] ?? Colors.blue
         ..strokeWidth = 2.0
         ..style = PaintingStyle.stroke;
-
-      final xStep = (width - 40) / (maxRounds > 1 ? maxRounds - 1 : 1);
-      final yScale = (height - 40) / (maxScore > 0 ? maxScore : 1);
-
+      final xStep = (width - margin * 2) / (maxRounds > 1 ? maxRounds - 1 : 1);
+      final yScale = (height - margin * 2) / (maxScore > 0 ? maxScore : 1);
       for (var i = 0; i < scores.length; i++) {
-        final x = 30 + i * xStep;
-        final y = height - 20 - scores[i] * yScale;
-
+        final x = margin + i * xStep;
+        final y = height - margin - scores[i] * yScale;
         if (i == 0) {
           path.moveTo(x, y);
         } else {
           path.lineTo(x, y);
         }
-
         // 绘制数据点
         canvas.drawCircle(
             Offset(x, y),
@@ -521,7 +590,6 @@ class ScoreLineChartPainter extends CustomPainter {
               ..color = playerColors[playerId] ?? Colors.blue
               ..style = PaintingStyle.fill);
       }
-
       // 只绘制线条，不填充
       canvas.drawPath(path, paint);
     });
