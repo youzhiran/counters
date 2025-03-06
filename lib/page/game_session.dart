@@ -31,18 +31,24 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
       );
     }
 
-    var failureScore = context
-        .read<TemplateProvider>()
-        .getTemplate(widget.templateId)
-        ?.targetScore;
+    final currentRound = context.read<ScoreProvider>().currentRound;
+    final failureScore = template.targetScore;
 
-    // 检查游戏是否结束
-    final overPlayers =
-        session.scores.where((s) => s.totalScore >= failureScore!).toList();
-    if (overPlayers.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showGameResult(context);
-      });
+    // 当轮次完成时检查
+    if (currentRound > 0) {
+      final allPlayersFilled = session.scores.every((s) =>
+          s.roundScores.length >= currentRound &&
+          s.roundScores[currentRound - 1] != null);
+
+      if (allPlayersFilled) {
+        final overPlayers =
+            session.scores.where((s) => s.totalScore >= failureScore).toList();
+        if (overPlayers.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showGameResult(context);
+          });
+        }
+      }
     }
 
     return Scaffold(
@@ -202,14 +208,6 @@ class _GameSessionScreenState extends State<GameSessionScreen> {
                 orElse: () => PlayerInfo(name: '未知玩家', avatar: 'default'))
             .name ??
         '未知玩家';
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ScoreProvider>().updateHighlight();
-    });
   }
 }
 
