@@ -59,6 +59,7 @@ class MyApp extends StatelessWidget {
       builder: (context, state, child) {
         return MaterialApp(
           navigatorKey: globalState.navigatorKey,
+          scaffoldMessengerKey: globalState.scaffoldMessengerKey,
           title: '桌游计分器',
           theme: _buildTheme(state.themeColor, Brightness.light),
           darkTheme: _buildTheme(state.themeColor, Brightness.dark),
@@ -125,7 +126,7 @@ class MainTabsScreen extends StatefulWidget {
   const MainTabsScreen({super.key});
 
   @override
-  _MainTabsScreenState createState() => _MainTabsScreenState();
+  State<MainTabsScreen> createState() => _MainTabsScreenState();
 }
 
 class _MainTabsScreenState extends State<MainTabsScreen> {

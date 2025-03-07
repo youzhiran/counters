@@ -180,7 +180,7 @@ String _runCommand(String command, {String? workingDirectory}) {
   final executable = parts.first;
   final args = parts.sublist(1);
 
-  print('==>Command:'+command);
+  print('==>Command:$command');
 
   final result = Process.runSync(
     executable,

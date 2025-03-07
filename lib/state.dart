@@ -8,6 +8,9 @@ import 'package:url_launcher/url_launcher.dart';
 class GlobalState with ChangeNotifier {
   final navigatorKey = GlobalKey<NavigatorState>();
 
+  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
   final filter = ImageFilter.blur(
     sigmaX: 5,
     sigmaY: 5,
@@ -36,7 +39,7 @@ class GlobalState with ChangeNotifier {
     _themeMode = ThemeMode.values[modeIndex];
 
     // 加载主题颜色
-    final colorValue = _prefs.getInt('themeColor') ?? Colors.blue.value;
+    final colorValue = _prefs.getInt('themeColor') ?? Colors.blue.toARGB32();
     _themeColor = Color(colorValue);
 
     notifyListeners(); // 通知监听者更新
@@ -52,7 +55,7 @@ class GlobalState with ChangeNotifier {
   // 主题颜色设置方法
   Future<void> setThemeColor(Color color) async {
     _themeColor = color;
-    await _prefs.setInt('themeColor', color.value); // 持久化存储
+    await _prefs.setInt('themeColor', color.toARGB32()); // 持久化存储
     notifyListeners(); // 通知界面更新
   }
 

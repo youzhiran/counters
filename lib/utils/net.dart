@@ -116,11 +116,14 @@ class UpdateChecker {
           if (hasUpdate)
             TextButton(
               onPressed: () async {
+                final navigatorState = Navigator.of(context);
                 if (await canLaunchUrl(
                     Uri.parse(UpdateChecker.latestReleaseUrl))) {
                   await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
                 }
-                Navigator.pop(context);
+                if (navigatorState.mounted) {
+                  navigatorState.pop();
+                }
               },
               child: Text('立即更新'),
             ),
@@ -130,85 +133,93 @@ class UpdateChecker {
   }
 }
 
-void checkUpdate(BuildContext context) async {
+void checkUpdate(BuildContext context) {
+  globalState.showCommonDialog(
+    child: UpdateCheckerDialog(),
+  );
+}
+
+class UpdateCheckerDialog extends StatefulWidget {
+  const UpdateCheckerDialog({super.key});
+
+  @override
+  State<UpdateCheckerDialog> createState() => _UpdateCheckerDialogState();
+}
+
+class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   bool checkBeta = false;
   bool isLoading = true;
   String versionInfo = '';
   bool hasUpdate = false;
-  await globalState.showCommonDialog(
-    child: StatefulBuilder(
-      builder: (context, setState) {
-        // 初始加载检查
-        if (isLoading) {
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            final result = await UpdateChecker.isUpdateAvailable(
-                includePrereleases: checkBeta);
-            setState(() {
-              isLoading = false;
-              versionInfo = result;
-              hasUpdate = result.startsWith('v');
-            });
-          });
-        }
 
-        return AlertDialog(
-          title: Text('检查更新'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CheckboxListTile(
-                title: Text('包含测试版本'),
-                value: checkBeta,
-                onChanged: isLoading
-                    ? null
-                    : (v) {
-                        setState(() {
-                          checkBeta = v ?? false;
-                          isLoading = true;
-                          versionInfo = '';
-                        });
-                        WidgetsBinding.instance.addPostFrameCallback((_) async {
-                          final result = await UpdateChecker.isUpdateAvailable(
-                              includePrereleases: checkBeta);
-                          setState(() {
-                            isLoading = false;
-                            versionInfo = result;
-                            hasUpdate = result.startsWith('v');
-                          });
-                        });
-                      },
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: isLoading
-                    ? CircularProgressIndicator()
-                    : Text(
-                        hasUpdate ? '发现新版本：$versionInfo' : versionInfo,
-                        textAlign: TextAlign.center,
-                      ),
-              )
-            ],
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdates();
+  }
+
+  Future<void> _checkForUpdates() async {
+    final result =
+        await UpdateChecker.isUpdateAvailable(includePrereleases: checkBeta);
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+        versionInfo = result;
+        hasUpdate = result.startsWith('v');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('检查更新'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CheckboxListTile(
+            title: Text('包含测试版本'),
+            value: checkBeta,
+            onChanged: isLoading
+                ? null
+                : (v) {
+                    setState(() {
+                      checkBeta = v ?? false;
+                      isLoading = true;
+                      versionInfo = '';
+                    });
+                    _checkForUpdates();
+                  },
           ),
-          actions: [
-            if (!isLoading)
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(hasUpdate ? '稍后再说' : '关闭'),
-              ),
-            if (hasUpdate)
-              TextButton(
-                onPressed: () async {
-                  if (await canLaunchUrl(
-                      Uri.parse(UpdateChecker.releasesUrl))) {
-                    await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
-                  }
-                  Navigator.pop(context);
-                },
-                child: Text('立即更新'),
-              ),
-          ],
-        );
-      },
-    ),
-  );
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: isLoading
+                ? CircularProgressIndicator()
+                : Text(
+                    hasUpdate ? '发现新版本：$versionInfo' : versionInfo,
+                    textAlign: TextAlign.center,
+                  ),
+          )
+        ],
+      ),
+      actions: [
+        if (!isLoading)
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(hasUpdate ? '稍后再说' : '关闭'),
+          ),
+        if (hasUpdate)
+          TextButton(
+            onPressed: () async {
+              if (await canLaunchUrl(
+                  Uri.parse(UpdateChecker.latestReleaseUrl))) {
+                await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
+              }
+              globalState.navigatorKey.currentState?.pop();
+            },
+            child: Text('立即更新'),
+          ),
+      ],
+    );
+  }
 }

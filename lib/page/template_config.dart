@@ -17,7 +17,7 @@ class TemplateConfigScreen extends StatefulWidget {
   });
 
   @override
-  _TemplateConfigScreenState createState() => _TemplateConfigScreenState();
+  State<TemplateConfigScreen> createState() => _TemplateConfigScreenState();
 }
 
 class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
@@ -124,7 +124,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     final provider = context.read<ScoreProvider>();
     final hasHistory = provider.checkSessionExists(id);
     if (hasHistory) {
-      AppSnackBar.warn(context, '当前模板已有关联计分记录，保存时需清除该记录');
+      AppSnackBar.warn('当前模板已有关联计分记录，保存时需清除该记录');
       setState(() {
         _hasHistory = true;
       });
@@ -192,7 +192,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     if (_playerCountError != null ||
         _targetScoreError != null ||
         _templateNameError != null) {
-      AppSnackBar.error(context, '请修正输入错误');
+      AppSnackBar.error('请修正输入错误');
       return;
     }
 
@@ -207,17 +207,21 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     // 检查每个名称是否为空
     for (final player in updated.players) {
       if (player.name.trim().isEmpty) {
-        AppSnackBar.error(context, '玩家名称不能为空或全是空格');
+        AppSnackBar.error('玩家名称不能为空或全是空格');
         return;
       }
     }
+
+    // 在异步操作前获取需要的对象
+    final templateProvider = context.read<TemplateProvider>();
 
     // 等待用户确认
     final shouldProceed = await confirmCheckHistory();
 
     if (shouldProceed) {
-      context.read<TemplateProvider>().updateTemplate(updated);
-      Navigator.pop(context);
+      // 使用之前保存的 provider 而不是通过 context 获取
+      templateProvider.updateTemplate(updated);
+      globalState.navigatorKey.currentState?.pop();
     } // 用户取消时不执行任何操作
   }
 
@@ -231,7 +235,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     if (_playerCountError != null ||
         _targetScoreError != null ||
         _templateNameError != null) {
-      AppSnackBar.error(context, '请修正输入错误');
+      AppSnackBar.error('请修正输入错误');
       return;
     }
 
@@ -249,7 +253,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     // 检查每个名称是否为空
     for (final player in newTemplate.players) {
       if (player.name.trim().isEmpty) {
-        AppSnackBar.error(context, '玩家名称不能为空或全是空格');
+        AppSnackBar.error('玩家名称不能为空或全是空格');
         return;
       }
     }

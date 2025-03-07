@@ -295,7 +295,7 @@ class _ScoreColumn extends StatelessWidget {
         scoreProvider.addNewRound();
       } else {
         // 添加提示逻辑
-        AppSnackBar.show(context, '请填写所有玩家的【第$currentRound轮】后再添加新回合！');
+        AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
         return;
       }
     }
@@ -551,7 +551,7 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
             final value = int.tryParse(_controller.text) ?? 0;
             Navigator.pop(context);
             if (!isAllowNegative && value < 0) {
-              AppSnackBar.warn(context, '当前模板设置不允许输入负数！');
+              AppSnackBar.warn('当前模板设置不允许输入负数！');
               return;
             }
             widget.onConfirm(value);
