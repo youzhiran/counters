@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../model/models.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
+import '../utils/log.dart';
 
 class ScoreProvider with ChangeNotifier {
   late final Box<GameSession> _sessionBox;
@@ -38,7 +39,7 @@ class ScoreProvider with ChangeNotifier {
       }
       _loadActiveSession();
     } catch (e) {
-      print('Hive初始化失败: $e');
+      Log.e('Hive初始化失败: $e');
       _sessionBox = await Hive.openBox<GameSession>('gameSessions');
     }
   }
@@ -268,7 +269,7 @@ class ScoreProvider with ChangeNotifier {
           .reversed // 按时间倒序
           .toList();
     } catch (e) {
-      debugPrint('获取会话列表失败: $e');
+      Log.w('获取会话列表失败: $e');
       return [];
     }
   }

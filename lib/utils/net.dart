@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'log.dart';
+
 class UpdateChecker {
   static const String releasesUrl =
       'https://api.github.com/repos/youzhiran/counters/releases';
@@ -91,9 +93,9 @@ class UpdateChecker {
     }
 
     // 打印额外信息
-    print('Version metadata - v1: ${extra1.isNotEmpty ? extra1 : "stable"}, '
+    Log.i('Version metadata - v1: ${extra1.isNotEmpty ? extra1 : "stable"}, '
         'v2: ${extra2.isNotEmpty ? extra2 : "stable"}');
-    print('v1:$v1  v2:$v2');
+    Log.i('v1:$v1  v2:$v2');
 
     return result;
   }
