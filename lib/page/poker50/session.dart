@@ -2,22 +2,25 @@ import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../fragments/input_panel.dart';
-import '../model/models.dart';
-import '../providers/score_provider.dart';
-import '../providers/template_provider.dart';
-import '../widgets/snackbar.dart';
+import '../../fragments/input_panel.dart';
+import '../../model/models.dart';
+import '../../providers/score_provider.dart';
+import '../../providers/template_provider.dart';
+import '../../widgets/snackbar.dart';
 
-class GameSessionScreen extends StatefulWidget {
+/// 3人扑克50分
+///
+/// 玩家打牌计分，首先达到50分的失败，计分少的胜利。
+class Poker50SessionPage extends StatefulWidget {
   final String templateId;
 
-  const GameSessionScreen({super.key, required this.templateId});
+  const Poker50SessionPage({super.key, required this.templateId});
 
   @override
-  State<GameSessionScreen> createState() => _GameSessionScreenState();
+  State<Poker50SessionPage> createState() => _Poker50SessionPageState();
 }
 
-class _GameSessionScreenState extends State<GameSessionScreen> {
+class _Poker50SessionPageState extends State<Poker50SessionPage> {
   @override
   Widget build(BuildContext context) {
     final template =

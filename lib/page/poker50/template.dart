@@ -1,15 +1,17 @@
-import 'package:counters/page/template_config.dart';
+import 'package:counters/page/poker50/session.dart';
+import 'package:counters/page/poker50/template_config.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../model/models.dart';
-import '../providers/score_provider.dart';
-import '../providers/template_provider.dart';
-import '../state.dart';
-import 'game_session.dart';
+import '../../model/models.dart';
+import '../../providers/score_provider.dart';
+import '../../providers/template_provider.dart';
+import '../../state.dart';
 
-class TemplateScreen extends StatelessWidget {
-  const TemplateScreen({super.key});
+
+
+class TemplatePage extends StatelessWidget {
+  const TemplatePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +190,7 @@ class _TemplateCard extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          TemplateConfigScreen(baseTemplate: template),
+                          TemplateConfigPage(baseTemplate: template),
                     ),
                   );
                 },
@@ -202,7 +204,7 @@ class _TemplateCard extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          GameSessionScreen(templateId: template.id),
+                          Poker50SessionPage(templateId: template.id),
                     ),
                   );
                 },
@@ -227,7 +229,7 @@ class _TemplateCard extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          TemplateConfigScreen(baseTemplate: template),
+                          TemplateConfigPage(baseTemplate: template),
                     ),
                   );
                 },
@@ -241,7 +243,7 @@ class _TemplateCard extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          GameSessionScreen(templateId: template.id),
+                          Poker50SessionPage(templateId: template.id),
                     ),
                   );
                 },

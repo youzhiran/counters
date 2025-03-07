@@ -5,14 +5,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../utils/net.dart';
 
-class SettingScreen extends StatefulWidget {
-  const SettingScreen({super.key});
+class SettingPage extends StatefulWidget {
+  const SettingPage({super.key});
 
   @override
-  State<SettingScreen> createState() => _SettingScreenState();
+  State<SettingPage> createState() => _SettingPageState();
 }
 
-class _SettingScreenState extends State<SettingScreen> {
+class _SettingPageState extends State<SettingPage> {
   String _versionName = '读取失败';
   String _versionCode = '读取失败';
 

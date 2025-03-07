@@ -1,8 +1,8 @@
-import 'package:counters/page/game_session.dart';
+import 'package:counters/page/poker50/session.dart';
 import 'package:counters/page/home.dart';
+import 'package:counters/page/poker50/template.dart';
 import 'package:counters/page/setting.dart';
-import 'package:counters/page/template.dart';
-import 'package:counters/page/template_config.dart';
+import 'package:counters/page/poker50/template_config.dart';
 import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -66,13 +66,13 @@ class MyApp extends StatelessWidget {
           themeMode: state.themeMode,
           routes: {
             '/': (context) => const MainTabsScreen(),
-            '/game_session': (context) => Scaffold(
+            '/poker50_session': (context) => Scaffold(
                   // 为子页面包裹Scaffold
                   appBar: AppBar(
                     title: const Text('游戏进行中'),
                     leading: BackButton(), // 自动显示返回按钮
                   ),
-                  body: GameSessionScreen(
+                  body: Poker50SessionPage(
                     templateId:
                         ModalRoute.of(context)!.settings.arguments as String,
                   ),
@@ -85,7 +85,7 @@ class MyApp extends StatelessWidget {
                       /* 原有保存按钮 */
                     ],
                   ),
-                  body: TemplateConfigScreen(
+                  body: TemplateConfigPage(
                     baseTemplate: ModalRoute.of(context)!.settings.arguments
                         as ScoreTemplate,
                   ),
@@ -134,9 +134,9 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
   late PageController _pageController; // 保持late声明
 
   final List<Widget> _screens = [
-    const HomeScreen(),
-    const TemplateScreen(),
-    const SettingScreen(),
+    const HomePage(),
+    const TemplatePage(),
+    const SettingPage(),
   ];
 
   // 初始化方法

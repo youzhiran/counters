@@ -3,24 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../model/models.dart';
-import '../providers/score_provider.dart';
-import '../providers/template_provider.dart';
-import '../widgets/snackbar.dart';
+import '../../model/models.dart';
+import '../../providers/score_provider.dart';
+import '../../providers/template_provider.dart';
+import '../../widgets/snackbar.dart';
 
-class TemplateConfigScreen extends StatefulWidget {
+class TemplateConfigPage extends StatefulWidget {
   final ScoreTemplate baseTemplate;
 
-  const TemplateConfigScreen({
+  const TemplateConfigPage({
     required this.baseTemplate,
     super.key, // 添加key参数
   });
 
   @override
-  State<TemplateConfigScreen> createState() => _TemplateConfigScreenState();
+  State<TemplateConfigPage> createState() => _TemplateConfigPageState();
 }
 
-class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
+class _TemplateConfigPageState extends State<TemplateConfigPage> {
   late TextEditingController _templateNameController;
   late TextEditingController _playerCountController;
   late TextEditingController _targetScoreController;
@@ -99,6 +99,7 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
         padding: EdgeInsets.all(16),
         child: Column(
           children: [
+            _buildInfo(),
             _buildBasicSettings(),
             _buildOtherList(),
             _buildPlayerList(),
@@ -322,6 +323,45 @@ class _TemplateConfigScreenState extends State<TemplateConfigScreen> {
     } else {
       setState(() => _targetScoreError = null);
     }
+  }
+
+  Widget _buildInfo() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline,
+                  color: Theme.of(context).colorScheme.primary),
+              SizedBox(width: 8),
+              Text(
+                '基于：${_getRootBaseTemplateName()}',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            '• 适用于：类似达到指定分数后计算胜局的游戏，计分最少的玩家获胜。\n'
+            '• 典型情况：3人打牌记录剩余手牌数量，累计到50张为败，此时计分最少的玩家获胜。',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  height: 1.5,
+                ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildBasicSettings() {

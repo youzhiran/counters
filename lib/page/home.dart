@@ -8,7 +8,7 @@ import '../state.dart';
 import '../widgets/confirmation_dialog.dart';
 import '../widgets/history_session_item.dart';
 import '../widgets/snackbar.dart';
-import 'game_session.dart';
+import 'poker50/session.dart';
 
 class _TemplateSelector extends StatelessWidget {
   @override
@@ -33,13 +33,13 @@ class _TemplateSelector extends StatelessWidget {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-          builder: (_) => GameSessionScreen(templateId: template.id)),
+          builder: (_) => Poker50SessionPage(templateId: template.id)),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key}); // 添加构造函数
+class HomePage extends StatelessWidget {
+  const HomePage({super.key}); // 添加构造函数
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +67,7 @@ class HomeScreen extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => GameSessionScreen(templateId: session.templateId),
+        builder: (_) => Poker50SessionPage(templateId: session.templateId),
       ),
     );
   }
@@ -291,7 +291,7 @@ class HomeScreen extends StatelessWidget {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => GameSessionScreen(templateId: template.id),
+                    builder: (_) => Poker50SessionPage(templateId: template.id),
                   ),
                 ),
                 child: Text('继续本轮', style: TextStyle(color: Colors.white)),
