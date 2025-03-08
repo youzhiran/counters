@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../fragments/input_panel.dart';
-import '../../model/models.dart';
+import '../../model/poker50.dart';
+import '../../model/player_info.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/snackbar.dart';
@@ -23,11 +24,12 @@ class Poker50SessionPage extends StatefulWidget {
 class _Poker50SessionPageState extends State<Poker50SessionPage> {
   @override
   Widget build(BuildContext context) {
-    final template =
-        context.read<TemplateProvider>().getTemplate(widget.templateId);
+    final template = context
+        .read<TemplateProvider>()
+        .getTemplate(widget.templateId) as Poker50Template;
     final session = context.watch<ScoreProvider>().currentSession;
 
-    if (template == null || session == null) {
+    if (session == null) {
       return Scaffold(
         appBar: AppBar(title: Text('错误')),
         body: Center(child: Text('模板加载失败')),
@@ -324,7 +326,7 @@ class _ScoreColumn extends StatelessWidget {
 }
 
 class _ScoreBoard extends StatefulWidget {
-  final ScoreTemplate template;
+  final Poker50Template template;
   final GameSession session;
 
   const _ScoreBoard({required this.template, required this.session});
@@ -521,9 +523,10 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final template =
-        context.read<TemplateProvider>().getTemplate(widget.templateId);
-    final isAllowNegative = template?.isAllowNegative ?? false;
+    final template = context
+        .read<TemplateProvider>()
+        .getTemplate(widget.templateId) as Poker50Template;
+    final isAllowNegative = template.isAllowNegative;
 
     return AlertDialog(
       title: Text('修改分数'),

@@ -1,14 +1,17 @@
-import 'package:counters/page/poker50/session.dart';
 import 'package:counters/page/home.dart';
-import 'package:counters/page/poker50/template.dart';
+import 'package:counters/page/poker50/config.dart';
+import 'package:counters/page/poker50/session.dart';
 import 'package:counters/page/setting.dart';
-import 'package:counters/page/poker50/template_config.dart';
+import 'package:counters/page/template.dart';
 import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
-import 'model/models.dart';
+import 'model/base_template.dart';
+import 'model/landlords.dart';
+import 'model/player_info.dart';
+import 'model/poker50.dart';
 import 'providers/score_provider.dart';
 import 'providers/template_provider.dart';
 
@@ -23,7 +26,8 @@ void main() async {
   // await Hive.deleteBoxFromDisk('templates');
 
   // 注册适配器
-  Hive.registerAdapter(ScoreTemplateAdapter());
+  Hive.registerAdapter(Poker50TemplateAdapter());
+  Hive.registerAdapter(LandlordsTemplateAdapter());
   Hive.registerAdapter(PlayerInfoAdapter());
   Hive.registerAdapter(GameSessionAdapter());
   Hive.registerAdapter(PlayerScoreAdapter());
@@ -35,7 +39,7 @@ void main() async {
   await globalState.initialize();
 
   // 打开模板盒子
-  final templateBox = await Hive.openBox<ScoreTemplate>('templates');
+  final templateBox = await Hive.openBox<BaseTemplate>('templates');
 
   runApp(
     MultiProvider(
@@ -85,9 +89,9 @@ class MyApp extends StatelessWidget {
                       /* 原有保存按钮 */
                     ],
                   ),
-                  body: TemplateConfigPage(
-                    baseTemplate: ModalRoute.of(context)!.settings.arguments
-                        as ScoreTemplate,
+                  body: Poker50ConfigPage(
+                    oriTemplate: ModalRoute.of(context)!.settings.arguments
+                        as Poker50Template,
                   ),
                 ),
           },

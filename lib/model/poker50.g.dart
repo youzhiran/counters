@@ -1,22 +1,22 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of '../models.dart';
+part of 'poker50.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class ScoreTemplateAdapter extends TypeAdapter<ScoreTemplate> {
+class Poker50TemplateAdapter extends TypeAdapter<Poker50Template> {
   @override
   final int typeId = 0;
 
   @override
-  ScoreTemplate read(BinaryReader reader) {
+  Poker50Template read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return ScoreTemplate(
+    return Poker50Template(
       id: fields[0] as String?,
       templateName: fields[1] as String,
       playerCount: fields[2] as int,
@@ -29,9 +29,11 @@ class ScoreTemplateAdapter extends TypeAdapter<ScoreTemplate> {
   }
 
   @override
-  void write(BinaryWriter writer, ScoreTemplate obj) {
+  void write(BinaryWriter writer, Poker50Template obj) {
     writer
       ..writeByte(8)
+      ..writeByte(7)
+      ..write(obj.isAllowNegative)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -45,9 +47,7 @@ class ScoreTemplateAdapter extends TypeAdapter<ScoreTemplate> {
       ..writeByte(5)
       ..write(obj.isSystemTemplate)
       ..writeByte(6)
-      ..write(obj.baseTemplateId)
-      ..writeByte(7)
-      ..write(obj.isAllowNegative);
+      ..write(obj.baseTemplateId);
   }
 
   @override
@@ -56,47 +56,7 @@ class ScoreTemplateAdapter extends TypeAdapter<ScoreTemplate> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ScoreTemplateAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
-}
-
-class PlayerInfoAdapter extends TypeAdapter<PlayerInfo> {
-  @override
-  final int typeId = 1;
-
-  @override
-  PlayerInfo read(BinaryReader reader) {
-    final numOfFields = reader.readByte();
-    final fields = <int, dynamic>{
-      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
-    };
-    return PlayerInfo(
-      id: fields[0] as String?,
-      name: fields[1] == null ? '未知玩家' : fields[1] as String,
-      avatar: fields[2] == null ? 'default_avatar.png' : fields[2] as String,
-    );
-  }
-
-  @override
-  void write(BinaryWriter writer, PlayerInfo obj) {
-    writer
-      ..writeByte(3)
-      ..writeByte(0)
-      ..write(obj.id)
-      ..writeByte(1)
-      ..write(obj.name)
-      ..writeByte(2)
-      ..write(obj.avatar);
-  }
-
-  @override
-  int get hashCode => typeId.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PlayerInfoAdapter &&
+      other is Poker50TemplateAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

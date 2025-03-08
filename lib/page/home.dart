@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../model/models.dart';
+import '../model/base_template.dart';
+import '../model/poker50.dart';
+import '../model/player_info.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
@@ -28,7 +30,7 @@ class _TemplateSelector extends StatelessWidget {
     );
   }
 
-  void _handleTemplateSelect(BuildContext context, ScoreTemplate template) {
+  void _handleTemplateSelect(BuildContext context, BaseTemplate template) {
     context.read<ScoreProvider>().startNewGame(template);
     Navigator.pushReplacement(
       context,
@@ -335,8 +337,8 @@ class HomePage extends StatelessWidget {
   }
 
   // 创建应急模板
-  ScoreTemplate _createFallbackTemplate() {
-    return ScoreTemplate(
+  Poker50Template _createFallbackTemplate() {
+    return Poker50Template(
         templateName: '应急模板',
         playerCount: 3,
         targetScore: 50,

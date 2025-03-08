@@ -1,14 +1,16 @@
+import 'package:counters/model/landlords.dart';
+import 'package:counters/page/poker50/config.dart';
 import 'package:counters/page/poker50/session.dart';
-import 'package:counters/page/poker50/template_config.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../model/models.dart';
-import '../../providers/score_provider.dart';
-import '../../providers/template_provider.dart';
-import '../../state.dart';
-
-
+import '../model/base_template.dart';
+import '../model/poker50.dart';
+import '../providers/score_provider.dart';
+import '../providers/template_provider.dart';
+import '../state.dart';
+import '../utils/log.dart';
+import 'landlords/config.dart';
 
 class TemplatePage extends StatelessWidget {
   const TemplatePage({super.key});
@@ -40,7 +42,7 @@ class TemplatePage extends StatelessWidget {
 }
 
 class _TemplateCard extends StatelessWidget {
-  final ScoreTemplate template;
+  final BaseTemplate template;
 
   const _TemplateCard({required this.template});
 
@@ -100,7 +102,7 @@ class _TemplateCard extends StatelessWidget {
   // 添加获取根基础模板的方法
   String _getRootBaseTemplateName(BuildContext context) {
     String? baseId = template.baseTemplateId;
-    ScoreTemplate? current =
+    BaseTemplate? current =
         context.read<TemplateProvider>().getTemplate(baseId ?? '');
 
     // 递归查找直到系统模板
@@ -111,10 +113,11 @@ class _TemplateCard extends StatelessWidget {
 
     return current?.templateName ?? '系统模板';
   }
+
   // 添加删除确认对话框
   void _confirmDelete(BuildContext context) {
     final provider = context.read<ScoreProvider>();
-    
+
     // 使用新方法检查模板是否正在计分
     if (provider.isTemplateInUse(template.id)) {
       globalState.showCommonDialog<bool>(
@@ -189,8 +192,18 @@ class _TemplateCard extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          TemplateConfigPage(baseTemplate: template),
+                      builder: (_) {
+                        if (template is Poker50Template) {
+                          return Poker50ConfigPage(
+                              oriTemplate: template as Poker50Template);
+                        } else if (template is LandlordsTemplate) {
+                          return LandlordsConfigPage(
+                              oriTemplate: template as LandlordsTemplate);
+                        } else {
+                          Log.w('不支持的模板类型: ${template.runtimeType}');
+                          return const SizedBox.shrink();
+                        }
+                      },
                     ),
                   );
                 },
@@ -228,8 +241,18 @@ class _TemplateCard extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          TemplateConfigPage(baseTemplate: template),
+                      builder: (_) {
+                        if (template is Poker50Template) {
+                          return Poker50ConfigPage(
+                              oriTemplate: template as Poker50Template);
+                        } else if (template is LandlordsTemplate) {
+                          return LandlordsConfigPage(
+                              oriTemplate: template as LandlordsTemplate);
+                        } else {
+                          Log.w('不支持的模板类型: ${template.runtimeType}');
+                          return const SizedBox.shrink();
+                        }
+                      },
                     ),
                   );
                 },

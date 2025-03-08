@@ -3,24 +3,38 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-import '../model/models.dart';
+import '../model/base_template.dart';
+import '../model/landlords.dart';
+import '../model/poker50.dart';
+import '../model/player_info.dart';
 
 class TemplateProvider with ChangeNotifier {
-  final Box<ScoreTemplate> _templateBox;
-  final List<ScoreTemplate> _systemTemplates = [
-    ScoreTemplate(
-      templateName: '3人扑克50分',
-      playerCount: 3,
-      targetScore: 50,
-      players: List.generate(
-          3,
-          (i) => PlayerInfo(
-                name: '玩家 ${i + 1}',
-                avatar: 'default_avatar.png',
-              )),
-      isSystemTemplate: true,
-      isAllowNegative: false
-    )
+  final Box<BaseTemplate> _templateBox;
+  final List<BaseTemplate> _systemTemplates = [
+    Poker50Template(
+        templateName: '3人扑克50分',
+        playerCount: 3,
+        targetScore: 50,
+        players: List.generate(
+            3,
+            (i) => PlayerInfo(
+                  name: '玩家 ${i + 1}',
+                  avatar: 'default_avatar.png',
+                )),
+        isSystemTemplate: true,
+        isAllowNegative: false),
+    LandlordsTemplate(
+        templateName: '斗地主',
+        playerCount: 3,
+        targetScore: 100,
+        players: List.generate(
+            3,
+            (i) => PlayerInfo(
+                  name: '玩家 ${i + 1}',
+                  avatar: 'default_avatar.png',
+                )),
+        isSystemTemplate: true,
+        isAllowNegative: false),
   ];
 
   TemplateProvider(this._templateBox) {
@@ -28,7 +42,7 @@ class TemplateProvider with ChangeNotifier {
   }
 
   // 通过会话获取模板的方法
-  ScoreTemplate? getTemplateBySession(GameSession session) {
+  BaseTemplate? getTemplateBySession(GameSession session) {
     return getTemplate(session.templateId);
   }
 
@@ -39,20 +53,21 @@ class TemplateProvider with ChangeNotifier {
     }
   }
 
-  List<ScoreTemplate> get templates => [
+  List<BaseTemplate> get templates => [
         ..._systemTemplates,
         ..._templateBox.values.where((t) => !t.isSystemTemplate)
       ];
 
-  ScoreTemplate? getTemplate(String id) {
+  BaseTemplate? getTemplate(String id) {
     return _templateBox.get(id) ??
         _systemTemplates.firstWhereOrNull((t) => t.id == id);
   }
 
-  Future<void> saveUserTemplate(ScoreTemplate template, String? baseTemplateId) async {
+  Future<void> saveUserTemplate(
+      BaseTemplate template, String? baseTemplateId) async {
     // 查找原始系统模板
     String? rootTemplateId = baseTemplateId;
-    ScoreTemplate? current = getTemplate(baseTemplateId ?? '');
+    BaseTemplate? current = getTemplate(baseTemplateId ?? '');
 
     while (current != null && !current.isSystemTemplate) {
       rootTemplateId = current.baseTemplateId;
@@ -81,10 +96,9 @@ class TemplateProvider with ChangeNotifier {
   }
 
   // 模板更新方法
-  Future<void> updateTemplate(ScoreTemplate template) async {
+  Future<void> updateTemplate(BaseTemplate template) async {
     if (template.isSystemTemplate) return;
     await _templateBox.put(template.id, template);
     notifyListeners();
   }
-
 }

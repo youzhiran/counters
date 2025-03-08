@@ -3,24 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../../model/models.dart';
+import '../../model/base_template.dart';
+import '../../model/poker50.dart';
+import '../../model/player_info.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/snackbar.dart';
 
-class TemplateConfigPage extends StatefulWidget {
-  final ScoreTemplate baseTemplate;
+class Poker50ConfigPage extends StatefulWidget {
+  final Poker50Template oriTemplate;
 
-  const TemplateConfigPage({
-    required this.baseTemplate,
+  const Poker50ConfigPage({
+    required this.oriTemplate,
     super.key, // 添加key参数
   });
 
   @override
-  State<TemplateConfigPage> createState() => _TemplateConfigPageState();
+  State<Poker50ConfigPage> createState() => _Poker50ConfigPageState();
 }
 
-class _TemplateConfigPageState extends State<TemplateConfigPage> {
+class _Poker50ConfigPageState extends State<Poker50ConfigPage> {
   late TextEditingController _templateNameController;
   late TextEditingController _playerCountController;
   late TextEditingController _targetScoreController;
@@ -38,16 +40,16 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
   void initState() {
     super.initState();
     _templateNameController =
-        TextEditingController(text: widget.baseTemplate.templateName);
+        TextEditingController(text: widget.oriTemplate.templateName);
     _playerCountController =
-        TextEditingController(text: widget.baseTemplate.playerCount.toString());
+        TextEditingController(text: widget.oriTemplate.playerCount.toString());
     _targetScoreController =
-        TextEditingController(text: widget.baseTemplate.targetScore.toString());
-    _nameControllers = widget.baseTemplate.players
+        TextEditingController(text: widget.oriTemplate.targetScore.toString());
+    _nameControllers = widget.oriTemplate.players
         .map((p) => TextEditingController(text: p.name))
         .toList();
-    _players = List.from(widget.baseTemplate.players);
-    _allowNegative = widget.baseTemplate.isAllowNegative;
+    _players = List.from(widget.oriTemplate.players);
+    _allowNegative = widget.oriTemplate.isAllowNegative;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkHistoryTemp();
@@ -63,7 +65,7 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isSystem = widget.baseTemplate.isSystemTemplate;
+    final isSystem = widget.oriTemplate.isSystemTemplate;
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -106,7 +108,7 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
             Padding(
               padding: const EdgeInsets.all(8),
               child: Text(
-                '原模板名：${widget.baseTemplate.templateName}\nID：${widget.baseTemplate.id}',
+                '原模板名：${widget.oriTemplate.templateName}\nID：${widget.oriTemplate.id}',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey[600],
@@ -121,7 +123,7 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
   }
 
   void _checkHistoryTemp() {
-    final id = widget.baseTemplate.id;
+    final id = widget.oriTemplate.id;
     final provider = context.read<ScoreProvider>();
     final hasHistory = provider.checkSessionExists(id);
     if (hasHistory) {
@@ -137,7 +139,7 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
   }
 
   Future<bool> confirmCheckHistory() async {
-    final id = widget.baseTemplate.id;
+    final id = widget.oriTemplate.id;
     final provider = context.read<ScoreProvider>();
     // 使用新方法检查模板是否正在计分
     if (provider.isTemplateInUse(id)) {
@@ -197,7 +199,7 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
       return;
     }
 
-    final updated = widget.baseTemplate.copyWith(
+    final updated = widget.oriTemplate.copyWith(
       templateName: _templateNameController.text,
       playerCount: int.parse(_playerCountController.text),
       targetScore: int.parse(_targetScoreController.text),
@@ -240,9 +242,9 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
       return;
     }
 
-    final rootId = _getRootBaseTemplateId() ?? widget.baseTemplate.id;
+    final rootId = _getRootBaseTemplateId() ?? widget.oriTemplate.id;
 
-    final newTemplate = ScoreTemplate(
+    final newTemplate = Poker50Template(
       templateName: _templateNameController.text,
       playerCount: int.parse(_playerCountController.text),
       targetScore: int.parse(_targetScoreController.text),
@@ -265,7 +267,7 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
 
   // 获取根模板ID的方法
   String? _getRootBaseTemplateId() {
-    ScoreTemplate? current = widget.baseTemplate;
+    BaseTemplate? current = widget.oriTemplate;
     while (current != null && !current.isSystemTemplate) {
       current =
           context.read<TemplateProvider>().getTemplate(current.baseTemplateId!);
@@ -274,7 +276,7 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
   }
 
   String _getRootBaseTemplateName() {
-    ScoreTemplate? current = widget.baseTemplate;
+    BaseTemplate? current = widget.oriTemplate;
 
     // 递归查找直到系统模板
     while (current != null && !current.isSystemTemplate) {
@@ -332,7 +334,9 @@ class _TemplateConfigPageState extends State<TemplateConfigPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+        border: Border.all(
+            color:
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

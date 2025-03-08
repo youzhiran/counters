@@ -3,7 +3,8 @@ import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
-import '../model/models.dart';
+import '../model/base_template.dart';
+import '../model/poker50.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
 import '../utils/log.dart';
@@ -94,7 +95,7 @@ class ScoreProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void startNewGame(ScoreTemplate template) {
+  void startNewGame(BaseTemplate template) {
     final validatedPlayers = template.players
         .map((p) => p.id.isEmpty ? p.copyWith(id: const Uuid().v4()) : p)
         .toList();

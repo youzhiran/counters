@@ -1,47 +1,29 @@
+import 'package:counters/model/player_info.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-part 'g/models.g.dart'; // 生成文件引用
+import 'base_template.dart';
+
+part 'poker50.g.dart';
 
 @HiveType(typeId: 0)
-class ScoreTemplate {
-  @HiveField(0)
-  final String id;
-
-  @HiveField(1)
-  String templateName;
-
-  @HiveField(2)
-  int playerCount;
-
-  @HiveField(3)
-  int targetScore;
-
-  @HiveField(4)
-  List<PlayerInfo> players;
-
-  @HiveField(5, defaultValue: false)
-  bool isSystemTemplate;
-
-  @HiveField(6, defaultValue: null)
-  final String? baseTemplateId;
-
+class Poker50Template extends BaseTemplate {
   @HiveField(7, defaultValue: false)
   bool isAllowNegative;
 
-  ScoreTemplate({
-    String? id,
-    required this.templateName,
-    required this.playerCount,
-    required this.targetScore,
-    required this.players,
-    this.isSystemTemplate = false,  // 是否系统模板
-    this.baseTemplateId,  // 来源字段
+  Poker50Template({
+    super.id,
+    required super.templateName,
+    required super.playerCount,
+    required super.targetScore,
+    required super.players,
+    super.isSystemTemplate,
+    super.baseTemplateId,
     required this.isAllowNegative,
-  }) : id = id ?? Uuid().v4();
+  });
 
-  // 复制方法
-  ScoreTemplate copyWith({
+  @override
+  Poker50Template copyWith({
     String? id,
     String? templateName,
     int? playerCount,
@@ -51,7 +33,7 @@ class ScoreTemplate {
     bool? isSystemTemplate,
     String? baseTemplateId,
   }) {
-    return ScoreTemplate(
+    return Poker50Template(
       id: id ?? this.id,
       templateName: templateName ?? this.templateName,
       playerCount: playerCount ?? this.playerCount,
@@ -63,39 +45,6 @@ class ScoreTemplate {
     );
   }
 }
-
-@HiveType(typeId: 1)
-class PlayerInfo {
-  @HiveField(0)
-  final String id;
-
-  @HiveField(1, defaultValue: '未知玩家')
-  String name;
-
-  @HiveField(2, defaultValue: 'default_avatar.png')
-  String avatar;
-
-  PlayerInfo({
-    String? id,
-    required this.name,
-    required this.avatar,
-  }) : id = id ?? Uuid().v4();
-
-  // 修复 copyWith 方法
-  PlayerInfo copyWith({
-    String? id, // 添加 id 参数
-    String? name,
-    String? avatar,
-  }) {
-    return PlayerInfo(
-      id: id ?? this.id, // 允许覆盖 ID
-      name: name ?? this.name,
-      avatar: avatar ?? this.avatar,
-    );
-  }
-}
-
-
 
 @HiveType(typeId: 2)
 class GameSession {
