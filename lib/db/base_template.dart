@@ -1,30 +1,15 @@
-// 模板基类
-import 'package:counters/model/player_info.dart';
-import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-@HiveType(typeId: 4)
+import 'player_info.dart';
+
 abstract class BaseTemplate {
-  @HiveField(0)
   final String id;
-
-  @HiveField(1)
   String templateName;
-
-  @HiveField(2)
   int playerCount;
-
-  @HiveField(3)
   int targetScore;
-
-  @HiveField(4)
   List<PlayerInfo> players;
-
-  @HiveField(5, defaultValue: false)
   bool isSystemTemplate;
-
-  @HiveField(6, defaultValue: null)
-  final String? baseTemplateId; // 来源字段
+  final String? baseTemplateId;
 
   BaseTemplate({
     String? id,
@@ -34,7 +19,9 @@ abstract class BaseTemplate {
     required this.players,
     this.isSystemTemplate = false,
     this.baseTemplateId,
-  }) : id = id ?? Uuid().v4();
+  }) : id = id ?? const Uuid().v4();
+
+  Map<String, dynamic> toMap();
 
   // 抽象复制方法
   BaseTemplate copyWith({
@@ -47,5 +34,3 @@ abstract class BaseTemplate {
     String? baseTemplateId,
   });
 }
-
-

@@ -1,60 +1,80 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
-import '../model/base_template.dart';
-import '../model/poker50.dart';
+import '../db/base_template.dart';
+import '../db/db_helper.dart';
+import '../db/poker50.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
 import '../utils/log.dart';
 
 class ScoreProvider with ChangeNotifier {
-  late final Box<GameSession> _sessionBox;
+  final dbHelper = DatabaseHelper.instance;
   GameSession? _currentSession;
-  int _currentRound = 0; //当前轮次索引，从0开始
+  int _currentRound = 0;
 
   GameSession? get currentSession => _currentSession;
-
   int get currentRound => _currentRound;
-
   MapEntry<String, int>? _currentHighlight;
-
   MapEntry<String, int>? get currentHighlight => _currentHighlight;
 
   ScoreProvider() {
     _initialize();
-    _loadActiveSession();
-  }
-
-  bool isTemplateInUse(String templateId) {
-    return currentSession != null && currentSession!.templateId == templateId;
   }
 
   Future<void> _initialize() async {
-    try {
-      if (!Hive.isBoxOpen('gameSessions')) {
-        _sessionBox = await Hive.openBox<GameSession>('gameSessions');
-      } else {
-        _sessionBox = Hive.box<GameSession>('gameSessions');
-      }
-      _loadActiveSession();
-    } catch (e) {
-      Log.e('Hive初始化失败: $e');
-      _sessionBox = await Hive.openBox<GameSession>('gameSessions');
-    }
+    await _loadActiveSession();
   }
 
-  // 加载未完成的会话
-  void _loadActiveSession() {
-    final sessions = _sessionBox.values
-        .where((s) => !s.isCompleted) // 只加载未完成的会话
-        .toList();
-    if (sessions.isNotEmpty) {
-      _currentSession = sessions.last;
+  Future<void> _loadActiveSession() async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'game_sessions',
+      where: 'is_completed = ?',
+      whereArgs: [0],
+      orderBy: 'start_time DESC',
+      limit: 1,
+    );
+
+    if (maps.isNotEmpty) {
+      final scores = await _loadSessionScores(maps.first['id']);
+      _currentSession = GameSession.fromMap(maps.first, scores);
       _currentRound = _calculateCurrentRound();
       updateHighlight();
     }
+  }
+
+  Future<List<PlayerScore>> _loadSessionScores(String sessionId) async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'player_scores',
+      where: 'session_id = ?',
+      whereArgs: [sessionId],
+    );
+
+    // 按玩家ID分组
+    final scoresByPlayer = <String, List<int?>>{};
+    for (var map in maps) {
+      final playerId = map['player_id'] as String;
+      scoresByPlayer.putIfAbsent(playerId, () => []);
+      final roundNumber = map['round_number'] as int;
+      final score = map['score'] as int?;
+
+      // 确保列表长度足够
+      while (scoresByPlayer[playerId]!.length <= roundNumber) {
+        scoresByPlayer[playerId]!.add(null);
+      }
+      scoresByPlayer[playerId]![roundNumber] = score;
+    }
+
+    return scoresByPlayer.entries
+        .map((entry) => PlayerScore(
+              playerId: entry.key,
+              roundScores: entry.value,
+            ))
+        .toList();
   }
 
   int _calculateCurrentRound() {
@@ -70,20 +90,40 @@ class ScoreProvider with ChangeNotifier {
     _currentRound = 0;
 
     // 清除持久化存储
-    await _sessionBox.clear();
-    await Hive.deleteBoxFromDisk('sessions'); // 彻底删除数据库文件
-
-    // // 重新初始化数据库
-    // _sessionBox = await Hive.openBox<ScoreSession>('sessions');
+    final db = await dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.delete('game_sessions');
+      await txn.delete('player_scores');
+    });
 
     notifyListeners();
   }
 
-  // 保存会话到Hive
-  void _saveSession() {
-    if (_currentSession != null) {
-      _sessionBox.put(_currentSession!.id, _currentSession!);
-    }
+  // 保存会话
+  Future<void> _saveSession() async {
+    if (_currentSession == null) return;
+
+    final db = await dbHelper.database;
+    await db.transaction((txn) async {
+      // 保存会话信息
+      await txn.insert(
+        'game_sessions',
+        _currentSession!.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      // 保存玩家得分
+      for (var playerScore in _currentSession!.scores) {
+        for (int i = 0; i < playerScore.roundScores.length; i++) {
+          await txn.insert(
+            'player_scores',
+            playerScore.toMap(
+                _currentSession!.id, i, playerScore.roundScores[i]),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+    });
   }
 
   // 加载会话的公共方法
@@ -149,8 +189,21 @@ class ScoreProvider with ChangeNotifier {
     _saveSession();
   }
 
-  void deleteSession(String sessionId) {
-    _sessionBox.delete(sessionId);
+  // 删除单个会话
+  Future<void> deleteSession(String sessionId) async {
+    final db = await dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'player_scores',
+        where: 'session_id = ?',
+        whereArgs: [sessionId],
+      );
+      await txn.delete(
+        'game_sessions',
+        where: 'id = ?',
+        whereArgs: [sessionId],
+      );
+    });
     notifyListeners();
   }
 
@@ -261,14 +314,20 @@ class ScoreProvider with ChangeNotifier {
   }
 
   // 获取所有会话
-  List<GameSession> getAllSessions() {
-    // 添加类型转换和空值保护
+  Future<List<GameSession>> getAllSessions() async {
     try {
-      return _sessionBox.values
-          .whereType<GameSession>() // 类型过滤
-          .toList()
-          .reversed // 按时间倒序
-          .toList();
+      final db = await dbHelper.database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'game_sessions',
+        orderBy: 'start_time DESC',
+      );
+
+      final sessions = <GameSession>[];
+      for (var map in maps) {
+        final scores = await _loadSessionScores(map['id']);
+        sessions.add(GameSession.fromMap(map, scores));
+      }
+      return sessions;
     } catch (e) {
       Log.w('获取会话列表失败: $e');
       return [];
@@ -276,17 +335,44 @@ class ScoreProvider with ChangeNotifier {
   }
 
   // 检查指定ID的会话是否存在
-  bool checkSessionExists(String sessionId) {
-    return _sessionBox.values.any((session) => session.templateId == sessionId);
+  Future<bool> checkSessionExists(String sessionId) async {
+    final db = await dbHelper.database;
+    final count = Sqflite.firstIntValue(await db.rawQuery(
+      'SELECT COUNT(*) FROM game_sessions WHERE template_id = ?',
+      [sessionId],
+    ));
+    return count! > 0;
   }
 
   // 清除指定templateId关联的历史记录
-  void clearSessionsByTemplate(String id) {
-    final keysToDelete = _sessionBox.keys.where((key) {
-      final session = _sessionBox.get(key);
-      return session != null && session.templateId == id; // 显式空检查
-    }).toList();
+  Future<void> clearSessionsByTemplate(String templateId) async {
+    final db = await dbHelper.database;
+    await db.transaction((txn) async {
+      // 获取相关的会话ID
+      final List<Map<String, dynamic>> sessions = await txn.query(
+        'game_sessions',
+        columns: ['id'],
+        where: 'template_id = ?',
+        whereArgs: [templateId],
+      );
 
-    _sessionBox.deleteAll(keysToDelete);
+      for (var session in sessions) {
+        final sessionId = session['id'];
+        // 删除相关的得分记录
+        await txn.delete(
+          'player_scores',
+          where: 'session_id = ?',
+          whereArgs: [sessionId],
+        );
+      }
+
+      // 删除会话记录
+      await txn.delete(
+        'game_sessions',
+        where: 'template_id = ?',
+        whereArgs: [templateId],
+      );
+    });
+    notifyListeners();
   }
 }

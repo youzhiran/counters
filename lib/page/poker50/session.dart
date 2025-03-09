@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../fragments/input_panel.dart';
-import '../../model/poker50.dart';
-import '../../model/player_info.dart';
+import '../../db/poker50.dart';
+import '../../db/player_info.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/snackbar.dart';

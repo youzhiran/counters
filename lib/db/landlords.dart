@@ -1,13 +1,7 @@
-import 'package:counters/model/player_info.dart';
-import 'package:hive/hive.dart';
-
 import 'base_template.dart';
+import 'player_info.dart';
 
-part 'landlords.g.dart';
-
-@HiveType(typeId: 10)
 class LandlordsTemplate extends BaseTemplate {
-  @HiveField(7, defaultValue: false)
   bool isAllowNegative;
 
   LandlordsTemplate({
@@ -20,6 +14,34 @@ class LandlordsTemplate extends BaseTemplate {
     super.baseTemplateId,
     required this.isAllowNegative,
   });
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'template_name': templateName,
+      'player_count': playerCount,
+      'target_score': targetScore,
+      'is_system_template': isSystemTemplate ? 1 : 0,
+      'base_template_id': baseTemplateId,
+      'template_type': 'landlords',
+      'is_allow_negative': isAllowNegative ? 1 : 0,
+    };
+  }
+
+  static LandlordsTemplate fromMap(
+      Map<String, dynamic> map, List<PlayerInfo> players) {
+    return LandlordsTemplate(
+      id: map['id'],
+      templateName: map['template_name'],
+      playerCount: map['player_count'],
+      targetScore: map['target_score'],
+      isSystemTemplate: map['is_system_template'] == 1,
+      baseTemplateId: map['base_template_id'],
+      isAllowNegative: map['is_allow_negative'] == 1,
+      players: players,
+    );
+  }
 
   @override
   LandlordsTemplate copyWith({

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../../model/base_template.dart';
-import '../../model/poker50.dart';
-import '../../model/player_info.dart';
+import '../../db/base_template.dart';
+import '../../db/poker50.dart';
+import '../../db/player_info.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/snackbar.dart';
@@ -122,11 +122,11 @@ class _Poker50ConfigPageState extends State<Poker50ConfigPage> {
     );
   }
 
-  void _checkHistoryTemp() {
+  Future<void> _checkHistoryTemp() async {
     final id = widget.oriTemplate.id;
     final provider = context.read<ScoreProvider>();
     final hasHistory = provider.checkSessionExists(id);
-    if (hasHistory) {
+    if (await hasHistory) {
       AppSnackBar.warn('当前模板已有关联计分记录，保存时需清除该记录');
       setState(() {
         _hasHistory = true;
@@ -142,7 +142,7 @@ class _Poker50ConfigPageState extends State<Poker50ConfigPage> {
     final id = widget.oriTemplate.id;
     final provider = context.read<ScoreProvider>();
     // 使用新方法检查模板是否正在计分
-    if (provider.isTemplateInUse(id)) {
+    if (provider.currentSession != null) {
       await globalState.showCommonDialog<bool>(
         child: AlertDialog(
           title: const Text('提示'),
@@ -157,7 +157,7 @@ class _Poker50ConfigPageState extends State<Poker50ConfigPage> {
       );
       return false;
     }
-    if (provider.checkSessionExists(id)) {
+    if (await provider.checkSessionExists(id)) {
       final result = await globalState.showCommonDialog<bool>(
         child: AlertDialog(
           title: const Text('警告'),

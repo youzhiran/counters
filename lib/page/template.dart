@@ -1,11 +1,11 @@
-import 'package:counters/model/landlords.dart';
+import 'package:counters/db/landlords.dart';
 import 'package:counters/page/poker50/config.dart';
 import 'package:counters/page/poker50/session.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../model/base_template.dart';
-import '../model/poker50.dart';
+import '../db/base_template.dart';
+import '../db/poker50.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
@@ -115,11 +115,11 @@ class _TemplateCard extends StatelessWidget {
   }
 
   // 添加删除确认对话框
-  void _confirmDelete(BuildContext context) {
+  Future<void> _confirmDelete(BuildContext context) async {
     final provider = context.read<ScoreProvider>();
 
     // 使用新方法检查模板是否正在计分
-    if (provider.isTemplateInUse(template.id)) {
+    if (provider.currentSession != null) {
       globalState.showCommonDialog<bool>(
         child: AlertDialog(
           title: const Text('删除模板'),
@@ -132,7 +132,7 @@ class _TemplateCard extends StatelessWidget {
           ],
         ),
       );
-    } else if (provider.checkSessionExists(template.id)) {
+    } else if (await provider.checkSessionExists(template.id)) {
       globalState.showCommonDialog(
         child: AlertDialog(
           title: Text('删除模板'),

@@ -1,51 +1,52 @@
+import 'dart:ui';
+
 import 'package:counters/page/home.dart';
 import 'package:counters/page/poker50/config.dart';
 import 'package:counters/page/poker50/session.dart';
 import 'package:counters/page/setting.dart';
 import 'package:counters/page/template.dart';
 import 'package:counters/state.dart';
+import 'package:counters/utils/log.dart';
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'model/base_template.dart';
-import 'model/landlords.dart';
-import 'model/player_info.dart';
-import 'model/poker50.dart';
+import 'db/db_helper.dart';
+import 'db/poker50.dart';
 import 'providers/score_provider.dart';
 import 'providers/template_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 初始化Hive
-  await Hive.initFlutter();
+  // 初始化 SQLite
+  sqfliteFfiInit(); // 添加这行
+  databaseFactory = databaseFactoryFfi; // 添加这行
 
-  // 清除Hive数据，调试使用！！
-  // await Hive.deleteBoxFromDisk('gameSessions');
-  // await Hive.deleteBoxFromDisk('templates');
-
-  // 注册适配器
-  Hive.registerAdapter(Poker50TemplateAdapter());
-  Hive.registerAdapter(LandlordsTemplateAdapter());
-  Hive.registerAdapter(PlayerInfoAdapter());
-  Hive.registerAdapter(GameSessionAdapter());
-  Hive.registerAdapter(PlayerScoreAdapter());
-
-  // 会话存储初始化
-  await Hive.openBox<GameSession>('gameSessions');
+  // 初始化数据库
+  final dbHelper = DatabaseHelper.instance;
+  await dbHelper.database;
 
   // 初始化全局状态
   await globalState.initialize();
 
-  // 打开模板盒子
-  final templateBox = await Hive.openBox<BaseTemplate>('templates');
+  // 全局异常捕获
+  FlutterError.onError = (FlutterErrorDetails details) {
+    Log.e('Flutter 错误: ${details.exception}');
+    Log.e('Stack: ${details.stack}');
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    Log.e('未捕获错误: $error');
+    Log.e('Stack: $stack');
+    return true;
+  };
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => globalState), // 添加全局状态提供者
-        ChangeNotifierProvider(create: (_) => TemplateProvider(templateBox)),
+        ChangeNotifierProvider(create: (_) => globalState),
+        ChangeNotifierProvider(create: (_) => TemplateProvider()),
         ChangeNotifierProvider(create: (_) => ScoreProvider()),
       ],
       child: const MyApp(),
