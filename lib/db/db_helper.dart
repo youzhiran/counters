@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:counters/utils/log.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
@@ -14,13 +18,21 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'counters.db');
+    // 使用应用文档目录
+    final appDir = await path_provider.getApplicationDocumentsDirectory();
+    final dbPath = join(appDir.path, 'databases');
+    await Directory(dbPath).create(recursive: true);
+    String path = join(dbPath, 'counters.db');
+
     bool exists = await databaseExists(path);
     Log.i('数据库${exists ? "已经存在" : "不存在"} 在 $path');
-    return await openDatabase(
+
+    return await databaseFactory.openDatabase(
       path,
-      version: 1,
-      onCreate: _onCreate,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: _onCreate,
+      ),
     );
   }
 
@@ -34,7 +46,10 @@ class DatabaseHelper {
       }
 
       // 获取数据库路径
-      String path = join(await getDatabasesPath(), 'counters.db');
+      final appDir = await path_provider.getApplicationDocumentsDirectory();
+      final dbPath = join(appDir.path, 'databases');
+      String path = join(dbPath, 'counters.db');
+
       if (await databaseExists(path)) {
         Log.i('尝试删除数据库：$path');
         try {
@@ -66,9 +81,6 @@ class DatabaseHelper {
         name TEXT NOT NULL DEFAULT '未知玩家',
         avatar TEXT NOT NULL DEFAULT 'default_avatar.png'
       );
-      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-001', '预置玩家 1', 'default_avatar.png');
-      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-002', '预置玩家 2', 'default_avatar.png');
-      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-003', '预置玩家 3', 'default_avatar.png');
     ''');
 
     // 创建模板基础表
@@ -96,12 +108,6 @@ class DatabaseHelper {
         FOREIGN KEY (player_id) REFERENCES players (id),
         PRIMARY KEY (template_id, player_id)
       );
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-001');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-002');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-003');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-001');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-002');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-003');
     ''');
 
     // 创建游戏会话表

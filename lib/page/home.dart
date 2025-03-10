@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../db/base_template.dart';
-import '../db/poker50.dart';
 import '../db/player_info.dart';
+import '../db/poker50.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
@@ -17,15 +17,41 @@ class _TemplateSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<TemplateProvider>(
       builder: (context, provider, _) {
-        return ListView.builder(
-          itemCount: provider.templates.length,
-          itemBuilder: (context, index) => ListTile(
-            title: Text(provider.templates[index].templateName),
-            subtitle: Text('玩家数: ${provider.templates[index].playerCount}'),
-            onTap: () =>
-                _handleTemplateSelect(context, provider.templates[index]),
-          ),
-        );
+        final userTemplates = provider.templates
+            .where((template) => !template.isSystemTemplate)
+            .toList();
+
+        return userTemplates.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '暂无可使用的模板\n请先在模板管理中创建',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/templates'),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(200, 48),
+                      ),
+                      child: Text('前往模板管理'),
+                    ),
+                  ],
+                ),
+              )
+            : ListView.builder(
+                itemCount: userTemplates.length,
+                itemBuilder: (context, index) => ListTile(
+                  title: Text(userTemplates[index].templateName),
+                  subtitle: Text('玩家数: ${userTemplates[index].playerCount}'),
+                  onTap: () =>
+                      _handleTemplateSelect(context, userTemplates[index]),
+                ),
+              );
       },
     );
   }
@@ -133,7 +159,7 @@ class HomePage extends StatelessWidget {
         .showCommonDialog(
       child: ConfirmationDialog(
         title: '确认清除',
-        content: '这将永久删除所有历史记录!\n此操作不可撤销!',
+        content: '这将永久删除所有历史记录!\n玩家统计数据同时也会被清除。\n此操作不可撤销!',
         confirmText: '确认清除',
       ),
     )
@@ -168,94 +194,95 @@ class HomePage extends StatelessWidget {
                 return const AlertDialog(
                   content: Center(child: CircularProgressIndicator()),
                 );
-              }
+              } else {
+                final sessions = snapshot.data ?? [];
+                sessions.sort((a, b) => b.startTime.compareTo(a.startTime));
 
-              final sessions = snapshot.data ?? [];
-              sessions.sort((a, b) => b.startTime.compareTo(a.startTime));
-
-              return AlertDialog(
-                title: Row(
-                  children: [
-                    const Text('历史计分记录'),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.delete_forever),
-                      tooltip: '清除所有记录',
-                      onPressed: () => _showClearConfirmation(context),
-                    )
-                  ],
-                ),
-                content: SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  height: MediaQuery.of(context).size.height * 0.7,
-                  child: sessions.isEmpty
-                      ? const Center(child: Text('暂无历史记录'))
-                      : ListView.separated(
-                          itemCount: sessions.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final session = sessions[index];
-                            return Dismissible(
-                              key: Key(session.id),
-                              background: Container(
-                                color: Colors.red,
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.only(right: 20),
-                                child: const Icon(Icons.delete,
-                                    color: Colors.white),
-                              ),
-                              confirmDismiss: (direction) async {
-                                return await globalState.showCommonDialog(
-                                  child: AlertDialog(
-                                    title: const Text('确认删除'),
-                                    content: const Text('确定要删除这条记录吗？'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, false),
-                                        child: const Text('取消'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        child: const Text('删除',
-                                            style:
-                                                TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                              onDismissed: (_) async {
-                                await context
-                                    .read<ScoreProvider>()
-                                    .deleteSession(session.id);
-                                setState(() {});
-                              },
-                              child: HistorySessionItem(
-                                session: session,
-                                onDelete: () async {
+                return AlertDialog(
+                  title: Row(
+                    children: [
+                      const Text('历史计分记录'),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.delete_forever),
+                        tooltip: '清除所有记录',
+                        onPressed: () => _showClearConfirmation(context),
+                      )
+                    ],
+                  ),
+                  content: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.9,
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    child: sessions.isEmpty
+                        ? const Center(child: Text('暂无历史记录'))
+                        : ListView.separated(
+                            itemCount: sessions.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final session = sessions[index];
+                              return Dismissible(
+                                key: Key(session.id),
+                                background: Container(
+                                  color: Colors.red,
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  child: const Icon(Icons.delete,
+                                      color: Colors.white),
+                                ),
+                                confirmDismiss: (direction) async {
+                                  return await globalState.showCommonDialog(
+                                    child: AlertDialog(
+                                      title: const Text('确认删除'),
+                                      content: const Text('确定要删除这条记录吗？'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: const Text('取消'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: const Text('删除',
+                                              style:
+                                                  TextStyle(color: Colors.red)),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                onDismissed: (_) async {
                                   await context
                                       .read<ScoreProvider>()
                                       .deleteSession(session.id);
                                   setState(() {});
                                 },
-                                onResume: () {
-                                  Navigator.pop(context);
-                                  _resumeSession(context, session);
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('关闭'),
+                                child: HistorySessionItem(
+                                  session: session,
+                                  onDelete: () async {
+                                    await context
+                                        .read<ScoreProvider>()
+                                        .deleteSession(session.id);
+                                    setState(() {});
+                                  },
+                                  onResume: () {
+                                    Navigator.pop(context);
+                                    _resumeSession(context, session);
+                                  },
+                                ),
+                              );
+                            },
+                          ),
                   ),
-                ],
-              );
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('关闭'),
+                    ),
+                  ],
+                );
+              }
             },
           );
         },
