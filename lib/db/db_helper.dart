@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:counters/utils/log.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
@@ -14,13 +18,21 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'counters.db');
+    // 使用应用文档目录
+    final appDir = await path_provider.getApplicationDocumentsDirectory();
+    final dbPath = join(appDir.path, 'databases');
+    await Directory(dbPath).create(recursive: true);
+    String path = join(dbPath, 'counters.db');
+
     bool exists = await databaseExists(path);
     Log.i('数据库${exists ? "已经存在" : "不存在"} 在 $path');
-    return await openDatabase(
+
+    return await databaseFactory.openDatabase(
       path,
-      version: 1,
-      onCreate: _onCreate,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: _onCreate,
+      ),
     );
   }
 
@@ -34,7 +46,10 @@ class DatabaseHelper {
       }
 
       // 获取数据库路径
-      String path = join(await getDatabasesPath(), 'counters.db');
+      final appDir = await path_provider.getApplicationDocumentsDirectory();
+      final dbPath = join(appDir.path, 'databases');
+      String path = join(dbPath, 'counters.db');
+
       if (await databaseExists(path)) {
         Log.i('尝试删除数据库：$path');
         try {

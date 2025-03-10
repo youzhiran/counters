@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:chinese_font_library/chinese_font_library.dart';
@@ -12,6 +13,7 @@ import 'package:counters/utils/log.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 import 'db/db_helper.dart';
 import 'db/poker50.dart';
@@ -35,12 +37,22 @@ void main() async {
   };
 
   // 初始化 SQLite
-  sqfliteFfiInit(); // 添加这行
-  databaseFactory = databaseFactoryFfi; // 添加这行
+  if (Platform.isAndroid) {
+    await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
+    sqfliteFfiInit();
+  } else if (Platform.isWindows) {
+    sqfliteFfiInit(); // 添加这行
+    databaseFactory = databaseFactoryFfi;
+  }
+  // databaseFactory = databaseFactoryFfi;
 
-  // 初始化数据库
-  final dbHelper = DatabaseHelper.instance;
-  await dbHelper.database;
+  try {
+    // 初始化数据库
+    final dbHelper = DatabaseHelper.instance;
+    await dbHelper.database;
+  } catch (e) {
+    Log.e('数据库初始化失败: $e');
+  }
 
   // 初始化全局状态
   await globalState.initialize();
@@ -136,6 +148,7 @@ class MyApp extends StatelessWidget {
 
 class MainTabsScreen extends StatefulWidget {
   final int initialIndex;
+
   const MainTabsScreen({super.key, this.initialIndex = 0});
 
   @override
