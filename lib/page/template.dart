@@ -208,20 +208,6 @@ class _TemplateCard extends StatelessWidget {
                   );
                 },
               ),
-              ListTile(
-                title: Text('开始计分'),
-                leading: Icon(Icons.play_arrow),
-                onTap: () {
-                  context.read<ScoreProvider>().startNewGame(template);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          Poker50SessionPage(templateId: template.id),
-                    ),
-                  );
-                },
-              ),
             ],
           ),
         ),

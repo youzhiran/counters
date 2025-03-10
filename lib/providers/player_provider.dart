@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../db/db_helper.dart';
 import '../db/player_info.dart';
@@ -7,6 +10,7 @@ class PlayerProvider with ChangeNotifier {
   final dbHelper = DatabaseHelper.instance;
   List<PlayerInfo>? _players;
   String _searchQuery = '';
+  Timer? _debounceTimer;
 
   List<PlayerInfo>? get players => _players;
 
@@ -25,6 +29,12 @@ class PlayerProvider with ChangeNotifier {
     _initialize();
   }
 
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _initialize() async {
     await _loadPlayers();
   }
@@ -37,8 +47,16 @@ class PlayerProvider with ChangeNotifier {
   }
 
   void setSearchQuery(String query) {
-    _searchQuery = query;
-    notifyListeners();
+    // 取消之前的延迟操作
+    _debounceTimer?.cancel();
+
+    // 设置新的延迟操作
+    _debounceTimer = Timer(Duration(milliseconds: 300), () {
+      if (_searchQuery != query) {
+        _searchQuery = query;
+        notifyListeners();
+      }
+    });
   }
 
   Future<void> addPlayer(PlayerInfo player) async {
@@ -72,5 +90,35 @@ class PlayerProvider with ChangeNotifier {
     final db = await dbHelper.database;
     await db.delete('players');
     await _loadPlayers();
+  }
+
+  /// 获取玩家的游玩次数
+  /// 通过统计 player_scores 表中不同 session_id 的数量来计算
+  Future<int> getPlayerPlayCount(String playerId) async {
+    final db = await dbHelper.database;
+    final result = await db.rawQuery('''
+      SELECT COUNT(DISTINCT session_id) as play_count 
+      FROM player_scores 
+      WHERE player_id = ?
+    ''', [playerId]);
+
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// 获取所有玩家的游玩次数
+  Future<Map<String, int>> getAllPlayersPlayCount() async {
+    final db = await dbHelper.database;
+    final result = await db.rawQuery('''
+      SELECT player_id, COUNT(DISTINCT session_id) as play_count 
+      FROM player_scores 
+      GROUP BY player_id
+    ''');
+
+    return Map.fromEntries(
+      result.map((row) => MapEntry(
+            row['player_id'] as String,
+            row['play_count'] as int,
+          )),
+    );
   }
 }

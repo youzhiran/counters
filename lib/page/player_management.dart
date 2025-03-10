@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../db/player_info.dart';
 import '../providers/player_provider.dart';
 import '../widgets/confirmation_dialog.dart';
+import 'add_players.dart';
 
 class PlayerManagementPage extends StatelessWidget {
   const PlayerManagementPage({super.key});
@@ -42,7 +43,17 @@ class PlayerManagementPage extends StatelessWidget {
                       ),
                     ),
                     title: Text(player.name),
-                    subtitle: Text('游玩次数：0'), // TODO: 添加游玩次数统计
+                    subtitle: FutureBuilder<int>(
+                      future: provider.getPlayerPlayCount(player.id),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Text('游玩次数：加载中...');
+                        }
+                        final count = snapshot.data ?? 0;
+                        return Text('游玩次数：$count');
+                      },
+                    ),
                     trailing: PopupMenuButton<String>(
                       itemBuilder: (context) => [
                         const PopupMenuItem(
@@ -87,9 +98,9 @@ class PlayerManagementPage extends StatelessWidget {
           right: 16,
           bottom: 16,
           child: FloatingActionButton(
-            onPressed: () {
-              // TODO: 实现添加玩家功能
-            },
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => AddPlayersPage()),
+            ),
             child: const Icon(Icons.person_add),
           ),
         ),

@@ -66,9 +66,6 @@ class DatabaseHelper {
         name TEXT NOT NULL DEFAULT '未知玩家',
         avatar TEXT NOT NULL DEFAULT 'default_avatar.png'
       );
-      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-001', '预置玩家 1', 'default_avatar.png');
-      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-002', '预置玩家 2', 'default_avatar.png');
-      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-003', '预置玩家 3', 'default_avatar.png');
     ''');
 
     // 创建模板基础表
@@ -96,12 +93,6 @@ class DatabaseHelper {
         FOREIGN KEY (player_id) REFERENCES players (id),
         PRIMARY KEY (template_id, player_id)
       );
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-001');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-002');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-003');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-001');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-002');
-      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-003');
     ''');
 
     // 创建游戏会话表

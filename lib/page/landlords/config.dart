@@ -1,16 +1,19 @@
 import 'package:counters/db/landlords.dart';
+import 'package:counters/fragments/player_select_dialog.dart';
+import 'package:counters/providers/player_provider.dart';
 import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../db/base_template.dart';
-import '../../db/poker50.dart';
 import '../../db/player_info.dart';
+import '../../db/poker50.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/snackbar.dart';
 
+// todo 同步poker50逻辑
 class LandlordsConfigPage extends StatefulWidget {
   final LandlordsTemplate oriTemplate;
 
@@ -54,6 +57,7 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkHistoryTemp();
+      _updatePlayerCount(widget.oriTemplate.playerCount);
     });
   }
 
@@ -187,11 +191,14 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
   }
 
   Future<void> _updateTemplate() async {
-    for (int i = 0; i < _nameControllers.length; i++) {
-      _players[i] = _players[i].copyWith(name: _nameControllers[i].text.trim());
-    }
-
     _validateInputs();
+
+    // 检查玩家数量是否匹配
+    final targetCount = int.parse(_playerCountController.text);
+    if (_players.length != targetCount) {
+      AppSnackBar.error('请添加足够的玩家（${_players.length}/$targetCount）');
+      return;
+    }
 
     if (_playerCountError != null ||
         _targetScoreError != null ||
@@ -230,16 +237,23 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
   }
 
   void _saveAsTemplate() {
-    for (int i = 0; i < _nameControllers.length; i++) {
-      _players[i] = _players[i].copyWith(name: _nameControllers[i].text.trim());
-    }
+    AppSnackBar.show('暂未实现，尽请期待');
+  }
 
+  void _saveAsTemplate2() {
     _validateInputs();
+
+    // 检查玩家数量是否匹配
+    final targetCount = int.parse(_playerCountController.text);
+    if (_players.length != targetCount) {
+      AppSnackBar.warn('请添加足够的玩家（${_players.length}/$targetCount）');
+      return;
+    }
 
     if (_playerCountError != null ||
         _targetScoreError != null ||
         _templateNameError != null) {
-      AppSnackBar.error('请修正输入错误');
+      AppSnackBar.warn('请修正输入错误');
       return;
     }
 
@@ -301,7 +315,6 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
         setState(() => _playerCountError = '最多20人');
       } else {
         setState(() => _playerCountError = null);
-        _updatePlayerCount(num);
       }
     }
   }
@@ -358,7 +371,8 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
           ),
           SizedBox(height: 8),
           Text(
-            '• 适用于：类似每局基于底分和倍数，结合胜负、炸弹/火箭翻倍及春天等牌型效果，计算地主与农民的得分或扣分的游戏。',
+            '• 适用于：类似每局基于底分和倍数，结合胜负、炸弹/火箭翻倍及春天等牌型效果，计算地主与农民的得分或扣分的游戏。\n'
+            '• 本模板暂未完成，尽请期待。',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   height: 1.5,
                 ),
@@ -440,15 +454,58 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('玩家设置', style: Theme.of(context).textTheme.titleLarge),
-        SizedBox(height: 16),
         ListView.builder(
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
           itemCount: _players.length,
-          itemBuilder: (context, index) => _PlayerItemEditor(
-            controller: _nameControllers[index], // 传递控制器
+          itemBuilder: (context, index) => Padding(
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+            child: ListTile(
+              leading: CircleAvatar(
+                radius: 24,
+                child: Icon(Icons.person),
+              ),
+              title: Text(_players[index].name),
+              trailing: IconButton(
+                icon: Icon(Icons.close),
+                onPressed: () {
+                  setState(() {
+                    _players.removeAt(index);
+                    _nameControllers.removeAt(index);
+                  });
+                },
+              ),
+            ),
           ),
         ),
+        if (_players.length < (int.tryParse(_playerCountController.text) ?? 0))
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final result = await globalState.showCommonDialog(
+                  child: PlayerSelectDialog(
+                    selectedPlayers: _players,
+                    maxCount: int.parse(_playerCountController.text) -
+                        _players.length,
+                  ),
+                );
+
+                if (result != null) {
+                  setState(() {
+                    for (var player in result) {
+                      _players.add(player);
+                      _nameControllers
+                          .add(TextEditingController(text: player.name));
+                    }
+                  });
+                }
+              },
+              icon: Icon(Icons.person_add),
+              label: Text(
+                  '选择玩家（${_players.length}/${_playerCountController.text}）'),
+            ),
+          ),
       ],
     );
   }
@@ -479,50 +536,20 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
     );
   }
 
-  void _updatePlayerCount(int newCount) {
+  void _updatePlayerCount(int newCount) async {
+    final playerProvider = context.read<PlayerProvider>();
+    final dbPlayers = playerProvider.players ?? [];
+
     if (newCount > _players.length) {
-      for (int i = _players.length; i < newCount; i++) {
-        _players
-            .add(PlayerInfo(name: '玩家 ${i + 1}', avatar: 'default_avatar.png'));
-        _nameControllers
-            .add(TextEditingController(text: '玩家 ${i + 1}')); // 新增控制器
+      // 只添加数据库中的玩家
+      for (int i = _players.length; i < newCount && i < dbPlayers.length; i++) {
+        _players.add(dbPlayers[i]);
+        _nameControllers.add(TextEditingController(text: dbPlayers[i].name));
       }
     } else if (newCount < _players.length) {
       _players.removeRange(newCount, _players.length);
-      _nameControllers.removeRange(
-          newCount, _nameControllers.length); // 移除多余控制器
+      _nameControllers.removeRange(newCount, _nameControllers.length);
     }
     setState(() {});
-  }
-}
-
-class _PlayerItemEditor extends StatelessWidget {
-  // 改为无状态组件
-  final TextEditingController controller;
-
-  const _PlayerItemEditor({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          CircleAvatar(radius: 24, child: Icon(Icons.person)),
-          SizedBox(width: 16),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                labelText: '玩家名称',
-                border: OutlineInputBorder(),
-                counterText: '${controller.text.length}/10',
-              ),
-              maxLength: 10,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

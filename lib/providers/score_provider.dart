@@ -16,8 +16,10 @@ class ScoreProvider with ChangeNotifier {
   int _currentRound = 0;
 
   GameSession? get currentSession => _currentSession;
+
   int get currentRound => _currentRound;
   MapEntry<String, int>? _currentHighlight;
+
   MapEntry<String, int>? get currentHighlight => _currentHighlight;
 
   ScoreProvider() {
@@ -300,12 +302,12 @@ class ScoreProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void resetGame() {
+  Future<void> resetGame() async {
     if (_currentSession != null) {
       // 标记会话为已完成
       _currentSession!.isCompleted = true;
       _currentSession!.endTime = DateTime.now();
-      _saveSession(); // 保存修改到Hive
+      await _saveSession(); // 保存修改到数据库
     }
 
     _currentSession = null;

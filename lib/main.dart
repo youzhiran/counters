@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:chinese_font_library/chinese_font_library.dart';
 import 'package:counters/page/home.dart';
 import 'package:counters/page/player_management.dart';
 import 'package:counters/page/poker50/config.dart';
@@ -69,11 +70,14 @@ class MyApp extends StatelessWidget {
           navigatorKey: globalState.navigatorKey,
           scaffoldMessengerKey: globalState.scaffoldMessengerKey,
           title: '桌游计分器',
-          theme: _buildTheme(state.themeColor, Brightness.light),
-          darkTheme: _buildTheme(state.themeColor, Brightness.dark),
+          theme: _buildTheme(state.themeColor, Brightness.light)
+              .useSystemChineseFont(Brightness.light),
+          darkTheme: _buildTheme(state.themeColor, Brightness.dark)
+              .useSystemChineseFont(Brightness.dark),
           themeMode: state.themeMode,
           routes: {
             '/': (context) => const MainTabsScreen(),
+            '/templates': (context) => const MainTabsScreen(initialIndex: 2),
             '/poker50_session': (context) => Scaffold(
                   // 为子页面包裹Scaffold
                   appBar: AppBar(
@@ -131,14 +135,15 @@ class MyApp extends StatelessWidget {
 }
 
 class MainTabsScreen extends StatefulWidget {
-  const MainTabsScreen({super.key});
+  final int initialIndex;
+  const MainTabsScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainTabsScreen> createState() => _MainTabsScreenState();
 }
 
 class _MainTabsScreenState extends State<MainTabsScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   late PageController _pageController; // 保持late声明
 
   final List<Widget> _screens = [
@@ -150,8 +155,10 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
 
   // 初始化方法
   @override
+  @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _selectedIndex);
   }
 
