@@ -1,8 +1,11 @@
 import 'package:counters/state.dart';
 import 'package:counters/version.dart';
+import 'package:counters/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../db/db_helper.dart';
 import '../utils/net.dart';
 
 class SettingPage extends StatefulWidget {
@@ -15,6 +18,12 @@ class SettingPage extends StatefulWidget {
 class _SettingPageState extends State<SettingPage> {
   String _versionName = '读取失败';
   String _versionCode = '读取失败';
+
+  // 添加计数器和显示状态
+  int _versionClickCount = 0;
+  bool _showDevOptions = false;
+  static const String _keyShowDevOptions = 'show_dev_options'; // 添加key常量
+  final int _clicksToShowDev = 5; // 需要点击5次才显示开发者选项
 
   final List<Color> _themeColors = [
     Colors.blue,
@@ -31,6 +40,88 @@ class _SettingPageState extends State<SettingPage> {
   void initState() {
     super.initState();
     _loadPackageInfo();
+    _loadDevOptions();
+  }
+
+  // 添加加载开发者选项方法
+  Future<void> _loadDevOptions() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _showDevOptions = prefs.getBool(_keyShowDevOptions) ?? false;
+    });
+  }
+
+  // 处理版本信息点击
+  void _handleVersionTap() {
+    setState(() {
+      _versionClickCount++;
+      if (_versionClickCount >= _clicksToShowDev && !_showDevOptions) {
+        _showDevOptions = true;
+        _saveDevOptions(true); // 保存状态
+        AppSnackBar.show('已启用开发者选项。本功能仅限调试使用，请慎重操作！');
+      }
+    });
+
+    // 3秒后重置点击计数
+    Future.delayed(Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _versionClickCount = 0;
+        });
+      }
+    });
+  }
+
+  // 隐藏开发者选项方法
+  void _hideDevOptions() async {
+    setState(() {
+      _showDevOptions = false;
+    });
+    await _saveDevOptions(false); // 保存状态
+    AppSnackBar.show('已隐藏开发者选项');
+  }
+
+  // 添加保存开发者选项状态方法
+  Future<void> _saveDevOptions(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyShowDevOptions, value);
+  }
+
+  void _resetDatabase() {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text('重置数据库'),
+        content: Text('此操作将删除所有数据并重新初始化数据库。包括自定义模板、玩家设置、计分历史等。\n此操作不可恢复，是否继续？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await DatabaseHelper.instance.resetDatabase();
+                if (mounted) {
+                  globalState.showMessage(
+                    title: '成功',
+                    message: TextSpan(text: '数据库已重置'),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  globalState.showMessage(
+                    title: '错误',
+                    message: TextSpan(text: '重置数据库失败：$e'),
+                  );
+                }
+              }
+            },
+            child: Text('重置', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadPackageInfo() async {
@@ -218,21 +309,37 @@ class _SettingPageState extends State<SettingPage> {
                     'https://github.com/youzhiran/counters/',
                   ),
                 ),
+                if (_showDevOptions) ...[
+                  _buildSectionHeader('开发者选项'),
+                  _buildListTile(
+                    icon: Icons.delete_forever,
+                    title: '重置数据库',
+                    onTap: _resetDatabase,
+                  ),
+                  _buildListTile(
+                    icon: Icons.visibility_off,
+                    title: '隐藏开发者选项',
+                    onTap: _hideDevOptions,
+                  ),
+                ],
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              '版本 $_versionName($_versionCode)\n'
-              'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除数据或重装程序。',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
+          GestureDetector(
+            onTap: _handleVersionTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '版本 $_versionName($_versionCode)\n'
+                'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除数据或重装程序。',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );

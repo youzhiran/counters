@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:counters/page/home.dart';
+import 'package:counters/page/player_management.dart';
 import 'package:counters/page/poker50/config.dart';
 import 'package:counters/page/poker50/session.dart';
 import 'package:counters/page/setting.dart';
@@ -13,22 +14,12 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'db/db_helper.dart';
 import 'db/poker50.dart';
+import 'providers/player_provider.dart';
 import 'providers/score_provider.dart';
 import 'providers/template_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 初始化 SQLite
-  sqfliteFfiInit(); // 添加这行
-  databaseFactory = databaseFactoryFfi; // 添加这行
-
-  // 初始化数据库
-  final dbHelper = DatabaseHelper.instance;
-  await dbHelper.database;
-
-  // 初始化全局状态
-  await globalState.initialize();
 
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -42,12 +33,24 @@ void main() async {
     return true;
   };
 
+  // 初始化 SQLite
+  sqfliteFfiInit(); // 添加这行
+  databaseFactory = databaseFactoryFfi; // 添加这行
+
+  // 初始化数据库
+  final dbHelper = DatabaseHelper.instance;
+  await dbHelper.database;
+
+  // 初始化全局状态
+  await globalState.initialize();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => globalState),
         ChangeNotifierProvider(create: (_) => TemplateProvider()),
         ChangeNotifierProvider(create: (_) => ScoreProvider()),
+        ChangeNotifierProvider(create: (_) => PlayerProvider()),
       ],
       child: const MyApp(),
     ),
@@ -140,6 +143,7 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
 
   final List<Widget> _screens = [
     const HomePage(),
+    const PlayerManagementPage(),
     const TemplatePage(),
     const SettingPage(),
   ];
@@ -167,12 +171,31 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> appBarTitles = ['首页', '模板', '设置'];
+    final List<String> appBarTitles = ['首页', '玩家', '模板', '设置'];
 
     return Scaffold(
       appBar: AppBar(
         title: Text(appBarTitles[_selectedIndex]),
-        automaticallyImplyLeading: false, // 隐藏默认返回按钮
+        automaticallyImplyLeading: false,
+        actions: _selectedIndex == 1
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () {
+                    showSearch(
+                      context: context,
+                      delegate: PlayerSearchDelegate(),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_sweep),
+                  onPressed: () {
+                    const PlayerManagementPage().showDeleteAllDialog(context);
+                  },
+                ),
+              ]
+            : null,
       ),
       body: PageView(
         physics: const NeverScrollableScrollPhysics(),
@@ -187,6 +210,11 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: '主页',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: '玩家',
           ),
           NavigationDestination(
             icon: Icon(Icons.view_list_outlined),

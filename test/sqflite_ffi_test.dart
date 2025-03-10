@@ -1,6 +1,5 @@
-import 'package:test/test.dart';
-import 'package:sqflite_common/sqlite_api.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:test/test.dart';
 
 void main() {
   // Init ffi loader if needed.

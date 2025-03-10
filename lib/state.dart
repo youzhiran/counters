@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:animations/animations.dart';
+import 'package:counters/utils/log.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -28,7 +29,11 @@ class GlobalState with ChangeNotifier {
 
   // 初始化方法（需要在main函数中调用）
   Future<void> initialize() async {
-    _prefs = await SharedPreferences.getInstance();
+    try {
+      _prefs = await SharedPreferences.getInstance();
+    } catch (e) {
+      Log.e('读取SharedPreferences出错: $e');
+    }
     _loadPreferences();
   }
 

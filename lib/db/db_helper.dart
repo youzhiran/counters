@@ -1,3 +1,4 @@
+import 'package:counters/utils/log.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -14,11 +15,47 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'counters.db');
+    bool exists = await databaseExists(path);
+    Log.i('数据库${exists ? "已经存在" : "不存在"} 在 $path');
     return await openDatabase(
       path,
       version: 1,
       onCreate: _onCreate,
     );
+  }
+
+  /// 删除并重新创建数据库
+  Future<void> resetDatabase() async {
+    try {
+      // 关闭现有数据库连接
+      if (_database != null) {
+        await _database!.close();
+        _database = null;
+      }
+
+      // 获取数据库路径
+      String path = join(await getDatabasesPath(), 'counters.db');
+      if (await databaseExists(path)) {
+        Log.i('尝试删除数据库：$path');
+        try {
+          await deleteDatabase(path);
+          // 检查删除是否成功
+          if (await databaseExists(path)) {
+            throw Exception('数据库文件删除失败，可能被其他程序占用');
+          }
+          Log.i('数据库文件删除成功');
+        } catch (e) {
+          throw Exception('删除数据库文件时出错: $e');
+        }
+      }
+
+      // 重新初始化数据库
+      Log.i('重新创建数据库');
+      _database = await _initDatabase();
+    } catch (e) {
+      Log.e('重置数据库失败: $e');
+      rethrow;
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -28,7 +65,10 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL DEFAULT '未知玩家',
         avatar TEXT NOT NULL DEFAULT 'default_avatar.png'
-      )
+      );
+      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-001', '预置玩家 1', 'default_avatar.png');
+      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-002', '预置玩家 2', 'default_avatar.png');
+      INSERT INTO "main"."players" ("id", "name", "avatar") VALUES ('sys-003', '预置玩家 3', 'default_avatar.png');
     ''');
 
     // 创建模板基础表
@@ -42,7 +82,9 @@ class DatabaseHelper {
         base_template_id TEXT,
         template_type TEXT NOT NULL,
         is_allow_negative INTEGER NOT NULL DEFAULT 0
-      )
+      );
+      INSERT INTO "main"."templates" ("id", "template_name", "player_count", "target_score", "is_system_template", "base_template_id", "template_type", "is_allow_negative") VALUES ('poker50', '3人扑克50分', 3, 50, 1, NULL, 'poker50', 0);
+      INSERT INTO "main"."templates" ("id", "template_name", "player_count", "target_score", "is_system_template", "base_template_id", "template_type", "is_allow_negative") VALUES ('landlords', '斗地主', 3, 100, 1, NULL, 'landlords', 0);
     ''');
 
     // 创建模板-玩家关联表
@@ -53,7 +95,13 @@ class DatabaseHelper {
         FOREIGN KEY (template_id) REFERENCES templates (id),
         FOREIGN KEY (player_id) REFERENCES players (id),
         PRIMARY KEY (template_id, player_id)
-      )
+      );
+      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-001');
+      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-002');
+      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('poker50', 'sys-003');
+      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-001');
+      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-002');
+      INSERT INTO "main"."template_players" ("template_id", "player_id") VALUES ('landlords', 'sys-003');
     ''');
 
     // 创建游戏会话表
