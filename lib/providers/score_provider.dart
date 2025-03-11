@@ -273,6 +273,7 @@ class ScoreProvider with ChangeNotifier {
   }
 
   /// 更新指定玩家的特定回合得分
+  ///
   /// [playerId]: 玩家ID
   /// [roundIndex]: 回合索引
   /// [newScore]: 新分数值
@@ -302,8 +303,11 @@ class ScoreProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> resetGame() async {
-    if (_currentSession != null) {
+  /// 重置游戏
+  ///
+  /// [saveToHistory]: 是否保存到历史记录中
+  Future<void> resetGame(bool saveToHistory) async {
+    if (saveToHistory && _currentSession != null) {
       // 标记会话为已完成
       _currentSession!.isCompleted = true;
       _currentSession!.endTime = DateTime.now();

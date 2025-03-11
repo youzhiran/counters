@@ -359,10 +359,18 @@ class HomePage extends StatelessWidget {
   }
 
   void _showEndConfirmation(BuildContext context, ScoreProvider provider) {
+    // 检查是否有任何得分记录
+    final hasScores =
+        provider.currentSession?.scores.any((s) => s.roundScores.isNotEmpty) ??
+            false;
+
+    final message =
+        hasScores ? '确定要结束当前游戏吗？进度将会保存' : '当前游戏没有任何得分记录，结束后将不会保存到历史记录中';
+
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('结束本轮游戏'),
-        content: Text('确定要结束当前游戏吗？进度将会保存'),
+        content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -370,8 +378,8 @@ class HomePage extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // 先关闭对话框
-              provider.resetGame();
+              Navigator.pop(context);
+              provider.resetGame(hasScores);
               AppSnackBar.show('已结束当前游戏计分');
             },
             child: Text('确认结束', style: TextStyle(color: Colors.red)),
