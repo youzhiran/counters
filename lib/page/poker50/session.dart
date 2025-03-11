@@ -2,9 +2,9 @@ import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../fragments/input_panel.dart';
-import '../../db/poker50.dart';
 import '../../db/player_info.dart';
+import '../../db/poker50.dart';
+import '../../fragments/input_panel.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/snackbar.dart';
@@ -87,23 +87,29 @@ class _Poker50SessionPageState extends State<Poker50SessionPage> {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('重置游戏'),
-        content: Text('确定要重置当前游戏吗？所有进度将会丢失！'),
+        content: Text('确定要重置当前游戏吗？\n'
+            '当前进度将会自动保存并标记为已完成，并启动一个新的计分。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('取消'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context); // 先关闭对话框
               final template = context
                   .read<TemplateProvider>()
                   .getTemplate(widget.templateId);
-              context.read<ScoreProvider>()
-                ..resetGame()
-                ..startNewGame(template!);
+              // 使用await确保resetGame完成后再执行startNewGame
+              final scoreProvider = context.read<ScoreProvider>();
+              await scoreProvider.resetGame(true);
+              if (template != null) {
+                scoreProvider.startNewGame(template);
+              } else {
+                AppSnackBar.warn('模板加载失败，请重试');
+              }
             },
-            child: Text('确定重置', style: TextStyle(color: Colors.red)),
+            child: Text('重置'),
           ),
         ],
       ),
