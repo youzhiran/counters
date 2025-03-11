@@ -24,7 +24,8 @@ class PlayerManagementPage extends StatelessWidget {
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.all(16),
+              // 修改 padding，底部添加足够空间避免被悬浮按钮遮挡
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
               itemCount: provider.players!.length,
               itemBuilder: (context, index) {
                 final player = provider.players![index];
