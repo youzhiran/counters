@@ -12,25 +12,11 @@ import '../state.dart';
 import '../utils/log.dart';
 import 'landlords/config.dart';
 
-class TemplatePage extends StatefulWidget {
+class TemplatePage extends StatelessWidget {
   const TemplatePage({super.key});
 
-  @override
-  State<TemplatePage> createState() => _TemplatePageState();
-}
-
-class _TemplatePageState extends State<TemplatePage> {
   Future<void> _refreshTemplates(BuildContext context) async {
     await context.read<TemplateProvider>().reloadTemplates();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // 页面初始化时刷新模板列表
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshTemplates(context);
-    });
   }
 
   @override
