@@ -15,6 +15,10 @@ import 'landlords/config.dart';
 class TemplatePage extends StatelessWidget {
   const TemplatePage({super.key});
 
+  Future<void> _refreshTemplates(BuildContext context) async {
+    await context.read<TemplateProvider>().reloadTemplates();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<TemplateProvider>(
@@ -24,17 +28,20 @@ class TemplatePage extends StatelessWidget {
         }
 
         final templates = provider.templates;
-        return GridView.builder(
-          padding: EdgeInsets.all(16),
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 200, // 卡片最大宽度
-            mainAxisExtent: 150, // 直接指定卡片高度
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+        return RefreshIndicator(
+          onRefresh: () => _refreshTemplates(context),
+          child: GridView.builder(
+            padding: EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 200,
+              mainAxisExtent: 150,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: templates.length,
+            itemBuilder: (context, index) =>
+                _TemplateCard(template: templates[index]),
           ),
-          itemCount: templates.length,
-          itemBuilder: (context, index) =>
-              _TemplateCard(template: templates[index]),
         );
       },
     );
