@@ -12,19 +12,26 @@ class TemplateProvider with ChangeNotifier {
   final _templateDao = TemplateDao(); // 添加 DAO 实例
 
   List<BaseTemplate>? _templates;
+  bool _isLoading = true; // 加载状态
+  bool get isLoading => _isLoading;
 
   TemplateProvider() {
+    _isLoading = false;
     _initialize();
   }
 
   Future<void> _initialize() async {
-    // await _checkSystemTemplates();
-    await _loadTemplates();
-  }
+    if (_templates != null) return; // 如果已经加载过，就不再重复加载
 
-  Future<void> _loadTemplates() async {
-    _templates = await _templateDao.getAllTemplatesWithPlayers();
+    _isLoading = true;
     notifyListeners();
+
+    try {
+      _templates = await _templateDao.getAllTemplatesWithPlayers();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // 通过会话获取模板的方法
@@ -56,17 +63,17 @@ class TemplateProvider with ChangeNotifier {
     );
 
     await _templateDao.insertTemplate(newTemplate);
-    await _loadTemplates();
+    await _initialize();
   }
 
   Future<void> deleteTemplate(String id) async {
     await _templateDao.deleteTemplate(id);
-    await _loadTemplates();
+    await _initialize();
   }
 
   Future<void> updateTemplate(BaseTemplate template) async {
     if (template.isSystemTemplate) return;
     await _templateDao.updateTemplate(template);
-    await _loadTemplates();
+    await _initialize();
   }
 }

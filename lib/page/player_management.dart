@@ -110,6 +110,9 @@ class PlayerManagementPage extends StatelessWidget {
 
   Future<void> _showEditDialog(BuildContext context, PlayerInfo player) async {
     final controller = TextEditingController(text: player.name);
+
+    if (!context.mounted) return;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -135,6 +138,7 @@ class PlayerManagementPage extends StatelessWidget {
       ),
     );
 
+    if (!context.mounted) return;
     if (result == true && controller.text.isNotEmpty) {
       final updatedPlayer = player.copyWith(name: controller.text);
       context.read<PlayerProvider>().updatePlayer(updatedPlayer);
@@ -152,6 +156,7 @@ class PlayerManagementPage extends StatelessWidget {
       ),
     );
 
+    if (!context.mounted) return;
     if (result == true) {
       context.read<PlayerProvider>().deletePlayer(player.id);
     }
@@ -167,6 +172,7 @@ class PlayerManagementPage extends StatelessWidget {
       ),
     );
 
+    if (!context.mounted) return;
     if (result == true) {
       context.read<PlayerProvider>().deleteAllPlayers();
     }

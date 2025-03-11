@@ -41,10 +41,9 @@ void main() async {
     await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     sqfliteFfiInit();
   } else if (Platform.isWindows) {
-    sqfliteFfiInit(); // 添加这行
+    sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
-  // databaseFactory = databaseFactoryFfi;
 
   try {
     // 初始化数据库

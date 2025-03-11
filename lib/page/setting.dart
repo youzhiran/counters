@@ -105,7 +105,7 @@ class _SettingPageState extends State<SettingPage> {
                 if (mounted) {
                   globalState.showMessage(
                     title: '成功',
-                    message: TextSpan(text: '数据库已重置'),
+                    message: TextSpan(text: '数据库已重置，请重启程序以刷新界面数据'),
                   );
                 }
               } catch (e) {

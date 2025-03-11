@@ -21,8 +21,20 @@ class HistorySessionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final template =
-        context.read<TemplateProvider>().getTemplateBySession(session);
+    final templateProvider = context.watch<TemplateProvider>();
+
+    if (templateProvider.isLoading) {
+      return const ListTile(
+        title: Text("加载中..."),
+        leading: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    final template = templateProvider.getTemplateBySession(session);
 
     return Dismissible(
       key: Key(session.id),
