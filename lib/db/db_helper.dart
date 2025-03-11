@@ -95,8 +95,14 @@ class DatabaseHelper {
         template_type TEXT NOT NULL,
         is_allow_negative INTEGER NOT NULL DEFAULT 0
       );
-      INSERT INTO "main"."templates" ("id", "template_name", "player_count", "target_score", "is_system_template", "base_template_id", "template_type", "is_allow_negative") VALUES ('poker50', '3人扑克50分', 3, 50, 1, NULL, 'poker50', 0);
-      INSERT INTO "main"."templates" ("id", "template_name", "player_count", "target_score", "is_system_template", "base_template_id", "template_type", "is_allow_negative") VALUES ('landlords', '斗地主', 3, 100, 1, NULL, 'landlords', 0);
+      ''');
+    await db.execute('''
+    INSERT INTO templates (id, template_name, player_count, target_score, is_system_template, base_template_id, template_type, is_allow_negative) 
+    VALUES ('poker50', '3人扑克50分', 3, 50, 1, NULL, 'poker50', 0);
+    ''');
+    await db.execute('''
+    INSERT INTO templates (id, template_name, player_count, target_score, is_system_template, base_template_id, template_type, is_allow_negative) 
+    VALUES ('landlords', '斗地主', 3, 100, 1, NULL, 'landlords', 0);
     ''');
 
     // 创建模板-玩家关联表
