@@ -86,9 +86,31 @@ class PlayerProvider with ChangeNotifier {
     await _loadPlayers();
   }
 
-  Future<void> deleteAllPlayers() async {
+  /// 检查玩家是否被使用（在游戏记录或模板中）
+  Future<bool> isPlayerInUse(String playerId) async {
     final db = await dbHelper.database;
-    await db.delete('players');
+    final result = await db.rawQuery('''
+      SELECT EXISTS(
+        SELECT 1 FROM player_scores WHERE player_id = ?
+        UNION
+        SELECT 1 FROM template_players WHERE player_id = ?
+      ) as is_used
+    ''', [playerId, playerId]);
+
+    return (result.first['is_used'] as int) == 1;
+  }
+
+  /// 删除没有任何游戏记录且未被模板引用的玩家
+  Future<void> cleanUnusedPlayers() async {
+    final db = await dbHelper.database;
+    await db.rawDelete('''
+      DELETE FROM players 
+      WHERE id NOT IN (
+        SELECT DISTINCT player_id FROM player_scores
+        UNION
+        SELECT DISTINCT player_id FROM template_players
+      )
+    ''');
     await _loadPlayers();
   }
 
