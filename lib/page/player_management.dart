@@ -147,6 +147,28 @@ class PlayerManagementPage extends StatelessWidget {
 
   Future<void> _showDeleteDialog(
       BuildContext context, PlayerInfo player) async {
+    final provider = context.read<PlayerProvider>();
+    final isUsed = await provider.isPlayerInUse(player.id);
+
+    if (!context.mounted) return;
+
+    if (isUsed) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('无法删除'),
+          content: Text('${player.name} 已被使用，不能删除'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('确定'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => ConfirmationDialog(
@@ -158,7 +180,7 @@ class PlayerManagementPage extends StatelessWidget {
 
     if (!context.mounted) return;
     if (result == true) {
-      context.read<PlayerProvider>().deletePlayer(player.id);
+      provider.deletePlayer(player.id);
     }
   }
 
@@ -166,15 +188,15 @@ class PlayerManagementPage extends StatelessWidget {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => ConfirmationDialog(
-        title: '删除所有玩家',
-        content: '确定要删除所有玩家吗？此操作不可恢复。',
+        title: '删除未使用玩家',
+        content: '确定要删除所有未使用玩家吗？此操作不可恢复。',
         confirmText: '删除',
       ),
     );
 
     if (!context.mounted) return;
     if (result == true) {
-      context.read<PlayerProvider>().deleteAllPlayers();
+      context.read<PlayerProvider>().cleanUnusedPlayers();
     }
   }
 }
