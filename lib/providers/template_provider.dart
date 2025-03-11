@@ -20,9 +20,14 @@ class TemplateProvider with ChangeNotifier {
     _initialize();
   }
 
+  /// 初始化模板，不允许使用该方法重新加载模板数据
   Future<void> _initialize() async {
     if (_templates != null) return; // 如果已经加载过，就不再重复加载
+    await reloadTemplates();
+  }
 
+  /// 重新加载模板
+  Future<void> reloadTemplates() async {
     _isLoading = true;
     notifyListeners();
 
@@ -34,7 +39,7 @@ class TemplateProvider with ChangeNotifier {
     }
   }
 
-  // 通过会话获取模板的方法
+  /// 通过会话获取模板的方法
   BaseTemplate? getTemplateBySession(GameSession session) {
     return getTemplate(session.templateId);
   }
@@ -63,17 +68,17 @@ class TemplateProvider with ChangeNotifier {
     );
 
     await _templateDao.insertTemplate(newTemplate);
-    await _initialize();
+    await reloadTemplates();
   }
 
   Future<void> deleteTemplate(String id) async {
     await _templateDao.deleteTemplate(id);
-    await _initialize();
+    await reloadTemplates();
   }
 
   Future<void> updateTemplate(BaseTemplate template) async {
     if (template.isSystemTemplate) return;
     await _templateDao.updateTemplate(template);
-    await _initialize();
+    await reloadTemplates();
   }
 }

@@ -110,8 +110,6 @@ class DatabaseHelper {
       CREATE TABLE template_players (
         template_id TEXT NOT NULL,
         player_id TEXT NOT NULL,
-        FOREIGN KEY (template_id) REFERENCES templates (id),
-        FOREIGN KEY (player_id) REFERENCES players (id),
         PRIMARY KEY (template_id, player_id)
       );
     ''');
@@ -123,8 +121,7 @@ class DatabaseHelper {
         template_id TEXT NOT NULL,
         start_time INTEGER NOT NULL,
         end_time INTEGER,
-        is_completed INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (template_id) REFERENCES templates (id)
+        is_completed INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -135,8 +132,6 @@ class DatabaseHelper {
         player_id TEXT NOT NULL,
         round_number INTEGER NOT NULL,
         score INTEGER,
-        FOREIGN KEY (session_id) REFERENCES game_sessions (id),
-        FOREIGN KEY (player_id) REFERENCES players (id),
         PRIMARY KEY (session_id, player_id, round_number)
       )
     ''');
