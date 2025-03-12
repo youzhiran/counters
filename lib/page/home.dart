@@ -1,3 +1,4 @@
+import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,7 +11,7 @@ import '../state.dart';
 import '../widgets/confirmation_dialog.dart';
 import '../widgets/history_session_item.dart';
 import '../widgets/snackbar.dart';
-import 'poker50/session.dart';
+import 'poker50/poker50_session.dart';
 
 class _TemplateSelector extends StatelessWidget {
   @override
@@ -33,8 +34,11 @@ class _TemplateSelector extends StatelessWidget {
                     ),
                     SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () =>
-                          Navigator.pushNamed(context, '/templates'),
+                      onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        '/templates',
+                        (route) => false, // 清除所有路由栈
+                      ),
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(200, 48),
                       ),
@@ -312,7 +316,7 @@ class HomePage extends StatelessWidget {
             );
 
             return ListTile(
-              leading: CircleAvatar(child: Text(player.name[0])),
+              leading: PlayerAvatar.build(context, player),
               title: Text(player.name),
               subtitle: Text('总得分: ${score.totalScore}'),
               trailing: () {

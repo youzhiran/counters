@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../db/poker50.dart';
 import '../db/player_info.dart';
+import '../db/poker50.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 
@@ -341,9 +342,20 @@ class _QuickInputPanelState extends State<QuickInputPanel>
       playerScoreHistory[score.playerId] = scoreHistory;
       playerColors[score.playerId] =
           Colors.primaries[i % Colors.primaries.length];
-      // 从缓存Map获取玩家信息
+      // 获取玩家信息
       final player = playersMap[score.playerId];
-      playerNames[score.playerId] = player?.name ?? '玩家 ${i + 1}';
+      if (player != null) {
+        // 使用玩家ID生成固定的颜色（与PlayerAvatar保持一致）
+        final colorIndex =
+            player.id.hashCode % PlayerAvatar.avatarColors.length;
+        playerColors[score.playerId] = PlayerAvatar.avatarColors[colorIndex];
+        playerNames[score.playerId] = player.name;
+      } else {
+        // fallback颜色
+        playerColors[score.playerId] =
+            Colors.primaries[i % Colors.primaries.length];
+        playerNames[score.playerId] = '玩家 ${i + 1}';
+      }
     }
 
     // 找出最大轮次和最大分数，用于绘图比例计算

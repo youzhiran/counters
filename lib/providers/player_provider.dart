@@ -36,10 +36,10 @@ class PlayerProvider with ChangeNotifier {
   }
 
   Future<void> _initialize() async {
-    await _loadPlayers();
+    await loadPlayers();
   }
 
-  Future<void> _loadPlayers() async {
+  Future<void> loadPlayers() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query('players');
     _players = maps.map((map) => PlayerInfo.fromMap(map)).toList();
@@ -62,7 +62,7 @@ class PlayerProvider with ChangeNotifier {
   Future<void> addPlayer(PlayerInfo player) async {
     final db = await dbHelper.database;
     await db.insert('players', player.toMap());
-    await _loadPlayers();
+    await loadPlayers();
   }
 
   Future<void> updatePlayer(PlayerInfo player) async {
@@ -73,7 +73,15 @@ class PlayerProvider with ChangeNotifier {
       where: 'id = ?',
       whereArgs: [player.id],
     );
-    await _loadPlayers();
+    
+    // 只更新内存中的特定玩家数据（目前游玩次数的查询还是会触发查询全部数据库操作）
+    if (_players != null) {
+      final index = _players!.indexWhere((p) => p.id == player.id);
+      if (index != -1) {
+        _players![index] = player;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> deletePlayer(String id) async {
@@ -83,7 +91,7 @@ class PlayerProvider with ChangeNotifier {
       where: 'id = ?',
       whereArgs: [id],
     );
-    await _loadPlayers();
+    await loadPlayers();
   }
 
   /// 检查玩家是否被使用（在游戏记录或模板中）
@@ -111,7 +119,7 @@ class PlayerProvider with ChangeNotifier {
         SELECT DISTINCT player_id FROM template_players
       )
     ''');
-    await _loadPlayers();
+    await loadPlayers();
   }
 
   /// 获取玩家的游玩次数
@@ -143,4 +151,5 @@ class PlayerProvider with ChangeNotifier {
           )),
     );
   }
+
 }

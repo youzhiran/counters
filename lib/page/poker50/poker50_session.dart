@@ -1,4 +1,5 @@
 import 'package:counters/state.dart';
+import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -354,33 +355,42 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // 在初始化时更新高亮位置
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ScoreProvider>().updateHighlight();
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final highlight = context.watch<ScoreProvider>().currentHighlight;
 
     if (highlight != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final key = '${highlight.key}_${highlight.value}';
-        final cellKey = _cellKeys[key];
-        if (cellKey?.currentContext != null) {
-          Scrollable.ensureVisible(
-            cellKey!.currentContext!,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            alignment: 0.5,
-          );
-        }
+      // 改为使用延迟执行
+      Future.delayed(Duration(milliseconds: 100), () {
+        _scrollToHighlight();
       });
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    // 监听内容区域的滚动事件，同步到标题行
-    _contentHorizontalController.addListener(() {
-      _headerHorizontalController.jumpTo(_contentHorizontalController.offset);
-    });
+  // 抽取滚动逻辑到单独的方法
+  void _scrollToHighlight() {
+    final highlight = context.read<ScoreProvider>().currentHighlight;
+    if (highlight != null) {
+      final key = '${highlight.key}_${highlight.value}';
+      final cellKey = _cellKeys[key];
+      if (cellKey?.currentContext != null) {
+        Scrollable.ensureVisible(
+          cellKey!.currentContext!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.5,
+        );
+      }
+    }
   }
 
   @override
@@ -439,7 +449,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  CircleAvatar(child: Text(player.name.substring(0, 1))),
+                  PlayerAvatar.build(context, player),
                   Text(
                     player.name,
                     overflow: TextOverflow.ellipsis,

@@ -3,9 +3,9 @@ import 'dart:ui';
 
 import 'package:chinese_font_library/chinese_font_library.dart';
 import 'package:counters/page/home.dart';
-import 'package:counters/page/player_management.dart';
+import 'package:counters/page/player.dart';
 import 'package:counters/page/poker50/config.dart';
-import 'package:counters/page/poker50/session.dart';
+import 'package:counters/page/poker50/poker50_session.dart';
 import 'package:counters/page/setting.dart';
 import 'package:counters/page/template.dart';
 import 'package:counters/state.dart';
@@ -210,7 +210,7 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
                 IconButton(
                   icon: const Icon(Icons.delete_sweep),
                   onPressed: () {
-                    const PlayerManagementPage().showDeleteAllDialog(context);
+                    const PlayerManagementPage().showCleanPlayersDialog(context);
                   },
                 ),
               ]

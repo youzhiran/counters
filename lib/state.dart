@@ -74,7 +74,33 @@ class GlobalState with ChangeNotifier {
         barrierColor: Colors.black38,
         barrierDismissible: dismissible,
       ),
-      builder: (_) => child,
+      builder: (context) => LayoutBuilder(
+        builder: (context, constraints) {
+          // 获取屏幕尺寸
+          final size = MediaQuery.of(context).size;
+
+          // 计算对话框的最大宽度
+          // 在小屏幕上使用90%的宽度，在大屏幕上限制最大宽度
+          final maxWidth = size.width < 600
+              ? size.width * 0.9
+              : size.width < 1200
+                  ? 550.0
+                  : 600.0;
+
+          // 计算对话框的最大高度
+          final maxHeight = size.height * 0.8;
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: maxWidth,
+                maxHeight: maxHeight,
+              ),
+              child: child,
+            ),
+          );
+        },
+      ),
       filter: filter,
     );
   }

@@ -1,8 +1,6 @@
+import 'package:counters/widgets/player_widget.dart';
+import 'package:counters/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import '../db/player_info.dart';
-import '../providers/player_provider.dart';
 
 class AddPlayersPage extends StatefulWidget {
   const AddPlayersPage({super.key});
@@ -12,47 +10,39 @@ class AddPlayersPage extends StatefulWidget {
 }
 
 class _AddPlayersPageState extends State<AddPlayersPage> {
-  final List<TextEditingController> _controllers = [TextEditingController()];
-
-  @override
-  void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
+  // 使用List<GlobalKey>来引用PlayerListItem组件
+  final List<GlobalKey<PlayerListItemState>> _playerKeys = [
+    GlobalKey<PlayerListItemState>()
+  ];
 
   void _addNewPlayer() {
     setState(() {
-      _controllers.add(TextEditingController());
+      _playerKeys.add(GlobalKey<PlayerListItemState>());
     });
   }
 
   void _removePlayer(int index) {
     setState(() {
-      _controllers[index].dispose();
-      _controllers.removeAt(index);
+      _playerKeys.removeAt(index);
     });
   }
 
   void _savePlayers(BuildContext context) {
-    final provider = context.read<PlayerProvider>();
     bool hasValidPlayers = false;
 
-    for (var controller in _controllers) {
-      final name = controller.text.trim();
-      if (name.isNotEmpty) {
-        hasValidPlayers = true;
-        final player = PlayerInfo(
-          name: name,
-          avatar: 'default_avatar.png',
-        );
-        provider.addPlayer(player);
+    for (var key in _playerKeys) {
+      if (key.currentState != null) {
+        key.currentState!.savePlayer();
+        if (key.currentState!.hasValidName()) {
+          hasValidPlayers = true;
+        }
       }
     }
 
     if (hasValidPlayers) {
       Navigator.pop(context);
+    } else {
+      AppSnackBar.warn('请至少输入一个有效的玩家名称');
     }
   }
 
@@ -68,60 +58,24 @@ class _AddPlayersPageState extends State<AddPlayersPage> {
           ),
         ],
       ),
-      body: ListView.separated(
+      body: ListView.builder(
         padding: EdgeInsets.all(16),
-        itemCount: _controllers.length + 1,
-        separatorBuilder: (context, index) {
-          // 最后一个分隔线（添加按钮之前）使用不同样式
-          if (index == _controllers.length - 1) {
-            return Divider(height: 1, thickness: 1);
-          }
-          return Divider(height: 1);
-        },
+        itemCount: _playerKeys.length,
         itemBuilder: (context, index) {
-          if (index == _controllers.length) {
-            return Padding(
-              padding: EdgeInsets.only(top: 16),
-              child: OutlinedButton.icon(
-                onPressed: _addNewPlayer,
-                icon: Icon(Icons.add),
-                label: Text('添加新玩家'),
-              ),
-            );
-          }
-
-          return Padding(
-            padding: EdgeInsets.fromLTRB(0, 6, 0, 6),
-            child: Row(
-              children: [
-                CircleAvatar(radius: 24, child: Icon(Icons.person)),
-                SizedBox(width: 16),
-                Expanded(
-                  child: ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: _controllers[index],
-                    builder: (context, value, child) {
-                      return TextField(
-                        controller: _controllers[index],
-                        decoration: InputDecoration(
-                          labelText: '玩家名称',
-                          border: OutlineInputBorder(),
-                          counterText: '${value.text.length}/10',
-                        ),
-                        maxLength: 10,
-                      );
-                    },
-                  ),
-                ),
-                if (_controllers.length > 1)
-                  IconButton(
-                    icon: Icon(Icons.remove_circle_outline),
-                    onPressed: () => _removePlayer(index),
-                    color: Colors.red,
-                  ),
-              ],
-            ),
+          return PlayerListItem(
+            key: _playerKeys[index],
+            showRemoveButton: _playerKeys.length > 1,
+            onRemove: () => _removePlayer(index),
           );
         },
+      ),
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.all(16),
+        child: OutlinedButton.icon(
+          onPressed: _addNewPlayer,
+          icon: Icon(Icons.person_add),
+          label: Text('添加新玩家'),
+        ),
       ),
     );
   }

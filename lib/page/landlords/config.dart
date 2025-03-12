@@ -8,9 +8,9 @@ import 'package:provider/provider.dart';
 
 import '../../db/base_template.dart';
 import '../../db/player_info.dart';
-import '../../db/poker50.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
+import '../../widgets/player_widget.dart';
 import '../../widgets/snackbar.dart';
 
 // todo 同步poker50逻辑
@@ -237,58 +237,9 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
   }
 
   void _saveAsTemplate() {
-    AppSnackBar.show('暂未实现，尽请期待');
+    AppSnackBar.show('暂未实现，敬请期待');
   }
 
-  void _saveAsTemplate2() {
-    _validateInputs();
-
-    // 检查玩家数量是否匹配
-    final targetCount = int.parse(_playerCountController.text);
-    if (_players.length != targetCount) {
-      AppSnackBar.warn('请添加足够的玩家（${_players.length}/$targetCount）');
-      return;
-    }
-
-    if (_playerCountError != null ||
-        _targetScoreError != null ||
-        _templateNameError != null) {
-      AppSnackBar.warn('请修正输入错误');
-      return;
-    }
-
-    final rootId = _getRootBaseTemplateId() ?? widget.oriTemplate.id;
-
-    final newTemplate = Poker50Template(
-      templateName: _templateNameController.text,
-      playerCount: int.parse(_playerCountController.text),
-      targetScore: int.parse(_targetScoreController.text),
-      players: _players,
-      isAllowNegative: _allowNegative,
-      baseTemplateId: rootId,
-    );
-
-    // 检查每个名称是否为空
-    for (final player in newTemplate.players) {
-      if (player.name.trim().isEmpty) {
-        AppSnackBar.error('玩家名称不能为空或全是空格');
-        return;
-      }
-    }
-
-    context.read<TemplateProvider>().saveUserTemplate(newTemplate, rootId);
-    Navigator.pop(context);
-  }
-
-  // 获取根模板ID的方法
-  String? _getRootBaseTemplateId() {
-    BaseTemplate? current = widget.oriTemplate;
-    while (current != null && !current.isSystemTemplate) {
-      current =
-          context.read<TemplateProvider>().getTemplate(current.baseTemplateId!);
-    }
-    return current?.id;
-  }
 
   String _getRootBaseTemplateName() {
     BaseTemplate? current = widget.oriTemplate;
@@ -372,7 +323,7 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
           SizedBox(height: 8),
           Text(
             '• 适用于：类似每局基于底分和倍数，结合胜负、炸弹/火箭翻倍及春天等牌型效果，计算地主与农民的得分或扣分的游戏。\n'
-            '• 本模板暂未完成，尽请期待。',
+            '• 本模板暂未完成，敬请期待。',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   height: 1.5,
                 ),
@@ -461,10 +412,7 @@ class _LandlordsConfigPageState extends State<LandlordsConfigPage> {
           itemBuilder: (context, index) => Padding(
             padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
             child: ListTile(
-              leading: CircleAvatar(
-                radius: 24,
-                child: Icon(Icons.person),
-              ),
+              leading: PlayerAvatar.build(context, _players[index]),
               title: Text(_players[index].name),
               trailing: IconButton(
                 icon: Icon(Icons.close),

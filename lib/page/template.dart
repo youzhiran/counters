@@ -1,6 +1,6 @@
 import 'package:counters/db/landlords.dart';
 import 'package:counters/page/poker50/config.dart';
-import 'package:counters/page/poker50/session.dart';
+import 'package:counters/page/poker50/poker50_session.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -70,8 +70,12 @@ class _TemplateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8.0), // 默认卡片圆角值
+      elevation: 0,
+      shape: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        borderSide: BorderSide(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
       ),
       child: InkWell(
         onTap: () => _handleTap(context),

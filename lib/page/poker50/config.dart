@@ -10,6 +10,7 @@ import '../../db/poker50.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
+import '../../widgets/player_widget.dart';
 import '../../widgets/snackbar.dart';
 
 class Poker50ConfigPage extends StatefulWidget {
@@ -455,10 +456,7 @@ class _Poker50ConfigPageState extends State<Poker50ConfigPage> {
           itemBuilder: (context, index) => Padding(
             padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
             child: ListTile(
-              leading: CircleAvatar(
-                radius: 24,
-                child: Icon(Icons.person),
-              ),
+              leading: PlayerAvatar.build(context, _players[index]),
               title: Text(_players[index].name),
               trailing: IconButton(
                 icon: Icon(Icons.close),
