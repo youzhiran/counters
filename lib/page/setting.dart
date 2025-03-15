@@ -1,11 +1,16 @@
+import 'dart:io';
+
 import 'package:counters/state.dart';
+import 'package:counters/utils/data.dart';
 import 'package:counters/version.dart';
 import 'package:counters/widgets/snackbar.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../db/db_helper.dart';
+import '../utils/log.dart';
 import '../utils/net.dart';
 
 class SettingPage extends StatefulWidget {
@@ -18,6 +23,10 @@ class SettingPage extends StatefulWidget {
 class _SettingPageState extends State<SettingPage> {
   String _versionName = '读取失败';
   String _versionCode = '读取失败';
+  String _dataStoragePath = '应用默认目录';
+  bool _isCustomPath = false;
+  static const String _keyDataStoragePath = 'data_storage_path';
+  static const String _keyIsCustomPath = 'is_custom_path';
 
   // 添加计数器和显示状态
   int _versionClickCount = 0;
@@ -41,6 +50,259 @@ class _SettingPageState extends State<SettingPage> {
     super.initState();
     _loadPackageInfo();
     _loadDevOptions();
+    _loadStorageSettings();
+  }
+
+  // 加载存储设置
+  Future<void> _loadStorageSettings() async {
+    if (!Platform.isWindows) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final defaultDir = await DataManager.getDefaultBaseDir();
+    setState(() {
+      _isCustomPath = prefs.getBool(_keyIsCustomPath) ?? false;
+      _dataStoragePath = prefs.getString(_keyDataStoragePath) ?? defaultDir;
+    });
+  }
+
+  // 保存存储设置
+  Future<void> _saveStorageSettings(bool isCustom, String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyIsCustomPath, isCustom);
+    await prefs.setString(_keyDataStoragePath, path);
+  }
+
+  // 检查目标目录是否存在文件并清理
+  Future<bool> _checkAndCleanTargetDir(String targetPath,
+      {bool needConfirm = false}) async {
+    final targetDir = Directory(targetPath);
+    if (await targetDir.exists()) {
+      bool hasFiles = false;
+      try {
+        await for (var _ in targetDir.list()) {
+          hasFiles = true;
+          break;
+        }
+        if (hasFiles) {
+          if (needConfirm) {
+            final confirmed = await globalState.showCommonDialog<bool>(
+                  child: AlertDialog(
+                    title: Text('目标目录不为空'),
+                    content:
+                        Text('目标目录下 counters-data 内已存在数据文件，继续操作将删除这些文件。是否继续？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text('继续', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                ) ??
+                false;
+
+            if (!confirmed) return false;
+          }
+
+          try {
+            await targetDir.delete(recursive: true);
+            await targetDir.create(recursive: true);
+            AppSnackBar.show('已清空目标目录');
+          } catch (e) {
+            AppSnackBar.error('清空目标目录失败：$e');
+            return false;
+          }
+        }
+      } catch (e) {
+        Log.e('检查目标目录失败：$e');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // 执行数据迁移
+  Future<bool> _migrateData(String oldPath, String newPath) async {
+    return await globalState.showProgressDialog(
+      title: '数据迁移',
+      task: (onProgress) => DataManager.migrateData(
+        oldPath,
+        newPath,
+        onProgress: (message, progress) {
+          if (message.contains('迁移已在进行中')) {
+            Log.i('有其他迁移任务正在执行，请稍后再试');
+          }
+          onProgress(message, progress);
+        },
+      ),
+    );
+  }
+
+  // 选择数据存储位置
+  Future<void> _selectStoragePath() async {
+    if (!Platform.isWindows) return;
+
+    String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: '选择数据存储位置',
+      initialDirectory: DataManager.getAppDir(),
+    );
+
+    if (selectedDirectory != null) {
+      final newDataDir = DataManager.getDataDir(selectedDirectory);
+
+      // 检查目录是否可写
+      if (!await DataManager.isDirWritable(selectedDirectory)) {
+        AppSnackBar.show('所选目录无写入权限，请选择其他目录');
+        return;
+      }
+
+      // 检查并清理目标目录
+      if (!await _checkAndCleanTargetDir(newDataDir, needConfirm: true)) {
+        return;
+      }
+
+      // 迁移数据
+      final oldDataDir = DataManager.getDataDir(_dataStoragePath);
+      final success = await _migrateData(oldDataDir, newDataDir);
+
+      if (success) {
+        // 先保存设置，再更新状态
+        await _saveStorageSettings(true, selectedDirectory);
+
+        setState(() {
+          _isCustomPath = true;
+          _dataStoragePath = selectedDirectory;
+        });
+
+        AppSnackBar.show('数据迁移完成');
+      } else {
+        AppSnackBar.error('数据迁移失败，请手动迁移数据');
+      }
+    }
+  }
+
+  // 重置为默认存储位置
+  Future<void> _resetToDefaultPath() async {
+    if (!Platform.isWindows) return;
+
+    final defaultDir = await DataManager.getDefaultBaseDir();
+
+    // 检查是否已经是默认目录
+    if (!_isCustomPath || _dataStoragePath == defaultDir) {
+      AppSnackBar.show('当前已经是默认存储位置');
+      return;
+    }
+
+    // 检查目录是否可写
+    if (!await DataManager.isDirWritable(defaultDir)) {
+      AppSnackBar.show('所选目录无写入权限，请选择其他目录');
+      return;
+    }
+
+    final oldDataDir = DataManager.getDataDir(_dataStoragePath);
+    final newDataDir = DataManager.getDataDir(defaultDir);
+
+    // 检查并清理目标目录
+    if (!await _checkAndCleanTargetDir(newDataDir)) {
+      return;
+    }
+
+    // 迁移数据
+    final success = await _migrateData(oldDataDir, newDataDir);
+
+    if (success) {
+      await _saveStorageSettings(false, defaultDir);
+      setState(() {
+        _isCustomPath = false;
+        _dataStoragePath = defaultDir;
+      });
+
+      AppSnackBar.show('数据迁移完成');
+    } else {
+      AppSnackBar.error('数据迁移失败，请手动迁移数据');
+    }
+  }
+
+  // 显示存储位置设置对话框
+  void _showStoragePathDialog() {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text('数据存储位置'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('当前位置:\n$_dataStoragePath'),
+            SizedBox(height: 16),
+            Text('更改存储位置将进行数据迁移，若新目录含有旧版本数据将会覆盖。设置数据位置不会变动。\n'
+                '数据实际存储于选择目录下的 counters-data 目录中\n'
+                '本功能目前仅适用于Windows。'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _resetToDefaultPath();
+            },
+            child: Text('恢复默认'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _selectStoragePath();
+            },
+            child: Text('选择目录'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 重置设置
+  void _resetSettings() {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text('重置设置'),
+        content: Text('此操作将重置所有设置项到默认值，包括主题、存储位置等。\n此操作不可恢复，是否继续？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                if (mounted) {
+                  globalState.showMessage(
+                    title: '成功',
+                    message: TextSpan(text: '设置已重置，请重启程序以应用更改'),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  globalState.showMessage(
+                    title: '错误',
+                    message: TextSpan(text: '重置设置失败：$e'),
+                  );
+                }
+              }
+            },
+            child: Text('重置', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   // 添加加载开发者选项方法
@@ -281,6 +543,24 @@ class _SettingPageState extends State<SettingPage> {
                     ),
                   ),
                   onTap: _showColorPickerDialog,
+                ),
+                _buildSectionHeader('通用'),
+                if (Platform.isWindows) // 只在Windows平台显示
+                  _buildListTile(
+                    icon: Icons.folder,
+                    title: '数据存储位置',
+                    trailing: Text(
+                      _isCustomPath ? '自定义' : '默认',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    onTap: _showStoragePathDialog,
+                  ),
+                _buildListTile(
+                  icon: Icons.restore,
+                  title: '重置设置',
+                  onTap: _resetSettings,
                 ),
                 _buildSectionHeader('关于'),
                 _buildListTile(

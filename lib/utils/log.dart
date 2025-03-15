@@ -16,11 +16,12 @@ class Log {
   // 日志实例
   static final Logger _logger = Logger(
     printer: PrettyPrinter(
-      methodCount: 2,
+      methodCount: 3,
       errorMethodCount: 5, // error 时打印 5 层调用方法名
       lineLength: 120,
       colors: true,
       printEmojis: true,
+      noBoxingByDefault: true,
     ),
     level: _level,
   );

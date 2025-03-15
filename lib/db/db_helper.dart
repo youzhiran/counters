@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../utils/data.dart';
+
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
   static Database? _database;
@@ -19,8 +21,8 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     // 使用应用文档目录
-    final appDir = await path_provider.getApplicationDocumentsDirectory();
-    final dbPath = join(appDir.path, 'databases');
+    final appDir = await DataManager.getCurrentDataDir();
+    final dbPath = join(appDir, 'databases');
     await Directory(dbPath).create(recursive: true);
     String path = join(dbPath, 'counters.db');
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../state.dart';
+import '../utils/log.dart';
 
 class AppSnackBar {
   // 使用全局状态中的 key，不再需要自己的 messengerKey
@@ -20,24 +21,35 @@ class AppSnackBar {
       backgroundColor: Colors.blue,
       behavior: SnackBarBehavior.floating,
     );
+    Log.i(message);
   }
 
   // 警告样式（橙色）
-  static void warn(String message, {BuildContext? context}) {
+  static void warn(
+    String message, {
+    BuildContext? context,
+    Duration duration = const Duration(seconds: 3),
+  }) {
     _showSnackBar(
       context: context,
       content: Text(message),
       backgroundColor: Colors.orange,
     );
+    Log.w(message);
   }
 
   // 错误样式（红色）
-  static void error(String message, {BuildContext? context}) {
+  static void error(
+    String message, {
+    BuildContext? context,
+    Duration duration = const Duration(seconds: 5),
+  }) {
     _showSnackBar(
       context: context,
       content: Text(message),
       backgroundColor: Colors.red,
     );
+    Log.e(message);
   }
 
   // 完全自定义样式

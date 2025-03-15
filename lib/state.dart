@@ -64,6 +64,65 @@ class GlobalState with ChangeNotifier {
     notifyListeners(); // 通知界面更新
   }
 
+  /// 显示进度对话框
+  /// 显示进度对话框
+  String? _progressMessage;
+  double _progressValue = 0;
+  Future<bool> showProgressDialog({
+    required String title,
+    required Future<bool> Function(
+      void Function(String message, double progress) onProgress,
+    ) task,
+  }) async {
+    bool? result;
+    bool taskStarted = false; // 添加标志，防止任务被多次调用
+
+    await showCommonDialog<void>(
+      dismissible: false,
+      child: Builder(
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              // 开始执行任务，确保只执行一次
+              if (result == null && !taskStarted) {
+                taskStarted = true; // 标记任务已开始
+                result = null;
+                task((message, progress) {
+                  if (!context.mounted) return;
+                  setState(() {
+                    _progressMessage = message;
+                    _progressValue = progress;
+                  });
+                }).then((value) {
+                  result = value;
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                });
+              }
+
+              return AlertDialog(
+                title: Text(title),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_progressMessage ?? '准备中...'),
+                    const SizedBox(height: 16),
+                    LinearProgressIndicator(
+                      value: _progressValue,
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+    return result ?? false;
+  }
+
   Future<T?> showCommonDialog<T>({
     required Widget child,
     bool dismissible = true,
@@ -74,33 +133,7 @@ class GlobalState with ChangeNotifier {
         barrierColor: Colors.black38,
         barrierDismissible: dismissible,
       ),
-      builder: (context) => LayoutBuilder(
-        builder: (context, constraints) {
-          // 获取屏幕尺寸
-          final size = MediaQuery.of(context).size;
-
-          // 计算对话框的最大宽度
-          // 在小屏幕上使用90%的宽度，在大屏幕上限制最大宽度
-          final maxWidth = size.width < 600
-              ? size.width * 0.9
-              : size.width < 1200
-                  ? 550.0
-                  : 600.0;
-
-          // 计算对话框的最大高度
-          final maxHeight = size.height * 0.8;
-
-          return Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: maxWidth,
-                maxHeight: maxHeight,
-              ),
-              child: child,
-            ),
-          );
-        },
-      ),
+      builder: (_) => child,
       filter: filter,
     );
   }

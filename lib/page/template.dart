@@ -45,12 +45,12 @@ class _TemplatePageState extends State<TemplatePage> {
         return RefreshIndicator(
           onRefresh: () => _refreshTemplates(context),
           child: GridView.builder(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(12),
             gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 200,
               mainAxisExtent: 150,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+              crossAxisSpacing: 6,
+              mainAxisSpacing: 6,
             ),
             itemCount: templates.length,
             itemBuilder: (context, index) =>
