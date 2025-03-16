@@ -195,7 +195,7 @@ class _Poker50ConfigPageState extends State<Poker50ConfigPage> {
     // 检查玩家数量是否匹配
     final targetCount = int.parse(_playerCountController.text);
     if (_players.length != targetCount) {
-      AppSnackBar.error('请添加足够的玩家（${_players.length}/$targetCount）');
+      AppSnackBar.error('请添加/删除足够的玩家（${_players.length}/$targetCount）');
       return;
     }
 
@@ -238,10 +238,18 @@ class _Poker50ConfigPageState extends State<Poker50ConfigPage> {
   void _saveAsTemplate() {
     _validateInputs();
 
+    // 检查输入值是否有效
+    int? playerCount = int.tryParse(_playerCountController.text);
+    int? targetScore = int.tryParse(_targetScoreController.text);
+
+    if (playerCount == null || targetScore == null) {
+      AppSnackBar.error('玩家数量和目标分数必须为有效数字');
+      return;
+    }
+
     // 检查玩家数量是否匹配
-    final targetCount = int.parse(_playerCountController.text);
-    if (_players.length != targetCount) {
-      AppSnackBar.warn('请添加足够的玩家（${_players.length}/$targetCount）');
+    if (_players.length != playerCount) {
+      AppSnackBar.warn('请添加/删除足够的玩家（${_players.length}/$playerCount）');
       return;
     }
 
@@ -256,8 +264,8 @@ class _Poker50ConfigPageState extends State<Poker50ConfigPage> {
 
     final newTemplate = Poker50Template(
       templateName: _templateNameController.text,
-      playerCount: int.parse(_playerCountController.text),
-      targetScore: int.parse(_targetScoreController.text),
+      playerCount: playerCount,
+      targetScore: targetScore,
       players: _players,
       isAllowNegative: _allowNegative,
       baseTemplateId: rootId,
