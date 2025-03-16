@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'db/db_helper.dart';
 import 'db/poker50.dart';
@@ -55,6 +56,11 @@ void main() async {
 
   // 初始化全局状态
   await globalState.initialize();
+
+  // 初始化窗口管理器
+  await windowManager.ensureInitialized();
+  await windowManager.setMinimumSize(const Size(396, 594));
+  await windowManager.setTitle('桌游计分器');
 
   runApp(
     MultiProvider(
@@ -210,7 +216,8 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
                 IconButton(
                   icon: const Icon(Icons.delete_sweep),
                   onPressed: () {
-                    const PlayerManagementPage().showCleanPlayersDialog(context);
+                    const PlayerManagementPage()
+                        .showCleanPlayersDialog(context);
                   },
                 ),
               ]
