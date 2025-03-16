@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:counters/state.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
@@ -59,69 +61,88 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                 // 重新加载数据
                 await provider.loadPlayers();
               },
-              child: ListView.builder(
+              child: GridView.builder(
                 key: PageStorageKey('player_list'), // 为整个列表添加key
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 78),
+                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: max(
+                    250.0, // 最小宽度
+                    MediaQuery.of(context).size.width /
+                        (MediaQuery.of(context).size.width ~/ 300), // 目标宽度
+                  ),
+                  mainAxisExtent: 80, // 卡片高度
+                  crossAxisSpacing: 8, // 水平间距
+                  mainAxisSpacing: 0, // 垂直间距
+                ),
                 itemCount: provider.players!.length,
                 itemBuilder: (context, index) {
                   final player = provider.players![index];
-                  return Card(
-                    elevation: 0,
-                    shape: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                      borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                  return Center(
+                    child: Card(
+                      elevation: 0,
+                      shape: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outline
+                              .withValues(alpha: 0.2),
+                        ),
                       ),
-                    ),
-                    key: ValueKey(player.id), // 为每个Card添加唯一的key
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: PlayerAvatar.build(context, player),
-                      title: Text(player.name),
-                      subtitle: FutureBuilder<int>(
-                        future: provider.getPlayerPlayCount(player.id),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Text('游玩次数：加载中...');
-                          }
-                          final count = snapshot.data ?? 0;
-                          return Text('游玩次数：$count');
-                        },
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit),
-                                SizedBox(width: 8),
-                                Text('编辑'),
-                              ],
+                      key: ValueKey(player.id), // 为每个Card添加唯一的key
+                      // margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: PlayerAvatar.build(context, player),
+                        title: Text(
+                          player.name,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        subtitle: FutureBuilder<int>(
+                          future: provider.getPlayerPlayCount(player.id),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Text('游玩次数：加载中...');
+                            }
+                            final count = snapshot.data ?? 0;
+                            return Text('游玩次数：$count');
+                          },
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit),
+                                  SizedBox(width: 8),
+                                  Text('编辑'),
+                                ],
+                              ),
                             ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete),
-                                SizedBox(width: 8),
-                                Text('删除'),
-                              ],
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete),
+                                  SizedBox(width: 8),
+                                  Text('删除'),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                        onSelected: (value) {
-                          switch (value) {
-                            case 'edit':
-                              _showEditDialog(context, player);
-                              break;
-                            case 'delete':
-                              _showDeleteDialog(context, player);
-                              break;
-                          }
-                        },
+                          ],
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'edit':
+                                _showEditDialog(context, player);
+                                break;
+                              case 'delete':
+                                _showDeleteDialog(context, player);
+                                break;
+                            }
+                          },
+                        ),
                       ),
                     ),
                   );

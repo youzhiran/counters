@@ -5,12 +5,14 @@ import 'package:sqflite/sqflite.dart';
 
 import '../db/db_helper.dart';
 import '../db/player_info.dart';
+import '../utils/log.dart';
 
 class PlayerProvider with ChangeNotifier {
   final dbHelper = DatabaseHelper.instance;
   List<PlayerInfo>? _players;
   String _searchQuery = '';
   Timer? _debounceTimer;
+  Map<String, int> _playCountCache = {}; // 添加缓存
 
   List<PlayerInfo>? get players => _players;
 
@@ -43,7 +45,36 @@ class PlayerProvider with ChangeNotifier {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query('players');
     _players = maps.map((map) => PlayerInfo.fromMap(map)).toList();
+
+    // 一次性加载所有玩家的游玩次数
+    _playCountCache = await getAllPlayersPlayCount();
     notifyListeners();
+  }
+
+  /// 获取玩家的游玩次数
+  /// 通过统计 player_scores 表中不同 session_id 的数量来计算
+  Future<int> getPlayerPlayCount(String playerId) async {
+    // 优先使用缓存
+    if (_playCountCache.containsKey(playerId)) {
+      return _playCountCache[playerId]!;
+    }
+
+    // 缓存未命中时查询数据库
+    final count = await _queryPlayerPlayCount(playerId);
+    _playCountCache[playerId] = count;
+    return count;
+  }
+
+  Future<int> _queryPlayerPlayCount(String playerId) async {
+    final db = await dbHelper.database;
+    final result = await db.rawQuery('''
+      SELECT COUNT(DISTINCT session_id) as play_count 
+      FROM player_scores 
+      WHERE player_id = ?
+    ''', [playerId]);
+    Log.i("获取玩家的游玩次数");
+
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   void setSearchQuery(String query) {
@@ -73,8 +104,9 @@ class PlayerProvider with ChangeNotifier {
       where: 'id = ?',
       whereArgs: [player.id],
     );
-    
-    // 只更新内存中的特定玩家数据（目前游玩次数的查询还是会触发查询全部数据库操作）
+
+    _playCountCache.remove(player.id);
+
     if (_players != null) {
       final index = _players!.indexWhere((p) => p.id == player.id);
       if (index != -1) {
@@ -91,6 +123,7 @@ class PlayerProvider with ChangeNotifier {
       where: 'id = ?',
       whereArgs: [id],
     );
+    _playCountCache.remove(id);
     await loadPlayers();
   }
 
@@ -119,21 +152,23 @@ class PlayerProvider with ChangeNotifier {
         SELECT DISTINCT player_id FROM template_players
       )
     ''');
+    // 清除所有缓存
+    _playCountCache.clear();
     await loadPlayers();
   }
 
-  /// 获取玩家的游玩次数
-  /// 通过统计 player_scores 表中不同 session_id 的数量来计算
-  Future<int> getPlayerPlayCount(String playerId) async {
-    final db = await dbHelper.database;
-    final result = await db.rawQuery('''
-      SELECT COUNT(DISTINCT session_id) as play_count 
-      FROM player_scores 
-      WHERE player_id = ?
-    ''', [playerId]);
+  // Future<int> getPlayerPlayCount(String playerId) async {
+  //   final db = await dbHelper.database;
+  //   final result = await db.rawQuery('''
+  //     SELECT COUNT(DISTINCT session_id) as play_count
+  //     FROM player_scores
+  //     WHERE player_id = ?
+  //   ''', [playerId]);
 
-    return Sqflite.firstIntValue(result) ?? 0;
-  }
+  //   Log.i("获取玩家的游玩次数");
+
+  //   return Sqflite.firstIntValue(result) ?? 0;
+  // }
 
   /// 获取所有玩家的游玩次数
   Future<Map<String, int>> getAllPlayersPlayCount() async {
@@ -151,5 +186,4 @@ class PlayerProvider with ChangeNotifier {
           )),
     );
   }
-
 }
