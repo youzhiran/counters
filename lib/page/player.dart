@@ -70,27 +70,27 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                     MediaQuery.of(context).size.width /
                         (MediaQuery.of(context).size.width ~/ 300), // 目标宽度
                   ),
-                  mainAxisExtent: 80, // 卡片高度
-                  crossAxisSpacing: 8, // 水平间距
+                  mainAxisExtent: 72, // 卡片高度
+                  crossAxisSpacing: 0, // 水平间距
                   mainAxisSpacing: 0, // 垂直间距
                 ),
                 itemCount: provider.players!.length,
                 itemBuilder: (context, index) {
                   final player = provider.players![index];
-                  return Center(
-                    child: Card(
-                      elevation: 0,
-                      shape: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outline
-                              .withValues(alpha: 0.2),
-                        ),
+                  return Card(
+                    elevation: 0,
+                    shape: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withValues(alpha: 0.2),
                       ),
-                      key: ValueKey(player.id), // 为每个Card添加唯一的key
-                      // margin: const EdgeInsets.only(bottom: 8),
+                    ),
+                    key: ValueKey(player.id), // 为每个Card添加唯一的key
+                    // margin: const EdgeInsets.only(bottom: 8),
+                    child: Center(
                       child: ListTile(
                         leading: PlayerAvatar.build(context, player),
                         title: Text(
