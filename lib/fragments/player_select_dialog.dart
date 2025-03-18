@@ -2,7 +2,7 @@ import 'package:counters/page/add_players.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../db/player_info.dart';
+import '../model/player_info.dart';
 import '../providers/player_provider.dart';
 
 class PlayerSelectDialog extends StatefulWidget {
@@ -33,7 +33,7 @@ class _PlayerSelectDialogState extends State<PlayerSelectDialog> {
             final players = provider.players ?? [];
             final availablePlayers = players
                 .where(
-                    (p) => !widget.selectedPlayers.any((sp) => sp.id == p.id))
+                    (p) => !widget.selectedPlayers.any((sp) => sp.pid == p.pid))
                 .toList();
 
             return Column(
@@ -66,7 +66,7 @@ class _PlayerSelectDialogState extends State<PlayerSelectDialog> {
                     itemBuilder: (context, index) {
                       final player = availablePlayers[index];
                       final isSelected =
-                          _selectedPlayers.any((p) => p.id == player.id);
+                          _selectedPlayers.any((p) => p.pid == player.pid);
 
                       return CheckboxListTile(
                         title: Text(player.name),
@@ -80,7 +80,7 @@ class _PlayerSelectDialogState extends State<PlayerSelectDialog> {
                                     _selectedPlayers.add(player);
                                   } else {
                                     _selectedPlayers
-                                        .removeWhere((p) => p.id == player.id);
+                                        .removeWhere((p) => p.pid == player.pid);
                                   }
                                 });
                               },

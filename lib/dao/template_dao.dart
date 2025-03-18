@@ -1,10 +1,10 @@
 import 'package:sqflite/sqflite.dart';
 
-import '../db/base_template.dart';
+import '../model/base_template.dart';
 import '../db/db_helper.dart';
-import '../db/landlords.dart';
-import '../db/player_info.dart';
-import '../db/poker50.dart';
+import '../model/landlords.dart';
+import '../model/player_info.dart';
+import '../model/poker50.dart';
 
 class TemplateDao {
   final dbHelper = DatabaseHelper.instance;
@@ -18,19 +18,19 @@ class TemplateDao {
       // 插入模板-玩家关联
       for (var player in template.players) {
         await txn.insert('template_players', {
-          'template_id': template.id,
-          'player_id': player.id,
+          'template_id': template.tid,
+          'player_id': player.pid,
         });
       }
     });
   }
 
-  Future<Poker50Template?> getPoker50Template(String id) async {
+  Future<Poker50Template?> getPoker50Template(String tid) async {
     final db = await dbHelper.database;
     final maps = await db.query(
       'templates',
-      where: 'id = ? AND template_type = ?',
-      whereArgs: [id, 'poker50'],
+      where: 'tid = ? AND template_type = ?',
+      whereArgs: [tid, 'poker50'],
     );
 
     if (maps.isEmpty) return null;
@@ -38,20 +38,20 @@ class TemplateDao {
     // 获取关联的玩家
     final playerMaps = await db.rawQuery('''
       SELECT p.* FROM players p
-      INNER JOIN template_players tp ON p.id = tp.player_id
+      INNER JOIN template_players tp ON p.pid = tp.player_id
       WHERE tp.template_id = ?
-    ''', [id]);
+    ''', [tid]);
 
     final players = playerMaps.map((map) => PlayerInfo.fromMap(map)).toList();
     return Poker50Template.fromMap(maps.first, players);
   }
 
-  Future<LandlordsTemplate?> getLandlordsTemplate(String id) async {
+  Future<LandlordsTemplate?> getLandlordsTemplate(String tid) async {
     final db = await dbHelper.database;
     final maps = await db.query(
       'templates',
-      where: 'id = ? AND template_type = ?',
-      whereArgs: [id, 'landlords'],
+      where: 'tid = ? AND template_type = ?',
+      whereArgs: [tid, 'landlords'],
     );
 
     if (maps.isEmpty) return null;
@@ -59,20 +59,20 @@ class TemplateDao {
     // 获取关联的玩家
     final playerMaps = await db.rawQuery('''
       SELECT p.* FROM players p
-      INNER JOIN template_players tp ON p.id = tp.player_id
+      INNER JOIN template_players tp ON p.pid = tp.player_id
       WHERE tp.template_id = ?
-    ''', [id]);
+    ''', [tid]);
 
     final players = playerMaps.map((map) => PlayerInfo.fromMap(map)).toList();
     return LandlordsTemplate.fromMap(maps.first, players);
   }
 
-  Future<void> deleteTemplate(String id) async {
+  Future<void> deleteTemplate(String tid) async {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
       await txn.delete('template_players',
-          where: 'template_id = ?', whereArgs: [id]);
-      await txn.delete('templates', where: 'id = ?', whereArgs: [id]);
+          where: 'template_id = ?', whereArgs: [tid]);
+      await txn.delete('templates', where: 'tid = ?', whereArgs: [tid]);
     });
   }
 
@@ -80,15 +80,15 @@ class TemplateDao {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
       await txn.update('templates', template.toMap(),
-          where: 'id = ?', whereArgs: [template.id]);
+          where: 'tid = ?', whereArgs: [template.tid]);
 
       await txn.delete('template_players',
-          where: 'template_id = ?', whereArgs: [template.id]);
+          where: 'template_id = ?', whereArgs: [template.tid]);
 
       for (var player in template.players) {
         await txn.insert('template_players', {
-          'template_id': template.id,
-          'player_id': player.id,
+          'template_id': template.tid,
+          'player_id': player.pid,
         });
       }
     });
@@ -102,18 +102,18 @@ class TemplateDao {
       for (var player in template.players) {
         await txn.insert('players', player.toMap());
         await txn.insert('template_players', {
-          'template_id': template.id,
-          'player_id': player.id,
+          'template_id': template.tid,
+          'player_id': player.pid,
         });
       }
     });
   }
 
-  Future<bool> isTemplateExists(String id) async {
+  Future<bool> isTemplateExists(String tid) async {
     final db = await dbHelper.database;
     final count = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM templates WHERE id = ?',
-      [id],
+      'SELECT COUNT(*) FROM templates WHERE tid = ?',
+      [tid],
     ));
     return count != null && count > 0;
   }
@@ -131,9 +131,9 @@ class TemplateDao {
     for (var map in templates) {
       BaseTemplate? template;
       if (map['template_type'] == 'poker50') {
-        template = await getPoker50Template(map['id'] as String);
+        template = await getPoker50Template(map['tid'] as String);
       } else if (map['template_type'] == 'landlords') {
-        template = await getLandlordsTemplate(map['id'] as String);
+        template = await getLandlordsTemplate(map['tid'] as String);
       }
       if (template != null) {
         result.add(template);

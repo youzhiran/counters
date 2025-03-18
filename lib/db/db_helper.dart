@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:counters/utils/log.dart';
 import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -20,11 +19,7 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    // 使用应用文档目录
-    final appDir = await DataManager.getCurrentDataDir();
-    final dbPath = join(appDir, 'databases');
-    await Directory(dbPath).create(recursive: true);
-    String path = join(dbPath, 'counters.db');
+    String path = await getDbPath();
 
     bool exists = await databaseExists(path);
     Log.i('数据库${exists ? "已经存在" : "不存在"} 在 $path');
@@ -38,6 +33,14 @@ class DatabaseHelper {
     );
   }
 
+  Future<String> getDbPath() async {
+    final appDir = await DataManager.getCurrentDataDir();
+    final dbPath = join(appDir, 'databases');
+    await Directory(dbPath).create(recursive: true);
+    String path = join(dbPath, 'counters.db');
+    return path;
+  }
+
   /// 删除并重新创建数据库
   Future<void> resetDatabase() async {
     try {
@@ -46,11 +49,7 @@ class DatabaseHelper {
         await _database!.close();
         _database = null;
       }
-
-      // 获取数据库路径
-      final appDir = await path_provider.getApplicationDocumentsDirectory();
-      final dbPath = join(appDir.path, 'databases');
-      String path = join(dbPath, 'counters.db');
+      String path = await getDbPath();
 
       if (await databaseExists(path)) {
         Log.i('尝试删除数据库：$path');
@@ -79,7 +78,7 @@ class DatabaseHelper {
     // 创建玩家表
     await db.execute('''
       CREATE TABLE players (
-        id TEXT PRIMARY KEY,
+        pid TEXT PRIMARY KEY,
         name TEXT NOT NULL DEFAULT '未知玩家',
         avatar TEXT NOT NULL DEFAULT 'default_avatar.png'
       );
@@ -88,23 +87,23 @@ class DatabaseHelper {
     // 创建模板基础表
     await db.execute('''
       CREATE TABLE templates (
-        id TEXT PRIMARY KEY,
+        tid TEXT PRIMARY KEY,
         template_name TEXT NOT NULL,
         player_count INTEGER NOT NULL,
         target_score INTEGER NOT NULL,
         is_system_template INTEGER NOT NULL DEFAULT 0,
         base_template_id TEXT,
         template_type TEXT NOT NULL,
-        is_allow_negative INTEGER NOT NULL DEFAULT 0
+        other_set TEXT
       );
       ''');
     await db.execute('''
-    INSERT INTO templates (id, template_name, player_count, target_score, is_system_template, base_template_id, template_type, is_allow_negative) 
-    VALUES ('poker50', '3人扑克50分', 3, 50, 1, NULL, 'poker50', 0);
+    INSERT INTO templates (tid, template_name, player_count, target_score, is_system_template, base_template_id, template_type, other_set) 
+    VALUES ('poker50', '3人扑克50分', 3, 50, 1, NULL, 'poker50', null);
     ''');
     await db.execute('''
-    INSERT INTO templates (id, template_name, player_count, target_score, is_system_template, base_template_id, template_type, is_allow_negative) 
-    VALUES ('landlords', '斗地主', 3, 100, 1, NULL, 'landlords', 0);
+    INSERT INTO templates (tid, template_name, player_count, target_score, is_system_template, base_template_id, template_type, other_set) 
+    VALUES ('landlords', '斗地主', 3, 100, 1, NULL, 'landlords', null);
     ''');
 
     // 创建模板-玩家关联表
@@ -119,7 +118,7 @@ class DatabaseHelper {
     // 创建游戏会话表
     await db.execute('''
       CREATE TABLE game_sessions (
-        id TEXT PRIMARY KEY,
+        sid TEXT PRIMARY KEY,
         template_id TEXT NOT NULL,
         start_time INTEGER NOT NULL,
         end_time INTEGER,

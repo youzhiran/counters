@@ -1,16 +1,19 @@
+import 'package:counters/model/landlords.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../db/base_template.dart';
-import '../db/player_info.dart';
-import '../db/poker50.dart';
+import '../model/base_template.dart';
+import '../model/game_session.dart';
+import '../model/player_info.dart';
+import '../model/poker50.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
 import '../widgets/confirmation_dialog.dart';
 import '../widgets/history_session_item.dart';
 import '../widgets/snackbar.dart';
+import 'landlords/landlords_session.dart';
 import 'poker50/poker50_session.dart';
 
 class _TemplateSelector extends StatelessWidget {
@@ -65,13 +68,25 @@ class _TemplateSelector extends StatelessWidget {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-          builder: (_) => Poker50SessionPage(templateId: template.id)),
+        builder: (_) => HomePage.buildSessionPage(template, template.tid),
+      ),
     );
   }
 }
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key}); // 添加构造函数
+
+  static Widget buildSessionPage(BaseTemplate? template, String templateId) {
+    if (template is Poker50Template) {
+      return Poker50SessionPage(templateId: templateId);
+    } else if (template is LandlordsTemplate) {
+      return LandlordsSessionPage(templateId: templateId);
+    }
+    // 未知模板类型，返回首页并显示错误提示
+    AppSnackBar.error('未知的模板类型');
+    return const HomePage();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,11 +110,14 @@ class HomePage extends StatelessWidget {
 
   void _resumeSession(BuildContext context, GameSession session) {
     context.read<ScoreProvider>().loadSession(session);
+    final template =
+        context.read<TemplateProvider>().getTemplate(session.templateId);
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Poker50SessionPage(templateId: session.templateId),
+        builder: (_) =>
+            HomePage.buildSessionPage(template, session.templateId),
       ),
     );
   }
@@ -226,7 +244,7 @@ class HomePage extends StatelessWidget {
                             itemBuilder: (context, index) {
                               final session = sessions[index];
                               return Dismissible(
-                                key: Key(session.id),
+                                key: Key(session.sid),
                                 background: Container(
                                   color: Colors.red,
                                   alignment: Alignment.centerRight,
@@ -259,7 +277,7 @@ class HomePage extends StatelessWidget {
                                 onDismissed: (_) async {
                                   await context
                                       .read<ScoreProvider>()
-                                      .deleteSession(session.id);
+                                      .deleteSession(session.sid);
                                   setState(() {});
                                 },
                                 child: HistorySessionItem(
@@ -267,7 +285,7 @@ class HomePage extends StatelessWidget {
                                   onDelete: () async {
                                     await context
                                         .read<ScoreProvider>()
-                                        .deleteSession(session.id);
+                                        .deleteSession(session.sid);
                                     setState(() {});
                                   },
                                   onResume: () {
@@ -308,9 +326,9 @@ class HomePage extends StatelessWidget {
             final score = session.scores[index];
             // 添加容错处理
             final player = template.players.firstWhere(
-              (p) => p.id == score.playerId,
+              (p) => p.pid == score.playerId,
               orElse: () => PlayerInfo(
-                  id: 'default_$index',
+                  pid: 'default_$index',
                   name: '玩家 ${index + 1}',
                   avatar: 'default_avatar.png'),
             );
@@ -342,7 +360,8 @@ class HomePage extends StatelessWidget {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => Poker50SessionPage(templateId: template.id),
+                    builder: (_) =>
+                        HomePage.buildSessionPage(template, template.tid),
                   ),
                 ),
                 child: Text('继续本轮', style: TextStyle(color: Colors.white)),
@@ -402,7 +421,7 @@ class HomePage extends StatelessWidget {
         players: List.generate(
             3,
             (i) => PlayerInfo(
-                id: 'emergency_$i',
+                pid: 'emergency_$i',
                 name: '玩家 ${i + 1}',
                 avatar: 'default_avatar.png')),
         isAllowNegative: false);

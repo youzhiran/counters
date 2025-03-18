@@ -17,7 +17,7 @@ import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'db/db_helper.dart';
-import 'db/poker50.dart';
+import 'model/poker50.dart';
 import 'providers/player_provider.dart';
 import 'providers/score_provider.dart';
 import 'providers/template_provider.dart';

@@ -2,7 +2,7 @@ import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../db/poker50.dart';
+import '../model/game_session.dart';
 import '../providers/template_provider.dart';
 import '../utils/date_formatter.dart';
 import 'confirmation_dialog.dart';
@@ -37,7 +37,7 @@ class HistorySessionItem extends StatelessWidget {
     final template = templateProvider.getTemplateBySession(session);
 
     return Dismissible(
-      key: Key(session.id),
+      key: Key(session.sid),
       background: _buildDeleteBackground(),
       confirmDismiss: (direction) => _confirmDismiss(direction, context),
       onDismissed: (_) => onDelete(),

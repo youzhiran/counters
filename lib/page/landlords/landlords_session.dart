@@ -1,3 +1,4 @@
+import 'package:counters/model/landlords.dart';
 import 'package:counters/state.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
@@ -7,29 +8,25 @@ import '../../fragments/input_panel.dart';
 import '../../model/game_session.dart';
 import '../../model/player_info.dart';
 import '../../model/player_score.dart';
-import '../../model/poker50.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/snackbar.dart';
 
-/// 3人扑克50分
-///
-/// 玩家打牌计分，首先达到50分的失败，计分少的胜利。
-class Poker50SessionPage extends StatefulWidget {
+class LandlordsSessionPage extends StatefulWidget {
   final String templateId;
 
-  const Poker50SessionPage({super.key, required this.templateId});
+  const LandlordsSessionPage({super.key, required this.templateId});
 
   @override
-  State<Poker50SessionPage> createState() => _Poker50SessionPageState();
+  State<LandlordsSessionPage> createState() => _LandlordsSessionPageState();
 }
 
-class _Poker50SessionPageState extends State<Poker50SessionPage> {
+class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
   @override
   Widget build(BuildContext context) {
     final template = context
         .read<TemplateProvider>()
-        .getTemplate(widget.templateId) as Poker50Template;
+        .getTemplate(widget.templateId) as LandlordsTemplate;
     final session = context.watch<ScoreProvider>().currentSession;
 
     if (session == null) {
@@ -162,17 +159,25 @@ class _Poker50SessionPageState extends State<Poker50SessionPage> {
       potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
       final minWinScore =
           potentialWins.isNotEmpty ? potentialWins.first.totalScore : 0;
-      winners =
-          potentialWins.where((s) => s.totalScore == minWinScore).toList();
-      losers = failScores;
+      winners = potentialWins
+          .where((s) => s.totalScore == minWinScore)
+          .cast<PlayerScore>()
+          .toList();
+      losers = failScores.cast<PlayerScore>();
     } else {
       // 无失败玩家时，胜利者为全体最低分，失败者为全体最高分
       scores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
       final minScore = scores.first.totalScore;
       final maxScore = scores.last.totalScore;
 
-      winners = scores.where((s) => s.totalScore == minScore).toList();
-      losers = scores.where((s) => s.totalScore == maxScore).toList();
+      winners = scores
+          .where((s) => s.totalScore == minScore)
+          .cast<PlayerScore>()
+          .toList();
+      losers = scores
+          .where((s) => s.totalScore == maxScore)
+          .cast<PlayerScore>()
+          .toList();
     }
 
     globalState.showCommonDialog(
@@ -335,7 +340,7 @@ class _ScoreColumn extends StatelessWidget {
 }
 
 class _ScoreBoard extends StatefulWidget {
-  final Poker50Template template;
+  final LandlordsTemplate template;
   final GameSession session;
 
   const _ScoreBoard({required this.template, required this.session});
@@ -541,11 +546,6 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final template = context
-        .read<TemplateProvider>()
-        .getTemplate(widget.templateId) as Poker50Template;
-    final isAllowNegative = template.isAllowNegative;
-
     return AlertDialog(
       title: Text('修改分数'),
       content: Column(
@@ -574,10 +574,6 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
           onPressed: () {
             final value = int.tryParse(_controller.text) ?? 0;
             Navigator.pop(context);
-            if (!isAllowNegative && value < 0) {
-              AppSnackBar.warn('当前模板设置不允许输入负数！');
-              return;
-            }
             widget.onConfirm(value);
             context.read<ScoreProvider>().updateHighlight();
           },

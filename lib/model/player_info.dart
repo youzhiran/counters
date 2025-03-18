@@ -1,19 +1,19 @@
 import 'package:uuid/uuid.dart';
 
 class PlayerInfo {
-  final String id;
+  final String pid;
   String name;
   String avatar;
 
   PlayerInfo({
-    String? id,
+    String? pid,
     required this.name,
     required this.avatar,
-  }) : id = id ?? const Uuid().v4();
+  }) : pid = pid ?? const Uuid().v4();
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      'pid': pid,
       'name': name,
       'avatar': avatar,
     };
@@ -21,19 +21,19 @@ class PlayerInfo {
 
   static PlayerInfo fromMap(Map<String, dynamic> map) {
     return PlayerInfo(
-      id: map['id'],
+      pid: map['pid'],
       name: map['name'],
       avatar: map['avatar'],
     );
   }
 
   PlayerInfo copyWith({
-    String? id,
+    String? pid,
     String? name,
     String? avatar,
   }) {
     return PlayerInfo(
-      id: id ?? this.id,
+      pid: pid ?? this.pid,
       name: name ?? this.name,
       avatar: avatar ?? this.avatar,
     );

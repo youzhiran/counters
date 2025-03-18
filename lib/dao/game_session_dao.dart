@@ -1,5 +1,5 @@
 import '../db/db_helper.dart';
-import '../db/poker50.dart';
+import '../model/game_session.dart';
 
 class GameSessionDao {
   final dbHelper = DatabaseHelper.instance;
@@ -14,7 +14,7 @@ class GameSessionDao {
       for (var playerScore in session.scores) {
         for (int i = 0; i < playerScore.roundScores.length; i++) {
           await txn.insert('player_scores',
-              playerScore.toMap(session.id, i, playerScore.roundScores[i]));
+              playerScore.toMap(session.sid, i, playerScore.roundScores[i]));
         }
       }
     });

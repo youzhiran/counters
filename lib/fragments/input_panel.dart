@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../db/player_info.dart';
-import '../db/poker50.dart';
+import '../model/player_info.dart';
+import '../model/game_session.dart';
+import '../model/player_score.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 
@@ -322,7 +323,7 @@ class _QuickInputPanelState extends State<QuickInputPanel>
     final template =
         context.read<TemplateProvider>().getTemplate(session.templateId);
     final playersMap = <String, PlayerInfo>{
-      for (var p in template?.players ?? []) p.id: p
+      for (var p in template?.players ?? []) p.pid: p
     };
 
     // 计算每个玩家每轮的累计得分
@@ -347,7 +348,7 @@ class _QuickInputPanelState extends State<QuickInputPanel>
       if (player != null) {
         // 使用玩家ID生成固定的颜色（与PlayerAvatar保持一致）
         final colorIndex =
-            player.id.hashCode % PlayerAvatar.avatarColors.length;
+            player.pid.hashCode % PlayerAvatar.avatarColors.length;
         playerColors[score.playerId] = PlayerAvatar.avatarColors[colorIndex];
         playerNames[score.playerId] = player.name;
       } else {

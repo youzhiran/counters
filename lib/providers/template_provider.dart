@@ -3,9 +3,9 @@ import 'package:counters/dao/template_dao.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
-import '../db/base_template.dart';
 import '../db/db_helper.dart';
-import '../db/poker50.dart';
+import '../model/base_template.dart';
+import '../model/game_session.dart';
 
 class TemplateProvider with ChangeNotifier {
   final dbHelper = DatabaseHelper.instance;
@@ -46,8 +46,8 @@ class TemplateProvider with ChangeNotifier {
 
   List<BaseTemplate> get templates => _templates ?? [];
 
-  BaseTemplate? getTemplate(String id) {
-    return templates.firstWhereOrNull((t) => t.id == id);
+  BaseTemplate? getTemplate(String tid) {
+    return templates.firstWhereOrNull((t) => t.tid == tid);
   }
 
   Future<void> saveUserTemplate(
@@ -62,7 +62,7 @@ class TemplateProvider with ChangeNotifier {
     }
 
     final newTemplate = template.copyWith(
-      id: const Uuid().v4(),
+      tid: const Uuid().v4(),
       baseTemplateId: rootTemplateId,
       isSystemTemplate: false,
     );
@@ -71,8 +71,8 @@ class TemplateProvider with ChangeNotifier {
     await reloadTemplates();
   }
 
-  Future<void> deleteTemplate(String id) async {
-    await _templateDao.deleteTemplate(id);
+  Future<void> deleteTemplate(String tid) async {
+    await _templateDao.deleteTemplate(tid);
     await reloadTemplates();
   }
 

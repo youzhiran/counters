@@ -2,7 +2,7 @@ import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../db/player_info.dart';
+import '../model/player_info.dart';
 import '../providers/player_provider.dart';
 
 class PlayerAvatar {
@@ -22,7 +22,7 @@ class PlayerAvatar {
   /// 创建玩家头像组件
   static Widget build(BuildContext context, PlayerInfo player) {
     // 根据玩家ID生成固定的随机颜色
-    final colorIndex = player.id.hashCode % avatarColors.length;
+    final colorIndex = player.pid.hashCode % avatarColors.length;
     final backgroundColor = avatarColors[colorIndex].withValues(alpha: 0.2);
     final foregroundColor = avatarColors[colorIndex];
 
@@ -146,7 +146,7 @@ class PlayerListItemState extends State<PlayerListItem> {
 
   PlayerInfo getPlayerInfo() {
     return PlayerInfo(
-      id: widget.initialPlayer?.id,
+      pid: widget.initialPlayer?.pid,
       name: _controller.text.trim(),
       avatar: _selectedIcon?.codePoint.toString() ?? 'default_avatar.png',
     );
@@ -166,7 +166,7 @@ class PlayerListItemState extends State<PlayerListItem> {
     if (name.isEmpty) return;
 
     final player = PlayerInfo(
-      id: widget.initialPlayer?.id,
+      pid: widget.initialPlayer?.pid,
       name: name,
       avatar: _selectedIcon?.codePoint.toString() ?? 'default_avatar.png',
     );

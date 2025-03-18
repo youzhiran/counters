@@ -238,7 +238,7 @@ class _SettingPageState extends State<SettingPage> {
             Text('当前位置:\n$_dataStoragePath'),
             SizedBox(height: 16),
             Text('更改存储位置将进行数据迁移，若新目录含有旧版本数据将会覆盖。设置数据位置不会变动。\n'
-                '数据实际存储于选择目录下的 counters-data 目录中\n'
+                '数据实际存储于选择目录下的 counters-data 目录中。\n'
                 '本功能目前仅适用于Windows。'),
           ],
         ),

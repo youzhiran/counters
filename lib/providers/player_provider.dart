@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../db/db_helper.dart';
-import '../db/player_info.dart';
+import '../model/player_info.dart';
 import '../utils/log.dart';
 
 class PlayerProvider with ChangeNotifier {
@@ -101,14 +101,14 @@ class PlayerProvider with ChangeNotifier {
     await db.update(
       'players',
       player.toMap(),
-      where: 'id = ?',
-      whereArgs: [player.id],
+      where: 'pid = ?',
+      whereArgs: [player.pid],
     );
 
-    _playCountCache.remove(player.id);
+    _playCountCache.remove(player.pid);
 
     if (_players != null) {
-      final index = _players!.indexWhere((p) => p.id == player.id);
+      final index = _players!.indexWhere((p) => p.pid == player.pid);
       if (index != -1) {
         _players![index] = player;
         notifyListeners();
@@ -116,14 +116,14 @@ class PlayerProvider with ChangeNotifier {
     }
   }
 
-  Future<void> deletePlayer(String id) async {
+  Future<void> deletePlayer(String pid) async {
     final db = await dbHelper.database;
     await db.delete(
       'players',
-      where: 'id = ?',
-      whereArgs: [id],
+      where: 'pid = ?',
+      whereArgs: [pid],
     );
-    _playCountCache.remove(id);
+    _playCountCache.remove(pid);
     await loadPlayers();
   }
 
@@ -146,7 +146,7 @@ class PlayerProvider with ChangeNotifier {
     final db = await dbHelper.database;
     await db.rawDelete('''
       DELETE FROM players 
-      WHERE id NOT IN (
+      WHERE pid NOT IN (
         SELECT DISTINCT player_id FROM player_scores
         UNION
         SELECT DISTINCT player_id FROM template_players
@@ -157,18 +157,6 @@ class PlayerProvider with ChangeNotifier {
     await loadPlayers();
   }
 
-  // Future<int> getPlayerPlayCount(String playerId) async {
-  //   final db = await dbHelper.database;
-  //   final result = await db.rawQuery('''
-  //     SELECT COUNT(DISTINCT session_id) as play_count
-  //     FROM player_scores
-  //     WHERE player_id = ?
-  //   ''', [playerId]);
-
-  //   Log.i("获取玩家的游玩次数");
-
-  //   return Sqflite.firstIntValue(result) ?? 0;
-  // }
 
   /// 获取所有玩家的游玩次数
   Future<Map<String, int>> getAllPlayersPlayCount() async {

@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
-import '../db/base_template.dart';
 import '../db/db_helper.dart';
-import '../db/poker50.dart';
+import '../model/base_template.dart';
+import '../model/game_session.dart';
+import '../model/player_score.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
 import '../utils/log.dart';
@@ -41,7 +42,7 @@ class ScoreProvider with ChangeNotifier {
     );
 
     if (maps.isNotEmpty) {
-      final scores = await _loadSessionScores(maps.first['id']);
+      final scores = await _loadSessionScores(maps.first['sid']);
       _currentSession = GameSession.fromMap(maps.first, scores);
       _currentRound = _calculateCurrentRound();
       updateHighlight();
@@ -120,7 +121,7 @@ class ScoreProvider with ChangeNotifier {
           await txn.insert(
             'player_scores',
             playerScore.toMap(
-                _currentSession!.id, i, playerScore.roundScores[i]),
+                _currentSession!.sid, i, playerScore.roundScores[i]),
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
         }
@@ -139,14 +140,14 @@ class ScoreProvider with ChangeNotifier {
 
   void startNewGame(BaseTemplate template) {
     final validatedPlayers = template.players
-        .map((p) => p.id.isEmpty ? p.copyWith(id: const Uuid().v4()) : p)
+        .map((p) => p.pid.isEmpty ? p.copyWith(pid: const Uuid().v4()) : p)
         .toList();
 
     _currentSession = GameSession(
-      templateId: template.id,
+      templateId: template.tid,
       scores: validatedPlayers
           .map((p) => PlayerScore(
-                playerId: p.id,
+                playerId: p.pid,
                 roundScores: [],
               ))
           .toList(),
@@ -202,7 +203,7 @@ class ScoreProvider with ChangeNotifier {
       );
       await txn.delete(
         'game_sessions',
-        where: 'id = ?',
+        where: 'sid = ?',
         whereArgs: [sessionId],
       );
     });
@@ -330,7 +331,7 @@ class ScoreProvider with ChangeNotifier {
 
       final sessions = <GameSession>[];
       for (var map in maps) {
-        final scores = await _loadSessionScores(map['id']);
+        final scores = await _loadSessionScores(map['sid']);
         sessions.add(GameSession.fromMap(map, scores));
       }
       return sessions;
@@ -357,13 +358,13 @@ class ScoreProvider with ChangeNotifier {
       // 获取相关的会话ID
       final List<Map<String, dynamic>> sessions = await txn.query(
         'game_sessions',
-        columns: ['id'],
+        columns: ['sid'],
         where: 'template_id = ?',
         whereArgs: [templateId],
       );
 
       for (var session in sessions) {
-        final sessionId = session['id'];
+        final sessionId = session['sid'];
         // 删除相关的得分记录
         await txn.delete(
           'player_scores',

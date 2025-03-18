@@ -5,7 +5,7 @@ import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../db/player_info.dart';
+import '../model/player_info.dart';
 import '../providers/player_provider.dart';
 import '../widgets/confirmation_dialog.dart';
 import 'add_players.dart';
@@ -88,7 +88,7 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                             .withValues(alpha: 0.2),
                       ),
                     ),
-                    key: ValueKey(player.id), // 为每个Card添加唯一的key
+                    key: ValueKey(player.pid), // 为每个Card添加唯一的key
                     // margin: const EdgeInsets.only(bottom: 8),
                     child: Center(
                       child: ListTile(
@@ -99,7 +99,7 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                           maxLines: 1,
                         ),
                         subtitle: FutureBuilder<int>(
-                          future: provider.getPlayerPlayCount(player.id),
+                          future: provider.getPlayerPlayCount(player.pid),
                           builder: (context, snapshot) {
                             if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
@@ -227,7 +227,7 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
   Future<void> _showDeleteDialog(
       BuildContext context, PlayerInfo player) async {
     final provider = context.read<PlayerProvider>();
-    final isUsed = await provider.isPlayerInUse(player.id);
+    final isUsed = await provider.isPlayerInUse(player.pid);
 
     if (!context.mounted) return;
 
@@ -259,7 +259,7 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
 
     if (!context.mounted) return;
     if (result == true) {
-      provider.deletePlayer(player.id);
+      provider.deletePlayer(player.pid);
     }
   }
 }

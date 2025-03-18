@@ -1,15 +1,15 @@
-import 'package:counters/db/landlords.dart';
+import 'package:counters/model/landlords.dart';
 import 'package:counters/page/poker50/config.dart';
-import 'package:counters/page/poker50/poker50_session.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../db/base_template.dart';
-import '../db/poker50.dart';
+import '../model/base_template.dart';
+import '../model/poker50.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
 import '../utils/log.dart';
+import 'home.dart';
 import 'landlords/config.dart';
 
 class TemplatePage extends StatefulWidget {
@@ -157,7 +157,7 @@ class _TemplateCard extends StatelessWidget {
           ],
         ),
       );
-    } else if (await provider.checkSessionExists(template.id)) {
+    } else if (await provider.checkSessionExists(template.tid)) {
       globalState.showCommonDialog(
         child: AlertDialog(
           title: Text('删除模板'),
@@ -169,8 +169,8 @@ class _TemplateCard extends StatelessWidget {
             ),
             TextButton(
               onPressed: () {
-                context.read<TemplateProvider>().deleteTemplate(template.id);
-                provider.clearSessionsByTemplate(template.id);
+                context.read<TemplateProvider>().deleteTemplate(template.tid);
+                provider.clearSessionsByTemplate(template.tid);
                 Navigator.pop(context);
               },
               child: Text('删除并清除关联计分', style: TextStyle(color: Colors.red)),
@@ -190,7 +190,7 @@ class _TemplateCard extends StatelessWidget {
             ),
             TextButton(
               onPressed: () {
-                context.read<TemplateProvider>().deleteTemplate(template.id);
+                context.read<TemplateProvider>().deleteTemplate(template.tid);
                 Navigator.pop(context);
               },
               child: Text('删除', style: TextStyle(color: Colors.red)),
@@ -277,7 +277,7 @@ class _TemplateCard extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          Poker50SessionPage(templateId: template.id),
+                          HomePage.buildSessionPage(template, template.tid),
                     ),
                   );
                 },
