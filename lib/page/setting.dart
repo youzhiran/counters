@@ -271,7 +271,8 @@ class _SettingPageState extends State<SettingPage> {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('重置设置'),
-        content: Text('此操作将重置所有设置项到默认值，包括主题、存储位置等。\n此操作不可恢复，是否继续？'),
+        content: Text('此操作将重置所有设置项到默认值，包括主题、存储位置等。若更改过存储位置，您的计分数据也将丢失。\n'
+            '此操作不可恢复，是否继续？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -353,7 +354,9 @@ class _SettingPageState extends State<SettingPage> {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('重置数据库'),
-        content: Text('此操作将删除所有数据并重新初始化数据库。包括自定义模板、玩家设置、计分历史等。\n此操作不可恢复，是否继续？'),
+        content: Text('此操作将删除所有数据并重新初始化数据库。包括自定义模板、玩家设置、计分历史等。\n'
+            '仅在程序出现问题时使用。\n'
+            '此操作不可恢复，是否继续？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -558,9 +561,14 @@ class _SettingPageState extends State<SettingPage> {
                     onTap: _showStoragePathDialog,
                   ),
                 _buildListTile(
-                  icon: Icons.restore,
+                  icon: Icons.settings_backup_restore,
                   title: '重置设置',
                   onTap: _resetSettings,
+                ),
+                _buildListTile(
+                  icon: Icons.delete_forever,
+                  title: '重置数据库',
+                  onTap: _resetDatabase,
                 ),
                 _buildSectionHeader('关于'),
                 _buildListTile(
@@ -592,11 +600,6 @@ class _SettingPageState extends State<SettingPage> {
                 if (_showDevOptions) ...[
                   _buildSectionHeader('开发者选项'),
                   _buildListTile(
-                    icon: Icons.delete_forever,
-                    title: '重置数据库',
-                    onTap: _resetDatabase,
-                  ),
-                  _buildListTile(
                     icon: Icons.visibility_off,
                     title: '隐藏开发者选项',
                     onTap: _hideDevOptions,
@@ -611,7 +614,7 @@ class _SettingPageState extends State<SettingPage> {
               padding: const EdgeInsets.all(16),
               child: Text(
                 '版本 $_versionName($_versionCode)\n'
-                'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除数据或重装程序。',
+                'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除应用数据/重置应用数据库/重装程序。',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey[600],

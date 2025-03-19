@@ -1,4 +1,3 @@
-import 'package:counters/fragments/player_select_dialog.dart';
 import 'package:counters/model/landlords.dart';
 import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../model/base_template.dart';
 import '../../providers/template_provider.dart';
-import '../../widgets/player_widget.dart';
 import '../base_config_page.dart';
 
 class LandlordsConfigPage extends BaseConfigPage {
@@ -85,7 +83,7 @@ class _LandlordsConfigPageState
             buildTemplateInfo(),
             buildBasicSettings(3, 3),
             _buildOtherList(),
-            _buildPlayerList(),
+            buildPlayerList(),
             Padding(
               padding: const EdgeInsets.all(8),
               child: Text(
@@ -227,71 +225,13 @@ class _LandlordsConfigPageState
           SizedBox(height: 8),
           Text(
             '• 适用于：类似每局基于底分和倍数，结合胜负、炸弹/火箭翻倍及春天等牌型效果，计算地主与农民的得分或扣分的游戏。\n'
-            '• 本模板暂未完成，敬请期待。',
+            '• 本模板仍在施工，敬请期待。',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   height: 1.5,
                 ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPlayerList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('玩家设置', style: Theme.of(context).textTheme.titleLarge),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: players.length,
-          itemBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-            child: ListTile(
-              leading: PlayerAvatar.build(context, players[index]),
-              title: Text(players[index].name),
-              trailing: IconButton(
-                icon: Icon(Icons.close),
-                onPressed: () {
-                  setState(() {
-                    players.removeAt(index);
-                    nameControllers.removeAt(index);
-                  });
-                },
-              ),
-            ),
-          ),
-        ),
-        if (players.length < (int.tryParse(playerCountController.text) ?? 0))
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final result = await globalState.showCommonDialog(
-                  child: PlayerSelectDialog(
-                    selectedPlayers: players,
-                    maxCount:
-                        int.parse(playerCountController.text) - players.length,
-                  ),
-                );
-
-                if (result != null) {
-                  setState(() {
-                    for (var player in result) {
-                      players.add(player);
-                      nameControllers
-                          .add(TextEditingController(text: player.name));
-                    }
-                  });
-                }
-              },
-              icon: Icon(Icons.person_add),
-              label:
-                  Text('选择玩家（${players.length}/${playerCountController.text}）'),
-            ),
-          ),
-      ],
     );
   }
 

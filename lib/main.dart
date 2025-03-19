@@ -37,13 +37,17 @@ void main() async {
     return true;
   };
 
-  // 初始化 SQLite
+  // 按平台初始化
   if (Platform.isAndroid) {
     await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     sqfliteFfiInit();
-  } else if (Platform.isWindows) {
+  } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    // 初始化窗口管理器
+    await windowManager.ensureInitialized();
+    await windowManager.setMinimumSize(const Size(396, 594));
+    await windowManager.setTitle('桌游计分器');
   }
 
   try {
@@ -56,11 +60,6 @@ void main() async {
 
   // 初始化全局状态
   await globalState.initialize();
-
-  // 初始化窗口管理器
-  await windowManager.ensureInitialized();
-  await windowManager.setMinimumSize(const Size(396, 594));
-  await windowManager.setTitle('桌游计分器');
 
   runApp(
     MultiProvider(
@@ -122,6 +121,28 @@ class MyApp extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  /// 显示开发阶段提示对话框
+  Future<void> showDevAlert(BuildContext context) async {
+    await showDialog(
+      context: globalState.navigatorKey.currentContext!,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('提示'),
+        content: const Text('本程序仍处于积极开发阶段，程序更新不考虑数据兼容性。'
+            '\n\n如遇到异常，请尝试以下方法：'
+            '\n1. 在系统设置中清除本程序数据'
+            '\n2. 在程序设置中重置数据库'
+            '\n3. 重新安装程序'),
+        actions: [
+          TextButton(
+            child: const Text('我知道了'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
     );
   }
 
