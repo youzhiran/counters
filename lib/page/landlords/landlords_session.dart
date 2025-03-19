@@ -159,25 +159,17 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
       potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
       final minWinScore =
           potentialWins.isNotEmpty ? potentialWins.first.totalScore : 0;
-      winners = potentialWins
-          .where((s) => s.totalScore == minWinScore)
-          .cast<PlayerScore>()
-          .toList();
-      losers = failScores.cast<PlayerScore>();
+      winners =
+          potentialWins.where((s) => s.totalScore == minWinScore).toList();
+      losers = failScores;
     } else {
       // 无失败玩家时，胜利者为全体最低分，失败者为全体最高分
       scores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
       final minScore = scores.first.totalScore;
       final maxScore = scores.last.totalScore;
 
-      winners = scores
-          .where((s) => s.totalScore == minScore)
-          .cast<PlayerScore>()
-          .toList();
-      losers = scores
-          .where((s) => s.totalScore == maxScore)
-          .cast<PlayerScore>()
-          .toList();
+      winners = scores.where((s) => s.totalScore == minScore).toList();
+      losers = scores.where((s) => s.totalScore == maxScore).toList();
     }
 
     globalState.showCommonDialog(
@@ -364,6 +356,10 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   @override
   void initState() {
     super.initState();
+    // 监听内容区域的滚动事件，同步到标题行
+    _contentHorizontalController.addListener(() {
+      _headerHorizontalController.jumpTo(_contentHorizontalController.offset);
+    });
     // 在初始化时更新高亮位置
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ScoreProvider>().updateHighlight();

@@ -359,6 +359,10 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   @override
   void initState() {
     super.initState();
+    // 监听内容区域的滚动事件，同步到标题行
+    _contentHorizontalController.addListener(() {
+      _headerHorizontalController.jumpTo(_contentHorizontalController.offset);
+    });
     // 在初始化时更新高亮位置
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ScoreProvider>().updateHighlight();

@@ -226,6 +226,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
       children: [
         Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
         SwitchListTile(
+          contentPadding: const EdgeInsets.only(left: 16, right: 16),
           title: const Text('计分允许输入负数'),
           subtitle: const Text('启用后玩家计分可以输入负数值'),
           value: _allowNegative,

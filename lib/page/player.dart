@@ -70,7 +70,7 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                     MediaQuery.of(context).size.width /
                         (MediaQuery.of(context).size.width ~/ 300), // 目标宽度
                   ),
-                  mainAxisExtent: 72, // 卡片高度
+                  mainAxisExtent: 80, // 卡片高度
                   crossAxisSpacing: 0, // 水平间距
                   mainAxisSpacing: 0, // 垂直间距
                 ),

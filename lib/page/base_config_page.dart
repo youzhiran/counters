@@ -341,6 +341,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
           itemBuilder: (context, index) => Padding(
             padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
             child: ListTile(
+              contentPadding: const EdgeInsets.only(left: 16, right: 16),
               leading: PlayerAvatar.build(context, players[index]),
               title: Text(players[index].name),
               trailing: IconButton(
