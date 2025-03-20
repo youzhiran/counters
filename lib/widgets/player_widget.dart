@@ -83,6 +83,22 @@ final List<IconData> availablePlayerIcons = [
   Icons.palette,
   Icons.restaurant,
   Icons.camera,
+  Icons.cruelty_free,
+  Icons.flutter_dash,
+  Icons.spa,
+  Icons.eco,
+  Icons.forest,
+  Icons.waves,
+  Icons.water_drop,
+  Icons.local_fire_department,
+  Icons.cloud,
+  Icons.ac_unit,
+  Icons.brightness_5,
+  Icons.nights_stay,
+  Icons.rocket_launch,
+  Icons.agriculture,
+  Icons.phishing,
+  Icons.park,
 ];
 
 class PlayerListItem extends StatefulWidget {

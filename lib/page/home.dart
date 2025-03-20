@@ -1,4 +1,5 @@
 import 'package:counters/model/landlords.dart';
+import 'package:counters/utils/log.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -108,16 +109,17 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  void _resumeSession(BuildContext context, GameSession session) {
+  void _resumeSession(BuildContext context, GameSession session) async {
     context.read<ScoreProvider>().loadSession(session);
-    final template =
-        context.read<TemplateProvider>().getTemplate(session.templateId);
+    final template = await context
+        .read<TemplateProvider>()
+        .getTemplateAsync(session.templateId);
 
+    if (!context.mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            HomePage.buildSessionPage(template, session.templateId),
+        builder: (_) => HomePage.buildSessionPage(template, session.templateId),
       ),
     );
   }
@@ -314,71 +316,87 @@ class HomePage extends StatelessWidget {
 
   Widget _buildScoringBoard(BuildContext context, ScoreProvider provider) {
     final session = provider.currentSession!;
-    final template =
-        context.read<TemplateProvider>().getTemplate(session.templateId) ??
-            _createFallbackTemplate();
-    return Column(
-      children: [
-        Expanded(
-            child: ListView.builder(
-          itemCount: session.scores.length,
-          itemBuilder: (context, index) {
-            final score = session.scores[index];
-            // 添加容错处理
-            final player = template.players.firstWhere(
-              (p) => p.pid == score.playerId,
-              orElse: () => PlayerInfo(
-                  pid: 'default_$index',
-                  name: '玩家 ${index + 1}',
-                  avatar: 'default_avatar.png'),
-            );
 
-            return ListTile(
-              leading: PlayerAvatar.build(context, player),
-              title: Text(player.name),
-              subtitle: Text('总得分: ${score.totalScore}'),
-              trailing: () {
-                final lastScore = score.roundScores.lastOrNull;
-                final displayScore = lastScore ?? 0;
-                final prefix = displayScore >= 0 ? '+' : '';
-                return Text('$prefix$displayScore');
-              }(),
-            );
-          },
-        )),
-        // 继续本轮&结束本轮按钮
-        Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return FutureBuilder<BaseTemplate?>(
+        future: context
+            .read<TemplateProvider>()
+            .getTemplateAsync(session.templateId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final template = snapshot.data ?? _createFallbackTemplate();
+          return Column(
             children: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              Expanded(
+                  child: ListView.builder(
+                itemCount: session.scores.length,
+                itemBuilder: (context, index) {
+                  final score = session.scores[index];
+                  // 先尝试从模板中查找玩家
+                  final player = template.players.firstWhere(
+                    (p) => p.pid == score.playerId,
+                    orElse: () {
+                      Log.w('找不到玩家ID: ${score.playerId}');
+                      return PlayerInfo(
+                        pid: 'default_$index',
+                        name: '玩家 ${index + 1}',
+                        avatar: 'default_avatar.png',
+                      );
+                    },
+                  );
+                  return ListTile(
+                    leading: PlayerAvatar.build(context, player),
+                    title: Text(player.name),
+                    subtitle: Text('总得分: ${score.totalScore}'),
+                    trailing: () {
+                      final lastScore = score.roundScores.lastOrNull;
+                      final displayScore = lastScore ?? 0;
+                      final prefix = displayScore >= 0 ? '+' : '';
+                      return Text('$prefix$displayScore');
+                    }(),
+                  );
+                },
+              )),
+              // 继续本轮&结束本轮按钮
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      ),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              HomePage.buildSessionPage(template, template.tid),
+                        ),
+                      ),
+                      child:
+                          Text('继续本轮', style: TextStyle(color: Colors.white)),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      ),
+                      onPressed: () => _showEndConfirmation(context, provider),
+                      child:
+                          Text('结束本轮', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
                 ),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        HomePage.buildSessionPage(template, template.tid),
-                  ),
-                ),
-                child: Text('继续本轮', style: TextStyle(color: Colors.white)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                ),
-                onPressed: () => _showEndConfirmation(context, provider),
-                child: Text('结束本轮', style: TextStyle(color: Colors.white)),
-              ),
+              )
             ],
-          ),
-        )
-      ],
-    );
+          );
+        });
   }
 
   void _showEndConfirmation(BuildContext context, ScoreProvider provider) {
