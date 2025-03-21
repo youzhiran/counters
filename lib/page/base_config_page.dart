@@ -58,8 +58,71 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
     });
   }
 
+  // 获取根模板ID的方法
+  String? getRootBaseTemplateId() {
+    BaseTemplate? current = widget.oriTemplate;
+    while (current != null && !current.isSystemTemplate) {
+      current =
+          context.read<TemplateProvider>().getTemplate(current.baseTemplateId!);
+    }
+    return current?.tid;
+  }
+
+  String getRootBaseTemplateName() {
+    BaseTemplate? current = widget.oriTemplate;
+
+    // 递归查找直到系统模板
+    while (current != null && !current.isSystemTemplate) {
+      final baseId = current.baseTemplateId;
+      current = context.read<TemplateProvider>().getTemplate(baseId ?? '');
+    }
+
+    return current?.templateName ?? '系统模板';
+  }
+
+  /// 获取模板描述信息
+  String getTemplateDescription();
+
   /// 构建模板信息说明
-  Widget buildTemplateInfo();
+  Widget buildTemplateInfo() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline,
+                  color: Theme.of(context).colorScheme.primary),
+              SizedBox(width: 8),
+              Text(
+                '基于：${getRootBaseTemplateName()}',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            getTemplateDescription(),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  height: 1.5,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 
   // 用于验证输入
   bool validateBasicInputs() {
@@ -192,13 +255,13 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
           children: [
             Text('配置模板'),
             Text(
-              isSystem ? '系统模板' : '基于 ${_getRootBaseTemplateName()} 创建',
+              isSystem ? '系统模板' : '基于 ${getRootBaseTemplateName()} 创建',
               style: TextStyle(fontSize: 12),
             ),
           ],
         ),
         actions: [
-          if (!isSystem)
+          if (!isSystem) // 用户模板显示保存按钮
             Tooltip(
               message: '保存模板',
               child: IconButton(
@@ -221,7 +284,8 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
         child: Column(
           children: [
             buildTemplateInfo(),
-            buildBasicSettings(3, 3),
+            buildBasicSettings(getMinPlayerCount(), getMaxPlayerCount()),
+            buildOtherSettings(),
             buildPlayerList(),
             Padding(
               padding: const EdgeInsets.all(8),
@@ -239,6 +303,14 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
       ),
     );
   }
+
+  /// 玩家人数控制，例如 int getMinPlayerCount() => 1;
+  int getMinPlayerCount();
+
+  int getMaxPlayerCount();
+
+  /// 其他设置， 由子类实现
+  Widget buildOtherSettings() => const SizedBox.shrink();
 
   /// 基础设置组件，包含模板名称，玩家设置
   /// [minPlayerCount] 最小玩家数量
@@ -424,14 +496,5 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
       nameControllers.removeRange(newCount, nameControllers.length);
     }
     setState(() {});
-  }
-
-  String _getRootBaseTemplateName() {
-    BaseTemplate? current = widget.oriTemplate;
-    while (current != null && !current.isSystemTemplate) {
-      final baseId = current.baseTemplateId;
-      current = context.read<TemplateProvider>().getTemplate(baseId ?? '');
-    }
-    return current?.templateName ?? '系统模板';
   }
 }

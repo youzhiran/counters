@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../../model/base_template.dart';
 import '../../providers/template_provider.dart';
 import '../base_config_page.dart';
 
@@ -43,63 +42,13 @@ class _LandlordsConfigPageState
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isSystem = widget.oriTemplate.isSystemTemplate;
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('配置模板'),
-            Text(
-              isSystem ? '系统模板' : '基于 ${_getRootBaseTemplateName()} 创建',
-              style: TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          if (!isSystem) // 用户模板显示保存按钮
-            Tooltip(
-              message: '保存模板',
-              child: IconButton(
-                icon:
-                    Icon(Icons.save, color: hasHistory ? Colors.orange : null),
-                onPressed: updateTempConf,
-              ),
-            ),
-          Tooltip(
-            message: '另存为新模板',
-            child: IconButton(
-              icon: Icon(Icons.save_as),
-              onPressed: saveAsTemplate,
-            ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            buildTemplateInfo(),
-            buildBasicSettings(3, 3),
-            _buildOtherList(),
-            buildPlayerList(),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                '原模板名：${widget.oriTemplate.templateName}\nID：${widget.oriTemplate.tid}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
+  int getMinPlayerCount() => 3;
+
+  @override
+  int getMaxPlayerCount() => 3;
+
+  @override
+  Widget buildOtherSettings() => _buildOtherList();
 
   // 底分验证方法
   void _handleBaseScoreChange(String value) {
@@ -155,7 +104,7 @@ class _LandlordsConfigPageState
       return;
     }
 
-    final rootId = _getRootBaseTemplateId() ?? widget.oriTemplate.tid;
+    final rootId = getRootBaseTemplateId() ?? widget.oriTemplate.tid;
 
     final newTemplate = LandlordsTemplate(
       templateName: templateNameController.text,
@@ -171,69 +120,10 @@ class _LandlordsConfigPageState
     return;
   }
 
-  // 获取根模板ID的方法
-  String? _getRootBaseTemplateId() {
-    BaseTemplate? current = widget.oriTemplate;
-    while (current != null && !current.isSystemTemplate) {
-      current =
-          context.read<TemplateProvider>().getTemplate(current.baseTemplateId!);
-    }
-    return current?.tid;
-  }
-
-  String _getRootBaseTemplateName() {
-    BaseTemplate? current = widget.oriTemplate;
-
-    // 递归查找直到系统模板
-    while (current != null && !current.isSystemTemplate) {
-      final baseId = current.baseTemplateId;
-      current = context.read<TemplateProvider>().getTemplate(baseId ?? '');
-    }
-
-    return current?.templateName ?? '系统模板';
-  }
-
   @override
-  Widget buildTemplateInfo() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-            color:
-                Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline,
-                  color: Theme.of(context).colorScheme.primary),
-              SizedBox(width: 8),
-              Text(
-                '基于：${_getRootBaseTemplateName()}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Text(
-            '• 适用于：类似每局基于底分和倍数，结合胜负、炸弹/火箭翻倍及春天等牌型效果，计算地主与农民的得分或扣分的游戏。\n'
-            '• 本模板仍在施工，敬请期待。',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  height: 1.5,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
+  String getTemplateDescription() =>
+      '• 适用于：类似每局基于底分和倍数，结合胜负、炸弹/火箭翻倍及春天等牌型效果，计算地主与农民的得分或扣分的游戏。\n'
+      '• 本模板仍在施工，敬请期待。';
 
   Widget _buildOtherList() {
     return Column(

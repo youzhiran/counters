@@ -70,11 +70,17 @@ class _AddPlayersPageState extends State<AddPlayersPage> {
         },
       ),
       bottomNavigationBar: Padding(
-        padding: EdgeInsets.all(16),
-        child: OutlinedButton.icon(
-          onPressed: _addNewPlayer,
-          icon: Icon(Icons.person_add),
-          label: Text('添加新玩家'),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: SafeArea(
+          child: OutlinedButton.icon(
+            onPressed: _addNewPlayer,
+            icon: Icon(Icons.person_add),
+            label: Text('添加新玩家'),
+          ),
         ),
       ),
     );
