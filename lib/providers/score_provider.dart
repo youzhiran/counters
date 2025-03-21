@@ -15,8 +15,10 @@ class ScoreProvider with ChangeNotifier {
   final dbHelper = DatabaseHelper.instance;
   GameSession? _currentSession;
   int _currentRound = 0;
+  bool _isInitialized = false;
 
   GameSession? get currentSession => _currentSession;
+  bool get isInitialized => _isInitialized;
 
   int get currentRound => _currentRound;
   MapEntry<String, int>? _currentHighlight;
@@ -29,6 +31,8 @@ class ScoreProvider with ChangeNotifier {
 
   Future<void> _initialize() async {
     await _loadActiveSession();
+    _isInitialized = true; // 标记初始化完成
+    notifyListeners();
   }
 
   Future<void> _loadActiveSession() async {

@@ -16,27 +16,24 @@ class TemplateProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
 
   TemplateProvider() {
-    _isLoading = false;
+    _initialize();
   }
 
-  List<BaseTemplate> get templates {
-    if (_templates == null) {
-      // 如果模板还未加载，立即触发加载
-      _initialize();
-      return [];
-    }
-    return _templates ?? [];
-  }
+  List<BaseTemplate> get templates => _templates ?? [];
 
-  /// 初始化模板，不允许使用该方法重新加载模板数据
   Future<void> _initialize() async {
     if (_templates != null) return;
-    _isLoading = true;
     try {
       _templates = await _templateDao.getAllTemplatesWithPlayers();
     } finally {
       _isLoading = false;
+      notifyListeners();
     }
+  }
+
+  Future<BaseTemplate?> getTemplateAsync(String tid) async {
+    _templates ??= await _templateDao.getAllTemplatesWithPlayers();
+    return _templates?.firstWhereOrNull((t) => t.tid == tid);
   }
 
   /// 重新加载模板
@@ -58,11 +55,6 @@ class TemplateProvider with ChangeNotifier {
   }
 
   BaseTemplate? getTemplate(String tid) {
-    return templates.firstWhereOrNull((t) => t.tid == tid);
-  }
-
-  Future<BaseTemplate?> getTemplateAsync(String tid) async {
-    await _initialize();
     return templates.firstWhereOrNull((t) => t.tid == tid);
   }
 

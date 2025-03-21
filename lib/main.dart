@@ -9,6 +9,7 @@ import 'package:counters/page/poker50/poker50_session.dart';
 import 'package:counters/page/setting.dart';
 import 'package:counters/page/template.dart';
 import 'package:counters/state.dart';
+import 'package:counters/utils/error_handler.dart';
 import 'package:counters/utils/log.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -27,13 +28,12 @@ void main() async {
 
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) {
-    Log.e('Flutter 错误: ${details.exception}');
-    Log.e('Stack: ${details.stack}');
+    ErrorHandler.handleError(details.exception, details.stack,
+        prefix: 'Flutter');
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    Log.e('未捕获错误: $error');
-    Log.e('Stack: $stack');
+    ErrorHandler.handleError(error, stack, prefix: '未捕获');
     return true;
   };
 

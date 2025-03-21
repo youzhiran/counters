@@ -94,7 +94,7 @@ class HomePage extends StatelessWidget {
     return Consumer<ScoreProvider>(
       builder: (context, provider, _) {
         if (provider.currentSession == null) {
-          return _buildHomeWithHistory(context); // 修改后的主页
+          return _buildHomeWithHistory(context);
         }
         return _buildScoringBoard(context, provider);
       },
