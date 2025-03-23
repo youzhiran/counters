@@ -1,6 +1,7 @@
 import 'package:counters/model/player_score.dart';
 import 'package:uuid/uuid.dart';
 
+/// ScoreProvider中存游戏计分的模型
 class GameSession {
   final String sid;
   final String templateId;
@@ -28,7 +29,9 @@ class GameSession {
     };
   }
 
-  static GameSession fromMap(Map<String, dynamic> map, List<PlayerScore> scores) {
+  /// 从数据库中读取数据，将数据转换为GameSession对象
+  static GameSession fromMap(
+      Map<String, dynamic> map, List<PlayerScore> scores) {
     return GameSession(
       sid: map['sid'],
       templateId: map['template_id'],

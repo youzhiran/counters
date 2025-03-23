@@ -3,36 +3,33 @@ import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../fragments/input_panel.dart';
 import '../../model/game_session.dart';
 import '../../model/player_info.dart';
 import '../../model/player_score.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
-import '../../widgets/player_widget.dart';
 import '../../widgets/snackbar.dart';
-import 'landlords_session.dart';
 import 'landlords_session_old.dart';
 
-class LandlordsSessionPage extends StatefulWidget {
+class LandlordsSessionAIPage extends StatefulWidget {
   final String templateId;
 
-  const LandlordsSessionPage({super.key, required this.templateId});
+  const LandlordsSessionAIPage({super.key, required this.templateId});
 
   @override
-  State<LandlordsSessionPage> createState() => _LandlordsSessionPageState();
+  State<LandlordsSessionAIPage> createState() => _LandlordsSessionPageState();
 }
 
-class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
+class _LandlordsSessionPageState extends State<LandlordsSessionAIPage> {
   // 当前轮次的数据
   String? _currentLandlordId;
   int _baseScore = 1; // 底分
-  Map<String, int> _bombUsed = {};
+  Map<String, bool> _bombUsed = {};
   Map<String, bool> _rocketUsed = {};
   Map<String, bool> _springUsed = {};
   bool _isEditing = false;
   int _currentEditRound = -1;
-  bool _landlordWin = false;
-  bool _hasSelectedWinner = false;
 
   @override
   Widget build(BuildContext context) {
@@ -73,8 +70,8 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
         title: Text(template.templateName),
         actions: [
           IconButton(
-            icon: Icon(Icons.switch_access_shortcut_add),
-            tooltip: '新样式，点击切换',
+            icon: Icon(Icons.change_circle_outlined),
+            tooltip: 'AI样式，点击切换',
             onPressed: () {
               Navigator.pushReplacement(
                 context,
@@ -108,7 +105,10 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
             ),
           ),
           // 编辑面板
-          if (_isEditing) _buildEditPanel(template, session)
+          if (_isEditing)
+            _buildEditPanel(template, session)
+          else
+            QuickInputPanel(key: ValueKey('Panel')),
         ],
       ),
     );
@@ -135,61 +135,23 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
     _bombUsed = {};
     _rocketUsed = {};
     _springUsed = {};
-    _hasSelectedWinner = false;
-    _landlordWin = false;
   }
 
   void _loadRoundData(GameSession session, int roundIndex) {
     for (var playerScore in session.scores) {
       // 从扩展字段中加载数据
-      final extendedData = playerScore.getExtendedField(roundIndex);
+      final extendedData = playerScore
+          .getExtendedFiled<Map<String, dynamic>>('round_$roundIndex');
       if (extendedData != null) {
         if (extendedData['isLandlord'] == true) {
           _currentLandlordId = playerScore.playerId;
-          // 从地主的分数判断胜负
-          if (roundIndex < playerScore.roundScores.length) {
-            final score = playerScore.roundScores[roundIndex] ?? 0;
-            _landlordWin = score > 0;
-            _hasSelectedWinner = true;
-          }
         }
         _baseScore = extendedData['baseScore'] ?? 1;
-        _bombUsed[playerScore.playerId] = extendedData['bomb'] ?? 0;
+        _bombUsed[playerScore.playerId] = extendedData['bomb'] ?? false;
         _rocketUsed[playerScore.playerId] = extendedData['rocket'] ?? false;
         _springUsed[playerScore.playerId] = extendedData['spring'] ?? false;
       }
     }
-  }
-
-  Widget _buildWinnerButton({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onPressed,
-  }) {
-    return Material(
-      color: isSelected ? Colors.blue.withValues(alpha: 0.2) : Colors.transparent,
-      borderRadius: BorderRadius.horizontal(
-        left: label == '地主胜' ? Radius.circular(6) : Radius.zero,
-        right: label == '农民胜' ? Radius.circular(6) : Radius.zero,
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.horizontal(
-          left: label == '地主胜' ? Radius.circular(6) : Radius.zero,
-          right: label == '农民胜' ? Radius.circular(6) : Radius.zero,
-        ),
-        onTap: onPressed,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.black87,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildEditPanel(LandlordsTemplate template, GameSession session) {
@@ -210,7 +172,7 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
               Text('底分：', style: TextStyle(fontWeight: FontWeight.bold)),
               Expanded(
                 child: Wrap(
-                  spacing: 6,
+                  spacing: 8,
                   children: [1, 2, 3]
                       .map((score) => ElevatedButton(
                             style: ElevatedButton.styleFrom(
@@ -218,48 +180,11 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
                                   _baseScore == score ? Colors.blue : null,
                               foregroundColor:
                                   _baseScore == score ? Colors.white : null,
-                              minimumSize: Size(0, 36),
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             onPressed: () => setState(() => _baseScore = score),
                             child: Text('$score分'),
                           ))
                       .toList(),
-                ),
-              ),
-              SizedBox(width: 12),
-              // 胜负显示
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildWinnerButton(
-                      label: '地主胜',
-                      isSelected: _hasSelectedWinner && _landlordWin,
-                      onPressed: () => setState(() {
-                        _landlordWin = true;
-                        _hasSelectedWinner = true;
-                      }),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 36,
-                      color: Colors.grey[300],
-                    ),
-                    _buildWinnerButton(
-                      label: '农民胜',
-                      isSelected: _hasSelectedWinner && !_landlordWin,
-                      onPressed: () => setState(() {
-                        _landlordWin = false;
-                        _hasSelectedWinner = true;
-                      }),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -273,27 +198,8 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
 
           // 按钮区
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              // 提示文字
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: Text(
-                    _currentLandlordId == null
-                        ? '请点击头像选择地主'
-                        : !_hasSelectedWinner
-                            ? '请选择胜利方'
-                            : '',
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontSize: 14,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-              ),
-              // 按钮区域
               TextButton(
                 onPressed: () => setState(() {
                   _isEditing = false;
@@ -303,10 +209,10 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
               ),
               SizedBox(width: 8),
               ElevatedButton(
-                onPressed: (_currentLandlordId == null || !_hasSelectedWinner)
+                onPressed: _currentLandlordId == null
                     ? null
                     : () => _calculateAndSaveScores(template, session),
-                child: Text('完成本轮计分'),
+                child: Text('完成计分'),
               ),
             ],
           ),
@@ -317,7 +223,7 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
 
   Widget _buildPlayerRow(PlayerInfo player, GameSession session) {
     final isLandlord = _currentLandlordId == player.pid;
-    final bombCount = _bombUsed[player.pid] ?? 0;
+    final hasBomb = _bombUsed[player.pid] ?? false;
     final hasRocket = _rocketUsed[player.pid] ?? false;
     final hasSpring = _springUsed[player.pid] ?? false;
 
@@ -329,7 +235,7 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isLandlord ? Colors.orange : Colors.grey[300]!,
-          width: isLandlord ? 1 : 1,
+          width: isLandlord ? 2 : 1,
         ),
       ),
       child: Row(
@@ -339,7 +245,10 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
             onTap: () => setState(() => _currentLandlordId = player.pid),
             child: Stack(
               children: [
-                PlayerAvatar.build(context, player),
+                CircleAvatar(
+                  radius: 20,
+                  child: Text(player.name[0]),
+                ),
                 if (isLandlord)
                   Positioned(
                     right: 0,
@@ -374,38 +283,12 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
             ),
           ),
 
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(Icons.remove_circle_outline),
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 24, minHeight: 24),
-                iconSize: 20,
-                onPressed: bombCount > 0
-                    ? () =>
-                        setState(() => _bombUsed[player.pid] = bombCount - 1)
-                    : null,
-              ),
-              Container(
-                constraints: BoxConstraints(minWidth: 40),
-                child: Text(
-                  '炸弹($bombCount)',
-                  style: TextStyle(fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.add_circle_outline),
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 24, minHeight: 24),
-                iconSize: 20,
-                onPressed: () =>
-                    setState(() => _bombUsed[player.pid] = (bombCount + 1)),
-              ),
-            ],
-          ),
           // 特殊牌型按钮
+          _buildToggleButton(
+            label: '炸弹',
+            isActive: hasBomb,
+            onPressed: () => setState(() => _bombUsed[player.pid] = !hasBomb),
+          ),
           SizedBox(width: 4),
           _buildToggleButton(
             label: '火箭',
@@ -443,13 +326,18 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
 
   void _calculateAndSaveScores(
       LandlordsTemplate template, GameSession session) {
+    if (_currentLandlordId == null) {
+      AppSnackBar.warn('请选择地主');
+      return;
+    }
+
     // 计算倍数
     int multiplier = 1;
 
     // 统计炸弹数量
     int bombCount = 0;
-    _bombUsed.forEach((playerId, count) {
-      bombCount += count;
+    _bombUsed.forEach((playerId, used) {
+      if (used) bombCount++;
     });
 
     // 炸弹翻倍
@@ -470,8 +358,34 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
     // 计算基础分数
     final baseValue = template.baseScore * _baseScore * multiplier;
 
-    // 直接使用当前选择的胜利方状态
-    _finalizeScores(template, session, _landlordWin, baseValue);
+    // 确定胜负方
+    bool landlordWin = false;
+    // 这里需要根据实际游戏结果设置，暂时使用弹窗询问
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text('谁是胜利方？'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _finalizeScores(template, session, true, baseValue);
+              },
+              child: Text('地主胜利'),
+            ),
+            SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _finalizeScores(template, session, false, baseValue);
+              },
+              child: Text('农民胜利'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _finalizeScores(LandlordsTemplate template, GameSession session,
@@ -484,8 +398,10 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
       int score;
 
       if (isLandlord) {
+        // 地主得分=2×胜负参数×基数×底分×倍数
         score = 2 * (landlordWin ? 1 : -1) * baseValue;
       } else {
+        // 农民得分=胜负参数×基数×底分×倍数
         score = (landlordWin ? -1 : 1) * baseValue;
       }
 
@@ -493,7 +409,7 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
       final extendedData = {
         'isLandlord': isLandlord,
         'baseScore': _baseScore,
-        'bomb': _bombUsed[playerScore.playerId] ?? 0,
+        'bomb': _bombUsed[playerScore.playerId] ?? false,
         'rocket': _rocketUsed[playerScore.playerId] ?? false,
         'spring': _springUsed[playerScore.playerId] ?? false,
         'multiplier': baseValue / (template.baseScore * _baseScore),
@@ -502,19 +418,15 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
 
       // 更新或添加分数
       if (_currentEditRound < playerScore.roundScores.length) {
+        // 更新已有轮次
         scoreProvider.updateScore(
             playerScore.playerId, _currentEditRound, score);
-        // 为特定回合设置扩展字段
-        extendedData.forEach((key, value) {
-          playerScore.setRoundExtendedField(_currentEditRound, key, value);
-        });
+        playerScore.setExtendedFiled('round_$_currentEditRound', extendedData);
       } else {
+        // 添加新轮次
         scoreProvider.addScore(playerScore.playerId, score, context);
-        final newRoundIndex = playerScore.roundScores.length - 1;
-        // 为新回合设置扩展字段
-        extendedData.forEach((key, value) {
-          playerScore.setRoundExtendedField(newRoundIndex, key, value);
-        });
+        playerScore.setExtendedFiled(
+            'round_${playerScore.roundScores.length - 1}', extendedData);
       }
     }
 
@@ -526,6 +438,7 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
   }
 }
 
+// 修改_ScoreBoard类以支持行编辑
 class _ScoreBoard extends StatefulWidget {
   final LandlordsTemplate template;
   final GameSession session;
@@ -572,7 +485,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
       children: [
         // 标题行（禁用用户手动滚动）
         SizedBox(
-          height: 64,
+          height: 80,
           child: SingleChildScrollView(
             controller: _headerHorizontalController,
             scrollDirection: Axis.horizontal,
@@ -621,48 +534,63 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   // 构建标题行
   Widget _buildHeaderRow() {
     final players = widget.template.players;
-    final playerWidth = 92.0;
+    final playerWidth = 120.0;
 
     return Row(
       children: [
         // 轮次列
         Container(
-          width: 60,
+          width: 80,
+          height: 120,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: Colors.grey[200],
             border: Border.all(color: Colors.grey[300]!),
           ),
-          child: Text('轮次', style: TextStyle(fontWeight: FontWeight.bold)),
+          child:
+              Text('轮次\n(AI样式)', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
         // 玩家列
         ...players.map((player) => Container(
               width: playerWidth,
-              height: 100,
-              // padding: EdgeInsets.all(8),
+              height: 120,
+              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.grey[200],
-                border: Border(
-                  right: BorderSide(color: Colors.grey[300]!),
-                  top: BorderSide(color: Colors.grey[300]!),
-                  bottom: BorderSide(color: Colors.grey[300]!),
-                ),
+                border: Border.all(color: Colors.grey[300]!),
               ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    PlayerAvatar.build(context, player),
-                    Text(
-                      player.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(height: 1.2),
-                    ),
-                  ],
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    child: Text(player.name[0]),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    player.name,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             )),
+        // 添加新轮次按钮
+        Container(
+          width: 80,
+          height: 80,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: IconButton(
+            icon: Icon(Icons.add_circle_outline),
+            onPressed: () => widget
+                .onEditRound(widget.session.scores.first.roundScores.length),
+            tooltip: '添加新轮次',
+          ),
+        ),
       ],
     );
   }
@@ -670,35 +598,29 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   // 构建每一轮的行
   Widget _buildRoundRow(int roundIndex) {
     final players = widget.template.players;
-    final playerWidth = 92.0;
+    final playerWidth = 120.0;
     final isNewRound =
         roundIndex >= widget.session.scores.first.roundScores.length;
-    final isEditing = widget.currentEditRound == roundIndex;
 
     return GestureDetector(
       onTap: () => widget.onEditRound(roundIndex),
       child: Container(
         decoration: BoxDecoration(
-          color: isEditing
-              ? Colors.blue[50] // 高亮颜色
-              : roundIndex % 2 == 0
-                  ? Colors.white
-                  : Colors.grey[50],
+          color: roundIndex % 2 == 0 ? Colors.white : Colors.grey[50],
           border: Border(
-            bottom: BorderSide(color: Colors.grey[300]!),
+            bottom: BorderSide(color: Colors.green[300]!), // 改成绿色方便辨认是ai版
           ),
         ),
         child: Row(
           children: [
             // 轮次列
             Container(
-              width: 60,
+              width: 80,
               height: 60,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: Colors.grey[300]!),
-                  right: BorderSide(color: Colors.grey[300]!),
+                  right: BorderSide(color: Colors.green[300]!),
                 ),
               ),
               child: Text('第${roundIndex + 1}轮'),
@@ -708,77 +630,73 @@ class _ScoreBoardState extends State<_ScoreBoard> {
               final playerScore = _getPlayerScore(player.pid, roundIndex);
               final extendedData = _getExtendedData(player.pid, roundIndex);
               final isLandlord = extendedData?['isLandlord'] == true;
-              final totalScore = _getTotalScore(player.pid, roundIndex);
 
               return Container(
                 width: playerWidth,
                 height: 60,
-                padding: EdgeInsets.all(4),
+                padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   border: Border(
-                    right: BorderSide(color: Colors.grey[300]!),
+                    right:
+                        BorderSide(color: Colors.green[300]!), // 改成绿色方便辨认是ai版
                   ),
                 ),
                 child: isNewRound
                     ? Center(
-                        child: Icon(Icons.add, color: Colors.grey),
+                        child: Icon(Icons.add, color: Colors.green),
                       )
-                    : // 修改后的Stack部分代码
-                    Stack(
-                        alignment: Alignment.center,
+                    : Row(
                         children: [
-                          // 累计总得分（保持黑色）
-                          Text(
-                            '$totalScore',
-                            style: TextStyle(
-                              fontSize: 18,
-                              // fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          // 当前轮得分（应用颜色效果）
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Text(
-                              playerScore >= 0
-                                  ? '+$playerScore'
-                                  : '$playerScore',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: playerScore > 0
-                                    ? Colors.green
-                                    : playerScore < 0
-                                        ? Colors.red
-                                        : Colors.grey,
-                              ),
-                            ),
-                          ),
                           // 地主标记
                           if (isLandlord)
-                            Positioned(
-                              left: 0,
-                              top: 0,
-                              child: Container(
-                                padding: EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(Icons.star,
-                                    size: 12, color: Colors.white),
+                            Container(
+                              padding: EdgeInsets.all(2),
+                              margin: EdgeInsets.only(right: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.orange,
+                                shape: BoxShape.circle,
                               ),
+                              child: Icon(Icons.star,
+                                  size: 12, color: Colors.white),
                             ),
-                          // 特殊标记
-                          if (extendedData != null)
-                            Positioned(
-                              bottom: 0,
-                              child: _buildSpecialMarkers(extendedData),
+
+                          // 分数
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$playerScore',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: playerScore > 0
+                                        ? Colors.green
+                                        : playerScore < 0
+                                            ? Colors.red
+                                            : Colors.black,
+                                  ),
+                                ),
+                                if (extendedData != null)
+                                  _buildSpecialMarkers(extendedData),
+                              ],
                             ),
+                          ),
                         ],
                       ),
               );
             }),
+            // 编辑按钮
+            Container(
+              width: 80,
+              height: 60,
+              alignment: Alignment.center,
+              child: IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () => widget.onEditRound(roundIndex),
+                tooltip: isNewRound ? '添加轮次' : '编辑轮次',
+              ),
+            ),
           ],
         ),
       ),
@@ -789,40 +707,51 @@ class _ScoreBoardState extends State<_ScoreBoard> {
   Widget _buildSpecialMarkers(Map<String, dynamic> extendedData) {
     final List<Widget> markers = [];
 
-    if (extendedData['bomb'] > 0) {
-      markers.add(_buildMarker('炸×${extendedData['bomb']}', Colors.red));
+    if (extendedData['bomb'] == true) {
+      markers.add(
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          margin: EdgeInsets.only(right: 2),
+          decoration: BoxDecoration(
+            color: Colors.red[100],
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text('炸', style: TextStyle(fontSize: 10, color: Colors.red)),
+        ),
+      );
     }
 
     if (extendedData['rocket'] == true) {
-      markers.add(_buildMarker('火', Colors.purple));
+      markers.add(
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          margin: EdgeInsets.only(right: 2),
+          decoration: BoxDecoration(
+            color: Colors.purple[100],
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child:
+              Text('火', style: TextStyle(fontSize: 10, color: Colors.purple)),
+        ),
+      );
     }
 
     if (extendedData['spring'] == true) {
-      markers.add(_buildMarker('春', Colors.green));
+      markers.add(
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          margin: EdgeInsets.only(right: 2),
+          decoration: BoxDecoration(
+            color: Colors.green[100],
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text('春', style: TextStyle(fontSize: 10, color: Colors.green)),
+        ),
+      );
     }
 
     return Row(
-      mainAxisSize: MainAxisSize.min, // 确保行宽度最小
       children: markers,
-    );
-  }
-
-  Widget _buildMarker(String text, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      margin: EdgeInsets.only(right: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          color: color,
-          height: 1.1,
-        ),
-      ),
     );
   }
 
@@ -840,42 +769,25 @@ class _ScoreBoardState extends State<_ScoreBoard> {
     return 0;
   }
 
-  // 获取累计总得分
-  int _getTotalScore(String playerId, int roundIndex) {
+  // 获取玩家总分
+  int _getPlayerTotalScore(String playerId) {
     final playerScore = widget.session.scores.firstWhere(
       (score) => score.playerId == playerId,
       orElse: () => PlayerScore(playerId: playerId),
     );
 
-    if (roundIndex < playerScore.roundScores.length) {
-      return playerScore.roundScores
-          .take(roundIndex + 1)
-          .fold(0, (sum, item) => sum + (item ?? 0));
-    }
-
-    return 0;
+    return playerScore.totalScore;
   }
 
   // 获取扩展数据
   Map<String, dynamic>? _getExtendedData(String playerId, int roundIndex) {
-    try {
-      final playerScore = widget.session.scores.firstWhere(
-        (score) => score.playerId == playerId,
-      );
+    final playerScore = widget.session.scores.firstWhere(
+      (score) => score.playerId == playerId,
+      orElse: () => PlayerScore(playerId: playerId),
+    );
 
-      // 使用新的按轮次获取扩展字段的方法
-      final extendedData = playerScore.getExtendedField(roundIndex);
-      if (extendedData == null) {
-        // 尝试从数据库重新加载数据
-        final scoreProvider = context.read<ScoreProvider>();
-        scoreProvider.loadRoundExtendedData(widget.session.sid, roundIndex);
-        return playerScore.getExtendedField(roundIndex);
-      }
-
-      return extendedData;
-    } catch (e) {
-      return null;
-    }
+    return playerScore
+        .getExtendedFiled<Map<String, dynamic>>('round_$roundIndex');
   }
 }
 

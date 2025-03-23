@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -35,6 +37,29 @@ class ScoreProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadRoundExtendedData(String sessionId, int roundIndex) async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'player_scores',
+      where: 'session_id = ? AND round_number = ?',
+      whereArgs: [sessionId, roundIndex],
+    );
+
+    for (var map in maps) {
+      final playerId = map['player_id'] as String;
+      final extendedField = map['extended_filed'] as String?;
+
+      if (extendedField != null) {
+        final playerScore = _currentSession?.scores.firstWhere(
+          (score) => score.playerId == playerId,
+          orElse: () => PlayerScore(playerId: playerId),
+        );
+
+        playerScore?.extendedFiledFromJson(extendedField, roundIndex);
+      }
+    }
+  }
+
   Future<void> _loadActiveSession() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -62,26 +87,44 @@ class ScoreProvider with ChangeNotifier {
     );
 
     // 按玩家ID分组
-    final scoresByPlayer = <String, List<int?>>{};
+    final scoresByPlayer = <String, PlayerScore>{};
+
     for (var map in maps) {
       final playerId = map['player_id'] as String;
-      scoresByPlayer.putIfAbsent(playerId, () => []);
       final roundNumber = map['round_number'] as int;
       final score = map['score'] as int?;
+      final extendedField = map['extended_filed'] as String?;
 
-      // 确保列表长度足够
-      while (scoresByPlayer[playerId]!.length <= roundNumber) {
-        scoresByPlayer[playerId]!.add(null);
+      // 获取或创建玩家得分对象
+      final playerScore = scoresByPlayer.putIfAbsent(
+        playerId,
+        () => PlayerScore(playerId: playerId),
+      );
+
+      // 确保回合分数列表长度足够
+      while (playerScore.roundScores.length <= roundNumber) {
+        playerScore.roundScores.add(null);
       }
-      scoresByPlayer[playerId]![roundNumber] = score;
+      playerScore.roundScores[roundNumber] = score;
+
+      // 处理扩展字段
+      if (extendedField != null) {
+        try {
+          final decodedData = jsonDecode(extendedField) as Map<String, dynamic>;
+          for (var entry in decodedData.entries) {
+            playerScore.setRoundExtendedField(
+              roundNumber,
+              entry.key,
+              entry.value,
+            );
+          }
+        } catch (e) {
+          Log.w('解析扩展字段失败: $e');
+        }
+      }
     }
 
-    return scoresByPlayer.entries
-        .map((entry) => PlayerScore(
-              playerId: entry.key,
-              roundScores: entry.value,
-            ))
-        .toList();
+    return scoresByPlayer.values.toList();
   }
 
   int _calculateCurrentRound() {
@@ -134,11 +177,17 @@ class ScoreProvider with ChangeNotifier {
   }
 
   // 加载会话的公共方法
-  void loadSession(GameSession session) {
+  Future<void> loadSession(GameSession session) async {
     _currentSession = session;
     _currentRound = session.scores
         .map((s) => s.roundScores.length)
         .reduce((a, b) => a > b ? a : b);
+
+    // 加载每个回合的扩展字段
+    for (int i = 0; i < _currentRound; i++) {
+      await loadRoundExtendedData(session.sid, i);
+    }
+
     notifyListeners();
   }
 
