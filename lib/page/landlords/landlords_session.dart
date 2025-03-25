@@ -1,28 +1,26 @@
 import 'package:counters/model/landlords.dart';
-import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../model/base_template.dart';
 import '../../model/game_session.dart';
 import '../../model/player_info.dart';
 import '../../model/player_score.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/player_widget.dart';
-import '../../widgets/snackbar.dart';
-import 'landlords_session.dart';
+import '../base_session.dart';
 import 'landlords_session_old.dart';
 
-class LandlordsSessionPage extends StatefulWidget {
-  final String templateId;
-
-  const LandlordsSessionPage({super.key, required this.templateId});
+class LandlordsSessionPage extends BaseSessionPage {
+  const LandlordsSessionPage({super.key, required super.templateId});
 
   @override
   State<LandlordsSessionPage> createState() => _LandlordsSessionPageState();
 }
 
-class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
+class _LandlordsSessionPageState
+    extends BaseSessionPageState<LandlordsSessionPage> {
   // 当前轮次的数据
   String? _currentLandlordId;
   int _baseScore = 1; // 底分
@@ -62,7 +60,7 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
             session.scores.where((s) => s.totalScore >= failureScore).toList();
         if (overPlayers.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showGameResult(context);
+            showGameResult(context);
           });
         }
       }
@@ -88,29 +86,39 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
           ),
           IconButton(
             icon: Icon(Icons.sports_score),
-            onPressed: () => _showGameResult(context),
+            onPressed: () => showGameResult(context),
           ),
           IconButton(
             icon: Icon(Icons.restart_alt_rounded),
-            onPressed: () => _showResetConfirmation(context),
+            onPressed: () => showResetConfirmation(context),
           )
         ],
       ),
-      body: Column(
-        children: [
-          // 可滚动的计分区
-          Expanded(
-            child: _ScoreBoard(
-              template: template,
-              session: session,
-              onEditRound: _startEditRound,
-              currentEditRound: _currentEditRound,
-            ),
+      body: buildGameBody(context, template, session),
+    );
+  }
+
+  @override
+  Widget buildGameBody(
+      BuildContext context, BaseTemplate template, GameSession session) {
+    final template = context
+        .read<TemplateProvider>()
+        .getTemplate(widget.templateId) as LandlordsTemplate;
+
+    return Column(
+      children: [
+        // 可滚动的计分区
+        Expanded(
+          child: _ScoreBoard(
+            template: template,
+            session: session,
+            onEditRound: _startEditRound,
+            currentEditRound: _currentEditRound,
           ),
-          // 编辑面板
-          if (_isEditing) _buildEditPanel(template, session)
-        ],
-      ),
+        ),
+        // 编辑面板
+        if (_isEditing) _buildEditPanel(template, session)
+      ],
     );
   }
 
@@ -167,16 +175,17 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
     required VoidCallback onPressed,
   }) {
     return Material(
-      color:
-          isSelected ? Colors.blue.withValues(alpha: 0.2) : Colors.transparent,
+      color: isSelected
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.horizontal(
-        left: label == '地主胜' ? Radius.circular(6) : Radius.zero,
-        right: label == '农民胜' ? Radius.circular(6) : Radius.zero,
+        left: label == '地主胜' ? Radius.circular(8) : Radius.zero,
+        right: label == '农民胜' ? Radius.circular(8) : Radius.zero,
       ),
       child: InkWell(
         borderRadius: BorderRadius.horizontal(
-          left: label == '地主胜' ? Radius.circular(6) : Radius.zero,
-          right: label == '农民胜' ? Radius.circular(6) : Radius.zero,
+          left: label == '地主胜' ? Radius.circular(8) : Radius.zero,
+          right: label == '农民胜' ? Radius.circular(8) : Radius.zero,
         ),
         onTap: onPressed,
         child: Container(
@@ -184,7 +193,9 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.black87,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -199,8 +210,10 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
     return Container(
       padding: EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border(top: BorderSide(color: Colors.grey[300]!)),
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        border: Border(
+            top: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -215,10 +228,16 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
                   children: [1, 2, 3]
                       .map((score) => ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  _baseScore == score ? Colors.blue : null,
-                              foregroundColor:
-                                  _baseScore == score ? Colors.white : null,
+                              backgroundColor: _baseScore == score
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                              foregroundColor: _baseScore == score
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                               minimumSize: Size(0, 36),
                               padding: EdgeInsets.symmetric(horizontal: 12),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -326,10 +345,12 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
       margin: EdgeInsets.symmetric(vertical: 4),
       padding: EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isLandlord ? Colors.orange : Colors.grey[300]!,
+          color: isLandlord
+              ? Colors.orange
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           width: isLandlord ? 1 : 1,
         ),
       ),
@@ -439,8 +460,12 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
       required VoidCallback onPressed}) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: isActive ? Colors.blue : Colors.grey[200],
-        foregroundColor: isActive ? Colors.white : Colors.black87,
+        backgroundColor: isActive
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
+        foregroundColor: isActive
+            ? Theme.of(context).colorScheme.onPrimary
+            : Theme.of(context).colorScheme.onSurfaceVariant,
         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         minimumSize: Size(0, 32),
       ),
@@ -638,8 +663,9 @@ class _ScoreBoardState extends State<_ScoreBoard> {
           width: 60,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.grey[200],
-            border: Border.all(color: Colors.grey[300]!),
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            border:
+                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: Text('轮次', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
@@ -649,11 +675,14 @@ class _ScoreBoardState extends State<_ScoreBoard> {
               height: 100,
               // padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
                 border: Border(
-                  right: BorderSide(color: Colors.grey[300]!),
-                  top: BorderSide(color: Colors.grey[300]!),
-                  bottom: BorderSide(color: Colors.grey[300]!),
+                  right: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant),
+                  top: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant),
+                  bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant),
                 ),
               ),
               child: Center(
@@ -688,12 +717,13 @@ class _ScoreBoardState extends State<_ScoreBoard> {
       child: Container(
         decoration: BoxDecoration(
           color: isEditing
-              ? Colors.blue[50] // 高亮颜色
+              ? Theme.of(context).colorScheme.primaryContainer
               : roundIndex % 2 == 0
-                  ? Colors.white
-                  : Colors.grey[50],
+                  ? Theme.of(context).colorScheme.surface
+                  : Theme.of(context).colorScheme.surfaceContainerLow,
           border: Border(
-            bottom: BorderSide(color: Colors.grey[300]!),
+            bottom:
+                BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
           ),
         ),
         child: Row(
@@ -705,8 +735,10 @@ class _ScoreBoardState extends State<_ScoreBoard> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: Colors.grey[300]!),
-                  right: BorderSide(color: Colors.grey[300]!),
+                  left: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant),
+                  right: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant),
                 ),
               ),
               child: Text('第${roundIndex + 1}轮'),
@@ -724,7 +756,8 @@ class _ScoreBoardState extends State<_ScoreBoard> {
                 padding: EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   border: Border(
-                    right: BorderSide(color: Colors.grey[300]!),
+                    right: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant),
                   ),
                 ),
                 child: isNewRound
@@ -815,7 +848,10 @@ class _ScoreBoardState extends State<_ScoreBoard> {
     );
   }
 
-  Widget _buildMarker(String text, Color color) {
+  Widget _buildMarker(String text, Color baseColor) {
+    final color = Theme.of(context).brightness == Brightness.dark
+        ? baseColor.withValues(alpha: 0.7) // 深色模式下稍微调亮
+        : baseColor;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       margin: EdgeInsets.only(right: 2),
@@ -884,105 +920,5 @@ class _ScoreBoardState extends State<_ScoreBoard> {
     } catch (e) {
       return null;
     }
-  }
-}
-
-// 添加游戏结果和重置确认方法
-extension LandlordsSessionPageExtension on _LandlordsSessionPageState {
-  void _showGameResult(BuildContext context) {
-    final session = context.read<ScoreProvider>().currentSession;
-    if (session == null) return;
-
-    final scores = session.scores.toList();
-    scores.sort((a, b) => b.totalScore.compareTo(a.totalScore));
-
-    globalState.showCommonDialog(
-      child: AlertDialog(
-        title: Text('游戏结果'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ...scores.map((score) {
-                final player = context
-                    .read<TemplateProvider>()
-                    .getTemplate(widget.templateId)
-                    ?.players
-                    .firstWhere(
-                      (p) => p.pid == score.playerId,
-                      orElse: () => PlayerInfo(
-                          pid: score.playerId, name: '未知玩家', avatar: ''),
-                    );
-
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Text(player?.name[0] ?? '?'),
-                  ),
-                  title: Text(player?.name ?? '未知玩家'),
-                  trailing: Text(
-                    '${score.totalScore}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: score.totalScore > 0
-                          ? Colors.green
-                          : score.totalScore < 0
-                              ? Colors.red
-                              : Colors.black,
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('关闭'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showResetConfirmation(context);
-            },
-            child: Text('重新开始'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showResetConfirmation(BuildContext context) {
-    globalState.showCommonDialog(
-      child: AlertDialog(
-        title: Text('重置游戏'),
-        content: Text('确定要重置当前游戏吗？\n'
-            '当前进度将会自动保存并标记为已完成，并启动一个新的计分。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('取消'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context); // 先关闭对话框
-              final template = context
-                  .read<TemplateProvider>()
-                  .getTemplate(widget.templateId);
-              // 使用await确保resetGame完成后再执行startNewGame
-              final scoreProvider = context.read<ScoreProvider>();
-              await scoreProvider.resetGame(true);
-              if (template != null) {
-                scoreProvider.startNewGame(template);
-              } else {
-                AppSnackBar.warn('模板加载失败，请重试');
-              }
-            },
-            child: Text('重置'),
-          ),
-        ],
-      ),
-    );
   }
 }

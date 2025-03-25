@@ -1,3 +1,5 @@
+import 'package:counters/model/base_template.dart';
+import 'package:counters/page/base_session.dart';
 import 'package:counters/state.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
@@ -15,16 +17,15 @@ import '../../widgets/snackbar.dart';
 /// 3人扑克50分
 ///
 /// 玩家打牌计分，首先达到50分的失败，计分少的胜利。
-class Poker50SessionPage extends StatefulWidget {
-  final String templateId;
-
-  const Poker50SessionPage({super.key, required this.templateId});
+class Poker50SessionPage extends BaseSessionPage {
+  const Poker50SessionPage({super.key, required super.templateId});
 
   @override
   State<Poker50SessionPage> createState() => _Poker50SessionPageState();
 }
 
-class _Poker50SessionPageState extends State<Poker50SessionPage> {
+class _Poker50SessionPageState
+    extends BaseSessionPageState<Poker50SessionPage> {
   @override
   Widget build(BuildContext context) {
     final template = context
@@ -53,7 +54,7 @@ class _Poker50SessionPageState extends State<Poker50SessionPage> {
             session.scores.where((s) => s.totalScore >= failureScore).toList();
         if (overPlayers.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showGameResult(context);
+            showGameResult(context);
           });
         }
       }
@@ -65,11 +66,11 @@ class _Poker50SessionPageState extends State<Poker50SessionPage> {
         actions: [
           IconButton(
             icon: Icon(Icons.sports_score),
-            onPressed: () => _showGameResult(context),
+            onPressed: () => showGameResult(context),
           ),
           IconButton(
             icon: Icon(Icons.restart_alt_rounded),
-            onPressed: () => _showResetConfirmation(context),
+            onPressed: () => showResetConfirmation(context),
           )
         ],
       ),
@@ -86,142 +87,38 @@ class _Poker50SessionPageState extends State<Poker50SessionPage> {
     );
   }
 
-  void _showResetConfirmation(BuildContext context) {
-    globalState.showCommonDialog(
-      child: AlertDialog(
-        title: Text('重置游戏'),
-        content: Text('确定要重置当前游戏吗？\n'
-            '当前进度将会自动保存并标记为已完成，并启动一个新的计分。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('取消'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context); // 先关闭对话框
-              final template = context
-                  .read<TemplateProvider>()
-                  .getTemplate(widget.templateId);
-              // 使用await确保resetGame完成后再执行startNewGame
-              final scoreProvider = context.read<ScoreProvider>();
-              await scoreProvider.resetGame(true);
-              if (template != null) {
-                scoreProvider.startNewGame(template);
-              } else {
-                AppSnackBar.warn('模板加载失败，请重试');
-              }
-            },
-            child: Text('重置'),
-          ),
-        ],
-      ),
-    );
-  }
+  @override
+  Widget buildGameBody(
+      BuildContext context, BaseTemplate template, GameSession session) {
+    final poker50Template = template as Poker50Template;
+    final currentRound = context.read<ScoreProvider>().currentRound;
+    final failureScore = poker50Template.targetScore;
 
-  /// 显示游戏结果弹窗
-  /// 规则：
-  /// 1. 达到或超过目标分数的玩家视为失败
-  /// 2. 当存在失败玩家时，胜利者为未失败玩家中分数最低者（可能多人并列）
-  /// 3. 当无失败玩家时，胜利者为全体最低分玩家，失败者为全体最高分玩家（可能多人并列）
-  void _showGameResult(BuildContext context) {
-    final targetScore = context
-        .read<TemplateProvider>()
-        .getTemplate(widget.templateId)
-        ?.targetScore;
+    // 当轮次完成时检查
+    if (currentRound > 0) {
+      final allPlayersFilled = session.scores.every((s) =>
+          s.roundScores.length >= currentRound &&
+          s.roundScores[currentRound - 1] != null);
 
-    if (targetScore == null) {
-      globalState.showCommonDialog(
-        child: AlertDialog(
-          title: Text('数据错误'),
-          content: Text('未能获取目标分数配置，请检查模板设置'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context), child: Text('确定'))
-          ],
-        ),
-      );
-      return;
+      if (allPlayersFilled) {
+        final overPlayers =
+            session.scores.where((s) => s.totalScore >= failureScore).toList();
+        if (overPlayers.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            showGameResult(context);
+          });
+        }
+      }
     }
 
-    final scores = context.read<ScoreProvider>().currentSession?.scores ?? [];
-
-    // 划分失败玩家（分数>=目标分数）
-    final failScores =
-        scores.where((s) => s.totalScore >= targetScore).toList();
-    final hasFailures = failScores.isNotEmpty;
-
-    // 确定胜利者和失败者
-    final List<PlayerScore> winners;
-    final List<PlayerScore> losers;
-
-    if (hasFailures) {
-      // 存在失败玩家时，胜利者为未失败玩家中的最低分
-      final potentialWins =
-          scores.where((s) => s.totalScore < targetScore).toList();
-      potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
-      final minWinScore =
-          potentialWins.isNotEmpty ? potentialWins.first.totalScore : 0;
-      winners =
-          potentialWins.where((s) => s.totalScore == minWinScore).toList();
-      losers = failScores;
-    } else {
-      // 无失败玩家时，胜利者为全体最低分，失败者为全体最高分
-      scores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
-      final minScore = scores.first.totalScore;
-      final maxScore = scores.last.totalScore;
-
-      winners = scores.where((s) => s.totalScore == minScore).toList();
-      losers = scores.where((s) => s.totalScore == maxScore).toList();
-    }
-
-    globalState.showCommonDialog(
-      child: AlertDialog(
-        title: Text(hasFailures ? '游戏结束' : '当前游戏情况'),
-        content: SingleChildScrollView(
-          // 添加滚动视图
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (losers.isNotEmpty) ...[
-                Text('${hasFailures ? '😓 失败' : '⚠️ 最多计分'}：',
-                    style: TextStyle(
-                        color: hasFailures ? Colors.red : Colors.orange)),
-                ...losers.map((s) => Text(
-                    '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
-                SizedBox(height: 16),
-              ],
-              Text('${hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
-                  style: TextStyle(color: Colors.green)),
-              ...winners.map((s) => Text(
-                  '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
-            ],
-          ),
+    return Column(
+      children: [
+        Expanded(
+          child: _ScoreBoard(template: poker50Template, session: session),
         ),
-        actions: [
-          TextButton(
-            onPressed: Navigator.of(context).pop,
-            child: Text('确定'),
-          ),
-        ],
-      ),
+        QuickInputPanel(key: ValueKey('Panel')),
+      ],
     );
-  }
-
-  /// 获取玩家名称的辅助方法
-  /// [playerId]: 玩家ID
-  /// [context]: 构建上下文
-  /// 返回：玩家名称或"未知玩家"
-  String _getPlayerName(String playerId, BuildContext context) {
-    return context
-            .read<TemplateProvider>()
-            .getTemplate(widget.templateId)
-            ?.players
-            .firstWhere((p) => p.pid == playerId,
-                orElse: () => PlayerInfo(name: '未知玩家', avatar: 'default'))
-            .name ??
-        '未知玩家';
   }
 }
 
