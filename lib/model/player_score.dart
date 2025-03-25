@@ -66,7 +66,7 @@ class PlayerScore {
       'player_id': playerId,
       'round_number': roundNumber,
       'score': score,
-      'extended_filed': extendedFiledToJson(roundNumber)
+      'extended_field': extendedFiledToJson(roundNumber)
     };
   }
 
@@ -77,7 +77,7 @@ class PlayerScore {
   //     'player_id': playerId,
   //     'round_number': roundNumber,
   //     'score': score,
-  //     'extended_filed': extendedFiledToJson()
+  //     'extended_field': extendedFiledToJson()
   //   };
   // }
 

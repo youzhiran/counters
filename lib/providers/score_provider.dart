@@ -47,7 +47,7 @@ class ScoreProvider with ChangeNotifier {
 
     for (var map in maps) {
       final playerId = map['player_id'] as String;
-      final extendedField = map['extended_filed'] as String?;
+      final extendedField = map['extended_field'] as String?;
 
       if (extendedField != null) {
         final playerScore = _currentSession?.scores.firstWhere(
@@ -93,7 +93,7 @@ class ScoreProvider with ChangeNotifier {
       final playerId = map['player_id'] as String;
       final roundNumber = map['round_number'] as int;
       final score = map['score'] as int?;
-      final extendedField = map['extended_filed'] as String?;
+      final extendedField = map['extended_field'] as String?;
 
       // 获取或创建玩家得分对象
       final playerScore = scoresByPlayer.putIfAbsent(

@@ -167,7 +167,8 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
     required VoidCallback onPressed,
   }) {
     return Material(
-      color: isSelected ? Colors.blue.withValues(alpha: 0.2) : Colors.transparent,
+      color:
+          isSelected ? Colors.blue.withValues(alpha: 0.2) : Colors.transparent,
       borderRadius: BorderRadius.horizontal(
         left: label == '地主胜' ? Radius.circular(6) : Radius.zero,
         right: label == '农民胜' ? Radius.circular(6) : Radius.zero,
@@ -373,19 +374,22 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
               ],
             ),
           ),
-
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: Icon(Icons.remove_circle_outline),
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 24, minHeight: 24),
-                iconSize: 20,
-                onPressed: bombCount > 0
-                    ? () =>
-                        setState(() => _bombUsed[player.pid] = bombCount - 1)
-                    : null,
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: IconButton(
+                  icon: Icon(Icons.remove_circle_outline),
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(minWidth: 24, minHeight: 24),
+                  iconSize: 20,
+                  onPressed: bombCount > 0
+                      ? () =>
+                          setState(() => _bombUsed[player.pid] = bombCount - 1)
+                      : null,
+                ),
               ),
               Container(
                 constraints: BoxConstraints(minWidth: 40),
@@ -395,13 +399,17 @@ class _LandlordsSessionPageState extends State<LandlordsSessionPage> {
                   textAlign: TextAlign.center,
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.add_circle_outline),
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 24, minHeight: 24),
-                iconSize: 20,
-                onPressed: () =>
-                    setState(() => _bombUsed[player.pid] = (bombCount + 1)),
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: IconButton(
+                  icon: Icon(Icons.add_circle_outline),
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(minWidth: 24, minHeight: 24),
+                  iconSize: 20,
+                  onPressed: () =>
+                      setState(() => _bombUsed[player.pid] = (bombCount + 1)),
+                ),
               ),
             ],
           ),

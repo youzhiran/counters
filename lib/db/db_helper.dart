@@ -133,7 +133,7 @@ class DatabaseHelper {
         player_id TEXT NOT NULL,
         round_number INTEGER NOT NULL,
         score INTEGER,
-        extended_filed TEXT,
+        extended_field TEXT,
         PRIMARY KEY (session_id, player_id, round_number)
       )
     ''');
