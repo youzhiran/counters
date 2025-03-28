@@ -8,20 +8,18 @@ import 'package:counters/page/poker50/config.dart';
 import 'package:counters/page/poker50/poker50_session.dart';
 import 'package:counters/page/setting.dart';
 import 'package:counters/page/template.dart';
-import 'package:counters/state.dart';
 import 'package:counters/utils/error_handler.dart';
 import 'package:counters/utils/log.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'db/db_helper.dart';
 import 'model/poker50.dart';
-import 'providers/player_provider.dart';
-import 'providers/score_provider.dart';
-import 'providers/template_provider.dart';
+import 'providers/theme_provider.dart';
+import 'state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,77 +57,69 @@ void main() async {
   }
 
   // 初始化全局状态
-  await globalState.initialize();
+  await globalState.init();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => globalState),
-        ChangeNotifierProvider(create: (_) => TemplateProvider()),
-        ChangeNotifierProvider(create: (_) => ScoreProvider()),
-        ChangeNotifierProvider(create: (_) => PlayerProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  // 创建容器并初始化主题提供者
+  final container = ProviderContainer();
+  await container.read(themeProvider.notifier).init();
+
+  runApp(ProviderScope(
+    child: MyApp(),
+  ));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<GlobalState>(
-      // 监听主题变化
-      builder: (context, state, child) {
-        return MaterialApp(
-          navigatorKey: globalState.navigatorKey,
-          scaffoldMessengerKey: globalState.scaffoldMessengerKey,
-          title: '桌游计分器',
-          theme: _buildTheme(state.themeColor, Brightness.light)
-              .useSystemChineseFont(Brightness.light),
-          darkTheme: _buildTheme(state.themeColor, Brightness.dark)
-              .useSystemChineseFont(Brightness.dark),
-          themeMode: state.themeMode,
-          routes: {
-            '/': (context) => const MainTabsScreen(),
-            '/templates': (context) => const MainTabsScreen(initialIndex: 2),
-            '/poker50_session': (context) => Scaffold(
-                  // 为子页面包裹Scaffold
-                  appBar: AppBar(
-                    title: const Text('游戏进行中'),
-                    leading: BackButton(), // 自动显示返回按钮
-                  ),
-                  body: Poker50SessionPage(
-                    templateId:
-                        ModalRoute.of(context)!.settings.arguments as String,
-                  ),
-                ),
-            '/template/config': (context) => Scaffold(
-                  appBar: AppBar(
-                    title: const Text('模板配置'),
-                    leading: BackButton(),
-                    actions: [
-                      /* 原有保存按钮 */
-                    ],
-                  ),
-                  body: Poker50ConfigPage(
-                    oriTemplate: ModalRoute.of(context)!.settings.arguments
-                        as Poker50Template,
-                  ),
-                ),
-          },
-        );
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 监听主题状态变化
+    final themeState = ref.watch(themeProvider);
+
+    return MaterialApp(
+      navigatorKey: globalState.navigatorKey,
+      scaffoldMessengerKey: globalState.scaffoldMessengerKey,
+      title: '桌游计分器',
+      theme: _buildTheme(themeState.themeColor, Brightness.light)
+          .useSystemChineseFont(Brightness.light),
+      darkTheme: _buildTheme(themeState.themeColor, Brightness.dark)
+          .useSystemChineseFont(Brightness.dark),
+      themeMode: themeState.themeMode,
+      routes: {
+        '/': (context) => const MainTabsScreen(),
+        '/templates': (context) => const MainTabsScreen(initialIndex: 2),
+        '/poker50_session': (context) => Scaffold(
+              // 为子页面包裹Scaffold
+              appBar: AppBar(
+                title: const Text('游戏进行中'),
+                leading: BackButton(), // 自动显示返回按钮
+              ),
+              body: Poker50SessionPage(
+                templateId:
+                    ModalRoute.of(context)!.settings.arguments as String,
+              ),
+            ),
+        '/template/config': (context) => Scaffold(
+              appBar: AppBar(
+                title: const Text('模板配置'),
+                leading: BackButton(),
+                actions: [
+                  /* 原有保存按钮 */
+                ],
+              ),
+              body: Poker50ConfigPage(
+                oriTemplate: ModalRoute.of(context)!.settings.arguments
+                    as Poker50Template,
+              ),
+            ),
       },
     );
   }
 
   /// 显示开发阶段提示对话框
-  Future<void> showDevAlert(BuildContext context) async {
-    await showDialog(
-      context: globalState.navigatorKey.currentContext!,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
+  Future<void> showDevAlert(BuildContext context, WidgetRef ref) async {
+    await globalState.showCommonDialog(
+      child: AlertDialog(
         title: const Text('提示'),
         content: const Text('本程序仍处于积极开发阶段，程序更新不考虑数据兼容性。'
             '\n\n如遇到异常，请尝试以下方法：'
@@ -172,16 +162,16 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainTabsScreen extends StatefulWidget {
+class MainTabsScreen extends ConsumerStatefulWidget {
   final int initialIndex;
 
   const MainTabsScreen({super.key, this.initialIndex = 0});
 
   @override
-  State<MainTabsScreen> createState() => _MainTabsScreenState();
+  ConsumerState<MainTabsScreen> createState() => _MainTabsScreenState();
 }
 
-class _MainTabsScreenState extends State<MainTabsScreen> {
+class _MainTabsScreenState extends ConsumerState<MainTabsScreen> {
   late int _selectedIndex;
   late PageController _pageController; // 保持late声明
 
@@ -238,7 +228,7 @@ class _MainTabsScreenState extends State<MainTabsScreen> {
                   icon: const Icon(Icons.delete_sweep),
                   onPressed: () {
                     const PlayerManagementPage()
-                        .showCleanPlayersDialog(context);
+                        .showCleanPlayersDialog(context, ref);
                   },
                 ),
               ]

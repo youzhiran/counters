@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+
 
 jobs:
   build:
@@ -89,6 +91,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
+          draft: ${{ github.event_name != 'push' }}
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
           files: |
             ./dist/**/*.apk

@@ -1,26 +1,28 @@
 import 'dart:io';
 
-import 'package:counters/state.dart';
 import 'package:counters/utils/data.dart';
 import 'package:counters/version.dart';
 import 'package:counters/widgets/snackbar.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../db/db_helper.dart';
+import '../providers/theme_provider.dart';
+import '../state.dart';
 import '../utils/log.dart';
 import '../utils/net.dart';
 
-class SettingPage extends StatefulWidget {
+class SettingPage extends ConsumerStatefulWidget {
   const SettingPage({super.key});
 
   @override
-  State<SettingPage> createState() => _SettingPageState();
+  ConsumerState<SettingPage> createState() => _SettingPageState();
 }
 
-class _SettingPageState extends State<SettingPage> {
+class _SettingPageState extends ConsumerState<SettingPage> {
   String _versionName = '读取失败';
   String _versionCode = '读取失败';
   String _dataStoragePath = '应用默认目录';
@@ -424,6 +426,9 @@ class _SettingPageState extends State<SettingPage> {
       offset.dy + size.height,
     );
 
+    // 获取当前主题模式
+    final currentThemeMode = ref.read(themeProvider).themeMode;
+
     showMenu<ThemeMode>(
       context: context,
       position: position,
@@ -434,7 +439,7 @@ class _SettingPageState extends State<SettingPage> {
             children: [
               Icon(
                 Icons.check,
-                color: globalState.themeMode == mode
+                color: currentThemeMode == mode
                     ? Theme.of(context).colorScheme.primary
                     : Colors.transparent,
               ),
@@ -446,8 +451,8 @@ class _SettingPageState extends State<SettingPage> {
       }).toList(),
     ).then((value) {
       if (value != null) {
-        globalState.setThemeMode(value);
-        setState(() {});
+        // 使用Riverpod提供者更新主题模式
+        ref.read(themeProvider.notifier).setThemeMode(value);
       }
     });
   }
@@ -474,11 +479,14 @@ class _SettingPageState extends State<SettingPage> {
                   mainAxisSpacing: 18,
                   crossAxisSpacing: 18,
                   children: _themeColors.map((color) {
+                    // 获取当前主题颜色
+                    final currentThemeColor =
+                        ref.read(themeProvider).themeColor;
                     return InkWell(
                       onTap: () {
-                        globalState.setThemeColor(color);
+                        // 使用Riverpod提供者更新主题颜色
+                        ref.read(themeProvider.notifier).setThemeColor(color);
                         Navigator.pop(context);
-                        setState(() {});
                       },
                       child: Container(
                         width: 40,
@@ -487,7 +495,7 @@ class _SettingPageState extends State<SettingPage> {
                           color: color,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: color == globalState.themeColor
+                            color: color == currentThemeColor
                                 ? Colors.white
                                 : Colors.grey,
                             width: 2,
@@ -524,7 +532,7 @@ class _SettingPageState extends State<SettingPage> {
                   icon: Icons.dark_mode,
                   title: '深色模式',
                   trailing: Text(
-                    _getThemeModeText(globalState.themeMode),
+                    _getThemeModeText(ref.watch(themeProvider).themeMode),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                     ),
@@ -538,7 +546,7 @@ class _SettingPageState extends State<SettingPage> {
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: globalState.themeColor,
+                      color: ref.watch(themeProvider).themeColor,
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: Colors.grey.shade400,
@@ -589,7 +597,7 @@ class _SettingPageState extends State<SettingPage> {
                 _buildListTile(
                     icon: Icons.update,
                     title: '检查更新',
-                    onTap: () => checkUpdate(context)),
+                    onTap: () => checkUpdate(context, ref)),
                 _buildListTile(
                   icon: Icons.bug_report,
                   title: '问题反馈',

@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../state.dart';
+import '../state.dart'; // 确保路径正确
 import '../widgets/snackbar.dart';
 import 'log.dart';
 
 class ErrorHandler {
   static void handleError(Object error, StackTrace? stack,
-      {String prefix = ''}) {
+      {String prefix = '', WidgetRef? ref}) {
     Log.e('$prefix错误: $error');
     if (stack != null) Log.e('Stack: $stack');
 
-    Future.microtask(() {
+    Future.microtask(() async {
       if (globalState.scaffoldMessengerKey.currentState != null) {
         final message = '$prefix错误: ${error.toString().split('\n').first}';
         globalState.scaffoldMessengerKey.currentState!.showSnackBar(

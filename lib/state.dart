@@ -1,73 +1,179 @@
 import 'dart:ui';
 
 import 'package:animations/animations.dart';
-import 'package:counters/utils/log.dart';
+import 'package:counters/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class GlobalState with ChangeNotifier {
-  final navigatorKey = GlobalKey<NavigatorState>();
+import 'utils/log.dart';
 
-  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
-      GlobalKey<ScaffoldMessengerState>();
+// 状态数据类
+class GlobalStateData {
+  final GlobalKey<NavigatorState> navigatorKey;
+  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey;
+  final ImageFilter filter;
+  final ThemeMode themeMode;
+  final Color themeColor;
+  final String? progressMessage;
+  final double progressValue;
 
-  final filter = ImageFilter.blur(
-    sigmaX: 5,
-    sigmaY: 5,
-    tileMode: TileMode.mirror,
-  );
+  const GlobalStateData({
+    required this.navigatorKey,
+    required this.scaffoldMessengerKey,
+    required this.filter,
+    required this.themeMode,
+    required this.themeColor,
+    this.progressMessage,
+    this.progressValue = 0,
+  });
 
-  ThemeMode get themeMode => _themeMode;
+  GlobalStateData copyWith({
+    GlobalKey<NavigatorState>? navigatorKey,
+    GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey,
+    ImageFilter? filter,
+    ThemeMode? themeMode,
+    Color? themeColor,
+    String? progressMessage,
+    double? progressValue,
+  }) {
+    return GlobalStateData(
+      navigatorKey: navigatorKey ?? this.navigatorKey,
+      scaffoldMessengerKey: scaffoldMessengerKey ?? this.scaffoldMessengerKey,
+      filter: filter ?? this.filter,
+      themeMode: themeMode ?? this.themeMode,
+      themeColor: themeColor ?? this.themeColor,
+      progressMessage: progressMessage ?? this.progressMessage,
+      progressValue: progressValue ?? this.progressValue,
+    );
+  }
+}
 
-  Color get themeColor => _themeColor;
+class GlobalState {
+  static GlobalState? _instance;
+  late SharedPreferences _prefs;
+  late GlobalStateData _state;
 
-  // 主题相关状态
-  ThemeMode _themeMode = ThemeMode.system;
-  Color _themeColor = Colors.blue;
-  late SharedPreferences _prefs; // 持久化存储实例
+  // 进度对话框相关状态
+  String? _progressDialogMessage;
+  double _progressDialogValue = 0;
 
-  // 初始化方法（需要在main函数中调用）
-  Future<void> initialize() async {
+  // 私有构造函数
+  GlobalState._internal();
+
+  // 单例访问点
+  factory GlobalState() {
+    _instance ??= GlobalState._internal();
+    return _instance!;
+  }
+
+  // 初始化方法
+  Future<void> init() async {
     try {
       _prefs = await SharedPreferences.getInstance();
     } catch (e) {
       Log.e('读取SharedPreferences出错: $e');
     }
-    _loadPreferences();
-  }
 
-  // 加载存储的设置
-  void _loadPreferences() {
-    // 加载主题模式
+    // 加载主题设置
     final modeIndex = _prefs.getInt('themeMode') ?? ThemeMode.system.index;
-    _themeMode = ThemeMode.values[modeIndex];
-
-    // 加载主题颜色
     final colorValue = _prefs.getInt('themeColor') ?? Colors.blue.toARGB32();
-    _themeColor = Color(colorValue);
 
-    notifyListeners(); // 通知监听者更新
+    _state = GlobalStateData(
+      navigatorKey: GlobalKey<NavigatorState>(),
+      scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
+      filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+      themeMode: ThemeMode.values[modeIndex],
+      themeColor: Color(colorValue),
+    );
   }
 
-  // 主题模式设置方法
-  Future<void> setThemeMode(ThemeMode mode) async {
-    _themeMode = mode;
-    await _prefs.setInt('themeMode', mode.index); // 持久化存储
-    notifyListeners(); // 通知界面更新
+  // 获取当前状态
+  GlobalStateData get currentState => _state;
+
+  // 更新状态
+  void updateState(GlobalStateData newState) {
+    _state = newState;
   }
 
-  // 主题颜色设置方法
+  // 更新主题模式
+  Future<void> setThemeMode(ThemeMode themeMode) async {
+    await _prefs.setInt('themeMode', themeMode.index);
+    _state = _state.copyWith(themeMode: themeMode);
+
+    // 通知应用重建以应用新主题
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      // 检查 context 是否仍然挂载
+      if (context is Element && context.mounted) {
+        // 查找并重建MaterialApp
+        void rebuildApp(Element element) {
+          element.markNeedsBuild();
+          element.visitChildren(rebuildApp);
+        }
+
+        context.visitChildElements(rebuildApp);
+      }
+    }
+  }
+
+  // 更新主题颜色
   Future<void> setThemeColor(Color color) async {
-    _themeColor = color;
-    await _prefs.setInt('themeColor', color.toARGB32()); // 持久化存储
-    notifyListeners(); // 通知界面更新
+    await _prefs.setInt('themeColor', color.toARGB32());
+    _state = _state.copyWith(themeColor: color);
+
+    // 通知应用重建以应用新主题
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      // 检查 context 是否仍然挂载
+      if (context is Element && context.mounted) {
+        // 查找并重建MaterialApp
+        void rebuildApp(Element element) {
+          element.markNeedsBuild();
+          element.visitChildren(rebuildApp);
+        }
+
+        context.visitChildElements(rebuildApp);
+      }
+    }
   }
 
+  // 更新进度信息
+  void updateProgress({String? message, double? value}) {
+    _state = _state.copyWith(
+      progressMessage: message,
+      progressValue: value,
+    );
+  }
+
+  // 清除进度信息
+  void clearProgress() {
+    _state = _state.copyWith(progressMessage: null, progressValue: 0);
+  }
+
+  // 获取导航键
+  GlobalKey<NavigatorState> get navigatorKey => _state.navigatorKey;
+
+  // 获取ScaffoldMessenger键
+  GlobalKey<ScaffoldMessengerState> get scaffoldMessengerKey =>
+      _state.scaffoldMessengerKey;
+
+  // 获取当前主题模式
+  ThemeMode get themeMode => _state.themeMode;
+
+  // 获取当前主题颜色
+  Color get themeColor => _state.themeColor;
+
+  // 获取当前滤镜
+  ImageFilter get filter => _state.filter;
+
+  // 获取当前进度信息
+  String? get progressMessage => _state.progressMessage;
+
+  // 获取当前进度值
+  double get progressValue => _state.progressValue;
+
   /// 显示进度对话框
-  /// 显示进度对话框
-  String? _progressMessage;
-  double _progressValue = 0;
   Future<bool> showProgressDialog({
     required String title,
     required Future<bool> Function(
@@ -75,7 +181,7 @@ class GlobalState with ChangeNotifier {
     ) task,
   }) async {
     bool? result;
-    bool taskStarted = false; // 添加标志，防止任务被多次调用
+    bool taskStarted = false;
 
     await showCommonDialog<void>(
       dismissible: false,
@@ -85,13 +191,13 @@ class GlobalState with ChangeNotifier {
             builder: (context, setState) {
               // 开始执行任务，确保只执行一次
               if (result == null && !taskStarted) {
-                taskStarted = true; // 标记任务已开始
+                taskStarted = true;
                 result = null;
                 task((message, progress) {
                   if (!context.mounted) return;
                   setState(() {
-                    _progressMessage = message;
-                    _progressValue = progress;
+                    _progressDialogMessage = message;
+                    _progressDialogValue = progress;
                   });
                 }).then((value) {
                   result = value;
@@ -107,10 +213,10 @@ class GlobalState with ChangeNotifier {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_progressMessage ?? '准备中...'),
+                    Text(_progressDialogMessage ?? '准备中...'),
                     const SizedBox(height: 16),
                     LinearProgressIndicator(
-                      value: _progressValue,
+                      value: _progressDialogValue,
                     ),
                   ],
                 ),
@@ -123,10 +229,16 @@ class GlobalState with ChangeNotifier {
     return result ?? false;
   }
 
+  /// 显示通用对话框
   Future<T?> showCommonDialog<T>({
     required Widget child,
     bool dismissible = true,
   }) async {
+    if (navigatorKey.currentState?.context == null) {
+      Log.e('Navigator context is not available');
+      return null;
+    }
+
     return await showModal<T>(
       context: navigatorKey.currentState!.context,
       configuration: FadeScaleTransitionConfiguration(
@@ -138,7 +250,8 @@ class GlobalState with ChangeNotifier {
     );
   }
 
-  Future<bool?> showMessage<bool>({
+  /// 显示消息对话框
+  Future<bool?> showMessage({
     required String title,
     required InlineSpan message,
     String? confirmText,
@@ -170,7 +283,7 @@ class GlobalState with ChangeNotifier {
                 onPressed: () {
                   Navigator.of(context).pop(false);
                 },
-                child: Text('取消'),
+                child: const Text('取消'),
               ),
               TextButton(
                 onPressed: () {
@@ -185,7 +298,8 @@ class GlobalState with ChangeNotifier {
     );
   }
 
-  openUrl(String url) async {
+  /// 打开外部链接
+  Future<void> openUrl(String url) async {
     final res = await showMessage(
       message: TextSpan(text: url),
       title: '外部链接',
@@ -194,8 +308,16 @@ class GlobalState with ChangeNotifier {
     if (res != true) {
       return;
     }
-    launchUrl(Uri.parse(url));
+    try {
+      await launchUrl(Uri.parse(url));
+    } catch (e) {
+      Log.e('打开链接失败: $e');
+      if (navigatorKey.currentState?.context != null) {
+        AppSnackBar.show('无法打开链接: $url');
+      }
+    }
   }
 }
 
+// 全局实例
 final globalState = GlobalState();

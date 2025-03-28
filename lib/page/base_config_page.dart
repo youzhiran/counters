@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../fragments/player_select_dialog.dart';
 import '../../model/base_template.dart';
@@ -8,11 +8,11 @@ import '../../model/player_info.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
-import '../../state.dart';
 import '../../widgets/player_widget.dart';
 import '../../widgets/snackbar.dart';
+import '../state.dart';
 
-abstract class BaseConfigPage extends StatefulWidget {
+abstract class BaseConfigPage extends ConsumerStatefulWidget {
   final BaseTemplate oriTemplate;
 
   const BaseConfigPage({
@@ -21,7 +21,8 @@ abstract class BaseConfigPage extends StatefulWidget {
   });
 }
 
-abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
+abstract class BaseConfigPageState<T extends BaseConfigPage>
+    extends ConsumerState<T> {
   late TextEditingController templateNameController;
   late TextEditingController playerCountController;
   late TextEditingController targetScoreController;
@@ -62,8 +63,9 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
   String? getRootBaseTemplateId() {
     BaseTemplate? current = widget.oriTemplate;
     while (current != null && !current.isSystemTemplate) {
-      current =
-          context.read<TemplateProvider>().getTemplate(current.baseTemplateId!);
+      current = ref
+          .read(templatesProvider.notifier)
+          .getTemplate(current.baseTemplateId!);
     }
     return current?.tid;
   }
@@ -74,7 +76,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
     // 递归查找直到系统模板
     while (current != null && !current.isSystemTemplate) {
       final baseId = current.baseTemplateId;
-      current = context.read<TemplateProvider>().getTemplate(baseId ?? '');
+      current = ref.read(templatesProvider.notifier).getTemplate(baseId ?? '');
     }
 
     return current?.templateName ?? '系统模板';
@@ -178,7 +180,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
   /// 进入模板配置页的提示
   Future<void> _checkHistoryTemp() async {
     final tid = widget.oriTemplate.tid;
-    final provider = context.read<ScoreProvider>();
+    final provider = ref.read(scoreProvider.notifier);
     final isExists = provider.checkSessionExists(tid);
     if (await isExists) {
       AppSnackBar.warn('当前模板已有关联计分记录，保存时需清除该记录');
@@ -195,9 +197,10 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
   ///  检查模板是否正在计分
   Future<bool> confirmCheckScoring() async {
     final tid = widget.oriTemplate.tid;
-    final provider = context.read<ScoreProvider>();
-    if (provider.currentSession?.templateId == tid) {
-      await globalState.showCommonDialog<bool>(
+    final provider = ref.read(scoreProvider.notifier);
+    final currentSession = ref.watch(scoreProvider).valueOrNull?.currentSession;
+    if (currentSession?.templateId == tid) {
+      await globalState.showCommonDialog(
         child: AlertDialog(
           title: const Text('提示'),
           content: const Text('当前模板正在计分，请结束计分后再修改！'),
@@ -212,7 +215,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
       return false;
     }
     if (hasHistory) {
-      final result = await globalState.showCommonDialog<bool>(
+      final result = await globalState.showCommonDialog(
         child: AlertDialog(
           title: const Text('警告'),
           content: const Text('当前模板已有关联计分记录，保存后会清除所有关联记录。\n是否继续？'),
@@ -483,8 +486,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage> extends State<T> {
   }
 
   void _updatePlayerCount(int newCount) async {
-    final playerProvider = context.read<PlayerProvider>();
-    final dbPlayers = playerProvider.players ?? [];
+    final dbPlayers = ref.watch(playerProvider).players ?? [];
 
     if (newCount > players.length) {
       for (int i = players.length; i < newCount && i < dbPlayers.length; i++) {

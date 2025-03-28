@@ -1,17 +1,18 @@
 import 'dart:convert';
 
-import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../state.dart';
 import 'log.dart';
 
 class UpdateChecker {
   static const String releasesUrl =
       'https://api.github.com/repos/youzhiran/counters/releases';
-  static String latestReleaseUrl = ''; // 新增URL存储字段
+  static String latestReleaseUrl = '';
 
   String versionExtra = '';
 
@@ -101,7 +102,7 @@ class UpdateChecker {
   }
 
   static void showUpdateResultDialog(
-      BuildContext context, String versionInfo, bool hasUpdate) {
+      BuildContext context, WidgetRef ref, String versionInfo, bool hasUpdate) {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text(hasUpdate ? '发现新版本' : '未发现新版本'),
@@ -133,7 +134,10 @@ class UpdateChecker {
   }
 }
 
-void checkUpdate(BuildContext context) {
+void checkUpdate(
+  BuildContext context,
+  WidgetRef ref,
+) {
   globalState.showCommonDialog(
     child: UpdateCheckerDialog(),
   );
@@ -211,11 +215,14 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
         if (hasUpdate)
           TextButton(
             onPressed: () async {
+              final navigatorState = Navigator.of(context);
               if (await canLaunchUrl(
                   Uri.parse(UpdateChecker.latestReleaseUrl))) {
                 await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
               }
-              globalState.navigatorKey.currentState?.pop();
+              if (mounted) {
+                navigatorState.pop();
+              }
             },
             child: Text('立即更新'),
           ),

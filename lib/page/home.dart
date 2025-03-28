@@ -2,7 +2,7 @@ import 'package:counters/model/landlords.dart';
 import 'package:counters/utils/log.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/base_template.dart';
 import '../model/game_session.dart';
@@ -17,14 +17,17 @@ import '../widgets/snackbar.dart';
 import 'landlords/landlords_session.dart';
 import 'poker50/poker50_session.dart';
 
-class _TemplateSelector extends StatelessWidget {
+class _TemplateSelector extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    return Consumer<TemplateProvider>(
-      builder: (context, provider, _) {
-        final userTemplates = provider.templates
-            .where((template) => !template.isSystemTemplate)
-            .toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final templatesAsync = ref.watch(templatesProvider);
+
+    return templatesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('加载失败: $err')),
+      data: (templates) {
+        final userTemplates =
+            templates.where((template) => !template.isSystemTemplate).toList();
 
         return userTemplates.isEmpty
             ? Center(
@@ -41,7 +44,7 @@ class _TemplateSelector extends StatelessWidget {
                       onPressed: () => Navigator.pushNamedAndRemoveUntil(
                         context,
                         '/templates',
-                        (route) => false, // 清除所有路由栈
+                        (route) => false,
                       ),
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(200, 48),
@@ -57,15 +60,16 @@ class _TemplateSelector extends StatelessWidget {
                   title: Text(userTemplates[index].templateName),
                   subtitle: Text('玩家数: ${userTemplates[index].playerCount}'),
                   onTap: () =>
-                      _handleTemplateSelect(context, userTemplates[index]),
+                      _handleTemplateSelect(context, ref, userTemplates[index]),
                 ),
               );
       },
     );
   }
 
-  void _handleTemplateSelect(BuildContext context, BaseTemplate template) {
-    context.read<ScoreProvider>().startNewGame(template);
+  void _handleTemplateSelect(
+      BuildContext context, WidgetRef ref, BaseTemplate template) {
+    ref.read(scoreProvider.notifier).startNewGame(template);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -75,8 +79,8 @@ class _TemplateSelector extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key}); // 添加构造函数
+class HomePage extends ConsumerWidget {
+  const HomePage({super.key});
 
   static Widget buildSessionPage(BaseTemplate? template, String templateId) {
     if (template is Poker50Template) {
@@ -84,35 +88,39 @@ class HomePage extends StatelessWidget {
     } else if (template is LandlordsTemplate) {
       return LandlordsSessionPage(templateId: templateId);
     }
-    // 未知模板类型，返回首页并显示错误提示
     AppSnackBar.error('未知的模板类型');
     return const HomePage();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<ScoreProvider>(
-      builder: (context, provider, _) {
-        if (provider.currentSession == null) {
-          return _buildHomeWithHistory(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scoreAsync = ref.watch(scoreProvider);
+
+    return scoreAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('加载失败: $err')),
+      data: (scoreState) {
+        if (scoreState.currentSession == null) {
+          return _buildHomeWithHistory(context, ref);
         }
-        return _buildScoringBoard(context, provider);
+        return _buildScoringBoard(context, ref, scoreState);
       },
     );
   }
 
-  Widget _buildHomeWithHistory(BuildContext context) {
+  Widget _buildHomeWithHistory(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
-        _buildEmptyState(context),
+        _buildEmptyState(context, ref),
       ],
     );
   }
 
-  void _resumeSession(BuildContext context, GameSession session) async {
-    context.read<ScoreProvider>().loadSession(session);
-    final template = await context
-        .read<TemplateProvider>()
+  void _resumeSession(
+      BuildContext context, WidgetRef ref, GameSession session) async {
+    ref.read(scoreProvider.notifier).loadSession(session);
+    final template = await ref
+        .read(templatesProvider.notifier)
         .getTemplateAsync(session.templateId);
 
     if (!context.mounted) return;
@@ -124,7 +132,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
     return Expanded(
       child: Center(
         child: Column(
@@ -132,13 +140,12 @@ class HomePage extends StatelessWidget {
           children: [
             Text('没有进行中的游戏', style: TextStyle(fontSize: 18)),
             SizedBox(height: 20),
-            // 新增按钮容器
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildTemplateButton(context), // 选择模板按钮
+                _buildTemplateButton(context),
                 SizedBox(height: 12),
-                _buildHistoryButton(), // 历史游戏按钮
+                _buildHistoryButton(ref),
               ],
             )
           ],
@@ -165,20 +172,17 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryButton() {
+  Widget _buildHistoryButton(WidgetRef ref) {
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
         minimumSize: Size(200, 48),
       ),
-      onPressed: () => _showHistorySessionDialog(),
+      onPressed: () => _showHistorySessionDialog(ref),
       child: Text('选择历史计分'),
     );
   }
 
-  void _showClearConfirmation(BuildContext context) {
-    // 在异步操作前获取需要的对象
-    final provider = Provider.of<ScoreProvider>(context, listen: false);
-
+  void _showClearConfirmation(BuildContext context, WidgetRef ref) {
     globalState
         .showCommonDialog(
       child: ConfirmationDialog(
@@ -189,124 +193,122 @@ class HomePage extends StatelessWidget {
     )
         .then((confirmed) {
       if (confirmed == true) {
-        // 直接在这里执行清除操作，不传递 context
-        _clearAllHistory(provider);
+        _clearAllHistory(ref);
       }
     });
   }
 
-  void _clearAllHistory(ScoreProvider provider) async {
-    // 执行清除操作
-    await provider.clearAllHistory();
-
-    // 关闭当前对话框并重新打开以刷新列表
+  void _clearAllHistory(WidgetRef ref) async {
+    await ref.read(scoreProvider.notifier).clearAllHistory();
     globalState.navigatorKey.currentState?.pop();
-
-    // 显示操作反馈
     AppSnackBar.show('已清除所有历史记录');
   }
 
-  // 历史会话对话框
-  void _showHistorySessionDialog() {
+  void _showHistorySessionDialog(WidgetRef ref) {
     globalState.showCommonDialog(
       child: StatefulBuilder(
         builder: (context, setState) {
-          return FutureBuilder<List<GameSession>>(
-            future: context.read<ScoreProvider>().getAllSessions(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const AlertDialog(
-                  content: Center(child: CircularProgressIndicator()),
-                );
-              } else {
-                final sessions = snapshot.data ?? [];
-                sessions.sort((a, b) => b.startTime.compareTo(a.startTime));
+          return Consumer(
+            builder: (context, ref, _) {
+              return FutureBuilder<List<GameSession>>(
+                future: ref.read(scoreProvider.notifier).getAllSessions(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const AlertDialog(
+                      content: Center(child: CircularProgressIndicator()),
+                    );
+                  } else {
+                    final sessions = snapshot.data ?? [];
+                    sessions.sort((a, b) => b.startTime.compareTo(a.startTime));
 
-                return AlertDialog(
-                  title: Row(
-                    children: [
-                      const Text('历史计分记录'),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.delete_forever),
-                        tooltip: '清除所有记录',
-                        onPressed: () => _showClearConfirmation(context),
-                      )
-                    ],
-                  ),
-                  content: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.9,
-                    height: MediaQuery.of(context).size.height * 0.7,
-                    child: sessions.isEmpty
-                        ? const Center(child: Text('暂无历史记录'))
-                        : ListView.separated(
-                            itemCount: sessions.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final session = sessions[index];
-                              return Dismissible(
-                                key: Key(session.sid),
-                                background: Container(
-                                  color: Colors.red,
-                                  alignment: Alignment.centerRight,
-                                  padding: const EdgeInsets.only(right: 20),
-                                  child: const Icon(Icons.delete,
-                                      color: Colors.white),
-                                ),
-                                confirmDismiss: (direction) async {
-                                  return await globalState.showCommonDialog(
-                                    child: AlertDialog(
-                                      title: const Text('确认删除'),
-                                      content: const Text('确定要删除这条记录吗？'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, false),
-                                          child: const Text('取消'),
+                    return AlertDialog(
+                      title: Row(
+                        children: [
+                          const Text('历史计分记录'),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.delete_forever),
+                            tooltip: '清除所有记录',
+                            onPressed: () =>
+                                _showClearConfirmation(context, ref),
+                          )
+                        ],
+                      ),
+                      content: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.9,
+                        height: MediaQuery.of(context).size.height * 0.7,
+                        child: sessions.isEmpty
+                            ? const Center(child: Text('暂无历史记录'))
+                            : ListView.separated(
+                                itemCount: sessions.length,
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final session = sessions[index];
+                                  return Dismissible(
+                                    key: Key(session.sid),
+                                    background: Container(
+                                      color: Colors.red,
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.only(right: 20),
+                                      child: const Icon(Icons.delete,
+                                          color: Colors.white),
+                                    ),
+                                    confirmDismiss: (direction) async {
+                                      return await globalState.showCommonDialog(
+                                        child: AlertDialog(
+                                          title: const Text('确认删除'),
+                                          content: const Text('确定要删除这条记录吗？'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: const Text('取消'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              child: const Text('删除',
+                                                  style: TextStyle(
+                                                      color: Colors.red)),
+                                            ),
+                                          ],
                                         ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, true),
-                                          child: const Text('删除',
-                                              style:
-                                                  TextStyle(color: Colors.red)),
-                                        ),
-                                      ],
+                                      );
+                                    },
+                                    onDismissed: (_) async {
+                                      await ref
+                                          .read(scoreProvider.notifier)
+                                          .deleteSession(session.sid);
+                                      setState(() {});
+                                    },
+                                    child: HistorySessionItem(
+                                      session: session,
+                                      onDelete: () async {
+                                        await ref
+                                            .read(scoreProvider.notifier)
+                                            .deleteSession(session.sid);
+                                        setState(() {});
+                                      },
+                                      onResume: () {
+                                        Navigator.pop(context);
+                                        _resumeSession(context, ref, session);
+                                      },
                                     ),
                                   );
                                 },
-                                onDismissed: (_) async {
-                                  await context
-                                      .read<ScoreProvider>()
-                                      .deleteSession(session.sid);
-                                  setState(() {});
-                                },
-                                child: HistorySessionItem(
-                                  session: session,
-                                  onDelete: () async {
-                                    await context
-                                        .read<ScoreProvider>()
-                                        .deleteSession(session.sid);
-                                    setState(() {});
-                                  },
-                                  onResume: () {
-                                    Navigator.pop(context);
-                                    _resumeSession(context, session);
-                                  },
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('关闭'),
-                    ),
-                  ],
-                );
-              }
+                              ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('关闭'),
+                        ),
+                      ],
+                    );
+                  }
+                },
+              );
             },
           );
         },
@@ -314,27 +316,27 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildScoringBoard(BuildContext context, ScoreProvider provider) {
-    final session = provider.currentSession!;
+  Widget _buildScoringBoard(
+      BuildContext context, WidgetRef ref, ScoreState scoreState) {
+    final session = scoreState.currentSession!;
+    final templatesAsync = ref.watch(templatesProvider);
 
-    return FutureBuilder<BaseTemplate?>(
-        future: context
-            .read<TemplateProvider>()
-            .getTemplateAsync(session.templateId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return templatesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('加载失败: $err')),
+      data: (templates) {
+        final template = templates.firstWhere(
+          (t) => t.tid == session.templateId,
+          orElse: () => _createFallbackTemplate(),
+        );
 
-          final template = snapshot.data ?? _createFallbackTemplate();
-          return Column(
-            children: [
-              Expanded(
-                  child: ListView.builder(
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
                 itemCount: session.scores.length,
                 itemBuilder: (context, index) {
                   final score = session.scores[index];
-                  // 先尝试从模板中查找玩家
                   final player = template.players.firstWhere(
                     (p) => p.pid == score.playerId,
                     orElse: () {
@@ -358,52 +360,52 @@ class HomePage extends StatelessWidget {
                     }(),
                   );
                 },
-              )),
-              // 继续本轮&结束本轮按钮
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                      ),
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              HomePage.buildSessionPage(template, template.tid),
-                        ),
-                      ),
-                      child:
-                          Text('继续本轮', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                     ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            HomePage.buildSessionPage(template, template.tid),
                       ),
-                      onPressed: () => _showEndConfirmation(context, provider),
-                      child:
-                          Text('结束本轮', style: TextStyle(color: Colors.white)),
                     ),
-                  ],
-                ),
-              )
-            ],
-          );
-        });
+                    child: Text('继续本轮', style: TextStyle(color: Colors.white)),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    ),
+                    onPressed: () =>
+                        _showEndConfirmation(context, ref, scoreState),
+                    child: Text('结束本轮', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+            )
+          ],
+        );
+      },
+    );
   }
 
-  void _showEndConfirmation(BuildContext context, ScoreProvider provider) {
-    // 检查是否有任何得分记录
-    final hasScores =
-        provider.currentSession?.scores.any((s) => s.roundScores.isNotEmpty) ??
-            false;
+  void _showEndConfirmation(
+      BuildContext context, WidgetRef ref, ScoreState scoreState) {
+    final hasScores = scoreState.currentSession?.scores
+            .any((s) => s.roundScores.isNotEmpty) ??
+        false;
 
     final message =
         hasScores ? '确定要结束当前游戏吗？进度将会保存' : '当前游戏没有任何得分记录，结束后将不会保存到历史记录中';
@@ -420,7 +422,7 @@ class HomePage extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              provider.resetGame(hasScores);
+              ref.read(scoreProvider.notifier).resetGame(hasScores);
               AppSnackBar.show('已结束当前游戏计分');
             },
             child: Text('确认结束', style: TextStyle(color: Colors.red)),
@@ -430,7 +432,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // 创建应急模板
   Poker50Template _createFallbackTemplate() {
     return Poker50Template(
         templateName: '应急模板',

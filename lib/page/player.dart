@@ -1,22 +1,20 @@
 import 'dart:math';
 
-import 'package:counters/state.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/player_info.dart';
 import '../providers/player_provider.dart';
+import '../state.dart';
 import '../widgets/confirmation_dialog.dart';
 import 'add_players.dart';
 
-class PlayerManagementPage extends StatefulWidget {
+class PlayerManagementPage extends ConsumerWidget {
   const PlayerManagementPage({super.key});
 
-  @override
-  State<PlayerManagementPage> createState() => _PlayerManagementPageState();
-
-  Future<void> showCleanPlayersDialog(BuildContext context) async {
+  Future<void> showCleanPlayersDialog(
+      BuildContext context, WidgetRef ref) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => ConfirmationDialog(
@@ -28,26 +26,23 @@ class PlayerManagementPage extends StatefulWidget {
 
     if (!context.mounted) return;
     if (result == true) {
-      context.read<PlayerProvider>().cleanUnusedPlayers();
+      ref.read(playerProvider.notifier).cleanUnusedPlayers();
     }
   }
-}
 
-class _PlayerManagementPageState extends State<PlayerManagementPage> {
   @override
-  void initState() {
-    super.initState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 初始化加载玩家数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PlayerProvider>().loadPlayers();
+      ref.read(playerProvider.notifier).loadPlayers();
     });
-  }
 
-  @override
-  Widget build(BuildContext context) {
     return Stack(
       children: [
-        Consumer<PlayerProvider>(
-          builder: (context, provider, _) {
+        Consumer(
+          builder: (context, ref, _) {
+            final provider = ref.watch(playerProvider);
+
             if (provider.players == null) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -59,10 +54,11 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
             return RefreshIndicator(
               onRefresh: () async {
                 // 重新加载数据
-                await provider.loadPlayers();
+                await ref.read(playerProvider.notifier).loadPlayers();
               },
               child: GridView.builder(
-                key: PageStorageKey('player_list'), // 为整个列表添加key
+                key: const PageStorageKey('player_list'),
+                // 为整个列表添加key
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 78),
                 gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: max(
@@ -89,7 +85,6 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                       ),
                     ),
                     key: ValueKey(player.pid), // 为每个Card添加唯一的key
-                    // margin: const EdgeInsets.only(bottom: 8),
                     child: Center(
                       child: ListTile(
                         leading: PlayerAvatar.build(context, player),
@@ -99,7 +94,9 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                           maxLines: 1,
                         ),
                         subtitle: FutureBuilder<int>(
-                          future: provider.getPlayerPlayCount(player.pid),
+                          future: ref
+                              .read(playerProvider.notifier)
+                              .getPlayerPlayCount(player.pid),
                           builder: (context, snapshot) {
                             if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
@@ -135,10 +132,10 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                           onSelected: (value) {
                             switch (value) {
                               case 'edit':
-                                _showEditDialog(context, player);
+                                _showEditDialog(context, player, ref);
                                 break;
                               case 'delete':
-                                _showDeleteDialog(context, player);
+                                _showDeleteDialog(context, player, ref);
                                 break;
                             }
                           },
@@ -165,7 +162,8 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
     );
   }
 
-  Future<void> _showEditDialog(BuildContext context, PlayerInfo player) async {
+  Future<void> _showEditDialog(
+      BuildContext context, PlayerInfo player, WidgetRef ref) async {
     if (!context.mounted) return;
 
     final playerListItemKey = GlobalKey<PlayerListItemState>();
@@ -182,12 +180,12 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                 '编辑玩家',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               PlayerListItem(
                 key: playerListItemKey,
                 initialPlayer: player,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -195,15 +193,15 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
                     onPressed: () => Navigator.pop(context, false),
                     child: const Text('取消'),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () {
                       final playerListItem = playerListItemKey.currentState;
                       if (playerListItem != null &&
                           playerListItem.hasValidName()) {
                         final updatedPlayer = playerListItem.getPlayerInfo();
-                        context
-                            .read<PlayerProvider>()
+                        ref
+                            .read(playerProvider.notifier)
                             .updatePlayer(updatedPlayer);
                         Navigator.of(context).pop(true);
                       }
@@ -220,14 +218,14 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
 
     if (!context.mounted) return;
     if (result == true) {
-      context.read<PlayerProvider>().loadPlayers();
+      ref.read(playerProvider.notifier).loadPlayers();
     }
   }
 
   Future<void> _showDeleteDialog(
-      BuildContext context, PlayerInfo player) async {
-    final provider = context.read<PlayerProvider>();
-    final isUsed = await provider.isPlayerInUse(player.pid);
+      BuildContext context, PlayerInfo player, WidgetRef ref) async {
+    final isUsed =
+        await ref.read(playerProvider.notifier).isPlayerInUse(player.pid);
 
     if (!context.mounted) return;
 
@@ -235,12 +233,12 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('无法删除'),
+          title: const Text('无法删除'),
           content: Text('${player.name} 已被使用，不能删除'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('确定'),
+              child: const Text('确定'),
             ),
           ],
         ),
@@ -259,7 +257,7 @@ class _PlayerManagementPageState extends State<PlayerManagementPage> {
 
     if (!context.mounted) return;
     if (result == true) {
-      provider.deletePlayer(player.pid);
+      ref.read(playerProvider.notifier).deletePlayer(player.pid);
     }
   }
 }
@@ -290,30 +288,38 @@ class PlayerSearchDelegate extends SearchDelegate<void> {
 
   @override
   Widget buildResults(BuildContext context) {
-    return _buildSearchResults(context);
+    return Consumer(
+      builder: (context, ref, _) {
+        return _buildSearchResults(context, ref);
+      },
+    );
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    return _buildSearchResults(context);
+    return Consumer(
+      builder: (context, ref, _) {
+        return _buildSearchResults(context, ref);
+      },
+    );
   }
 
-  Widget _buildSearchResults(BuildContext context) {
-    final provider = context.watch<PlayerProvider>();
-    provider.setSearchQuery(query);
+  Widget _buildSearchResults(BuildContext context, WidgetRef ref) {
+    ref.read(playerProvider.notifier).setSearchQuery(query);
+    final state = ref.watch(playerProvider);
 
-    if (provider.filteredPlayers == null) {
+    if (state.filteredPlayers == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (provider.filteredPlayers!.isEmpty) {
+    if (state.filteredPlayers!.isEmpty) {
       return const Center(child: Text('未找到玩家'));
     }
 
     return ListView.builder(
-      itemCount: provider.filteredPlayers!.length,
+      itemCount: state.filteredPlayers!.length,
       itemBuilder: (context, index) {
-        final player = provider.filteredPlayers![index];
+        final player = state.filteredPlayers![index];
         return ListTile(
           leading: PlayerAvatar.build(context, player),
           title: Text(player.name),

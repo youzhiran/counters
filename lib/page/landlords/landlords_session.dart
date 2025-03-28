@@ -1,6 +1,6 @@
 import 'package:counters/model/landlords.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../model/base_template.dart';
 import '../../model/game_session.dart';
@@ -10,13 +10,13 @@ import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/player_widget.dart';
 import '../base_session.dart';
-import 'landlords_session_old.dart';
 
 class LandlordsSessionPage extends BaseSessionPage {
   const LandlordsSessionPage({super.key, required super.templateId});
 
   @override
-  State<LandlordsSessionPage> createState() => _LandlordsSessionPageState();
+  ConsumerState<LandlordsSessionPage> createState() =>
+      _LandlordsSessionPageState();
 }
 
 class _LandlordsSessionPageState
@@ -34,10 +34,10 @@ class _LandlordsSessionPageState
 
   @override
   Widget build(BuildContext context) {
-    final template = context
-        .read<TemplateProvider>()
+    final template = ref
+        .read(templatesProvider.notifier)
         .getTemplate(widget.templateId) as LandlordsTemplate;
-    final session = context.watch<ScoreProvider>().currentSession;
+    final session = ref.watch(scoreProvider).value?.currentSession;
 
     if (session == null) {
       return Scaffold(
@@ -46,7 +46,8 @@ class _LandlordsSessionPageState
       );
     }
 
-    final currentRound = context.read<ScoreProvider>().currentRound;
+    final currentRound = ref.read(scoreProvider).value?.currentRound ?? 0;
+
     final failureScore = template.targetScore;
 
     // 当轮次完成时检查
@@ -70,20 +71,20 @@ class _LandlordsSessionPageState
       appBar: AppBar(
         title: Text(template.templateName),
         actions: [
-          IconButton(
-            icon: Icon(Icons.switch_access_shortcut_add),
-            tooltip: '新样式，点击切换',
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => LandlordsSessionOldPage(
-                    templateId: widget.templateId,
-                  ),
-                ),
-              );
-            },
-          ),
+          // IconButton(
+          //   icon: Icon(Icons.switch_access_shortcut_add),
+          //   tooltip: '新样式，点击切换',
+          //   onPressed: () {
+          //     Navigator.pushReplacement(
+          //       context,
+          //       MaterialPageRoute(
+          //         builder: (context) => LandlordsSessionOldPage(
+          //           templateId: widget.templateId,
+          //         ),
+          //       ),
+          //     );
+          //   },
+          // ),
           IconButton(
             icon: Icon(Icons.sports_score),
             onPressed: () => showGameResult(context),
@@ -101,8 +102,8 @@ class _LandlordsSessionPageState
   @override
   Widget buildGameBody(
       BuildContext context, BaseTemplate template, GameSession session) {
-    final template = context
-        .read<TemplateProvider>()
+    final template = ref
+        .read(templatesProvider.notifier)
         .getTemplate(widget.templateId) as LandlordsTemplate;
 
     return Column(
@@ -129,7 +130,7 @@ class _LandlordsSessionPageState
       _resetRoundData();
 
       // 如果是编辑已有轮次，加载已有数据
-      final session = context.read<ScoreProvider>().currentSession;
+      final session = ref.read(scoreProvider).value?.currentSession;
       if (session != null &&
           roundIndex < session.scores.first.roundScores.length) {
         _loadRoundData(session, roundIndex);
@@ -504,12 +505,17 @@ class _LandlordsSessionPageState
     final baseValue = template.baseScore * _baseScore * multiplier;
 
     // 直接使用当前选择的胜利方状态
-    _finalizeScores(template, session, _landlordWin, baseValue);
+    _finalizeScores(template, session, _landlordWin, baseValue, ref);
   }
 
-  void _finalizeScores(LandlordsTemplate template, GameSession session,
-      bool landlordWin, int baseValue) {
-    final scoreProvider = context.read<ScoreProvider>();
+  void _finalizeScores(
+    LandlordsTemplate template,
+    GameSession session,
+    bool landlordWin,
+    int baseValue,
+    WidgetRef ref,
+  ) {
+    final scoreNotifier = ref.read(scoreProvider.notifier);
 
     // 计算每个玩家的得分
     for (var playerScore in session.scores) {
@@ -535,14 +541,14 @@ class _LandlordsSessionPageState
 
       // 更新或添加分数
       if (_currentEditRound < playerScore.roundScores.length) {
-        scoreProvider.updateScore(
+        scoreNotifier.updateScore(
             playerScore.playerId, _currentEditRound, score);
         // 为特定回合设置扩展字段
         extendedData.forEach((key, value) {
           playerScore.setRoundExtendedField(_currentEditRound, key, value);
         });
       } else {
-        scoreProvider.addScore(playerScore.playerId, score, context);
+        scoreNotifier.addScore(playerScore.playerId, score);
         final newRoundIndex = playerScore.roundScores.length - 1;
         // 为新回合设置扩展字段
         extendedData.forEach((key, value) {
@@ -559,7 +565,7 @@ class _LandlordsSessionPageState
   }
 }
 
-class _ScoreBoard extends StatefulWidget {
+class _ScoreBoard extends ConsumerStatefulWidget {
   final LandlordsTemplate template;
   final GameSession session;
   final Function(int) onEditRound;
@@ -576,7 +582,7 @@ class _ScoreBoard extends StatefulWidget {
   _ScoreBoardState createState() => _ScoreBoardState();
 }
 
-class _ScoreBoardState extends State<_ScoreBoard> {
+class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
   final ScrollController _headerHorizontalController = ScrollController();
   final ScrollController _contentHorizontalController = ScrollController();
 
@@ -598,8 +604,11 @@ class _ScoreBoardState extends State<_ScoreBoard> {
 
   @override
   Widget build(BuildContext context) {
-    final currentRound =
-        context.select<ScoreProvider, int>((p) => p.currentRound);
+    final currentRound = ref.watch(scoreProvider).when(
+      loading: () => 0,
+      error: (err, stack) => 0,
+      data: (state) => state.currentRound,
+    );
 
     return Column(
       children: [
@@ -746,7 +755,8 @@ class _ScoreBoardState extends State<_ScoreBoard> {
             // 玩家分数列
             ...players.map((player) {
               final playerScore = _getPlayerScore(player.pid, roundIndex);
-              final extendedData = _getExtendedData(player.pid, roundIndex);
+              final extendedData =
+                  _getExtendedData(player.pid, roundIndex, ref);
               final isLandlord = extendedData?['isLandlord'] == true;
               final totalScore = _getTotalScore(player.pid, roundIndex);
 
@@ -900,8 +910,12 @@ class _ScoreBoardState extends State<_ScoreBoard> {
     return 0;
   }
 
-  // 获取扩展数据
-  Map<String, dynamic>? _getExtendedData(String playerId, int roundIndex) {
+// 获取扩展数据
+  Map<String, dynamic>? _getExtendedData(
+    String playerId,
+    int roundIndex,
+    WidgetRef ref,
+  ) {
     try {
       final playerScore = widget.session.scores.firstWhere(
         (score) => score.playerId == playerId,
@@ -911,8 +925,8 @@ class _ScoreBoardState extends State<_ScoreBoard> {
       final extendedData = playerScore.getExtendedField(roundIndex);
       if (extendedData == null) {
         // 尝试从数据库重新加载数据
-        final scoreProvider = context.read<ScoreProvider>();
-        scoreProvider.loadRoundExtendedData(widget.session.sid, roundIndex);
+        final scoreNotifier = ref.read(scoreProvider.notifier);
+        scoreNotifier.loadRoundExtendedData(widget.session.sid, roundIndex);
         return playerScore.getExtendedField(roundIndex);
       }
 
