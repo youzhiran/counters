@@ -1,6 +1,6 @@
 import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../model/poker50.dart';
 import '../../providers/template_provider.dart';
@@ -13,7 +13,7 @@ class Poker50ConfigPage extends BaseConfigPage {
   });
 
   @override
-  State<Poker50ConfigPage> createState() => _Poker50ConfigPageState();
+  ConsumerState<Poker50ConfigPage> createState() => _Poker50ConfigPageState();
 }
 
 class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
@@ -62,16 +62,15 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
     );
 
     // 在异步操作前获取需要的对象
-    final templateProvider = context.read<TemplateProvider>();
+    final templateNotifier = ref.read(templatesProvider.notifier);
 
     // 等待用户确认
     final shouldProceed = await confirmCheckScoring();
 
     if (shouldProceed) {
-      // 使用之前保存的 provider 而不是通过 context 获取
-      templateProvider.updateTemplate(updated);
+      templateNotifier.updateTemplate(updated);
       globalState.navigatorKey.currentState?.pop();
-    } // 用户取消时不执行任何操作
+    }
   }
 
   @override
@@ -92,7 +91,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
       baseTemplateId: rootId,
     );
 
-    context.read<TemplateProvider>().saveUserTemplate(newTemplate, rootId);
+    ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
     Navigator.pop(context);
   }
 

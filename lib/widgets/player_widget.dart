@@ -1,9 +1,9 @@
-import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/player_info.dart';
 import '../providers/player_provider.dart';
+import '../state.dart';
 
 class PlayerAvatar {
   static final List<Color> avatarColors = [
@@ -101,7 +101,7 @@ final List<IconData> availablePlayerIcons = [
   Icons.park,
 ];
 
-class PlayerListItem extends StatefulWidget {
+class PlayerListItem extends ConsumerStatefulWidget {
   final TextEditingController? controller;
   final IconData? initialIcon;
   final bool showRemoveButton;
@@ -120,10 +120,10 @@ class PlayerListItem extends StatefulWidget {
   });
 
   @override
-  State<PlayerListItem> createState() => PlayerListItemState();
+  ConsumerState<PlayerListItem> createState() => PlayerListItemState();
 }
 
-class PlayerListItemState extends State<PlayerListItem> {
+class PlayerListItemState extends ConsumerState<PlayerListItem> {
   late TextEditingController _controller;
   IconData? _selectedIcon;
   bool _isInternalController = false;
@@ -191,7 +191,7 @@ class PlayerListItemState extends State<PlayerListItem> {
       widget.onPlayerSaved!(player);
     } else {
       // 如果没有提供回调，则直接保存到Provider
-      final provider = context.read<PlayerProvider>();
+      final provider = ref.read(playerProvider.notifier);
       if (widget.initialPlayer != null) {
         provider.updatePlayer(player);
       } else {
@@ -250,8 +250,7 @@ class PlayerListItemState extends State<PlayerListItem> {
   }
 
   // 显示图标选择对话框
-  static void showIconPicker(
-      BuildContext context, Function(IconData) onIconSelected) {
+  void showIconPicker(BuildContext context, Function(IconData) onIconSelected) {
     globalState.showCommonDialog(
       child: Dialog(
         child: Container(

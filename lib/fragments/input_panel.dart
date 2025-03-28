@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:collection/collection.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-
-import '../model/player_info.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/game_session.dart';
+import '../model/player_info.dart';
 import '../model/player_score.dart';
 import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
@@ -15,14 +15,14 @@ import '../providers/template_provider.dart';
 /// 快捷输入面板组件
 /// 提供常用数值的快速输入按钮，支持左右滑动切换功能区
 /// 支持上下滑动收起/展开面板
-class QuickInputPanel extends StatefulWidget {
+class QuickInputPanel extends ConsumerStatefulWidget {
   const QuickInputPanel({super.key});
 
   @override
-  State<QuickInputPanel> createState() => _QuickInputPanelState();
+  ConsumerState<QuickInputPanel> createState() => _QuickInputPanelState();
 }
 
-class _QuickInputPanelState extends State<QuickInputPanel>
+class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _tabs = ['快捷输入', '图表'];
@@ -232,8 +232,7 @@ class _QuickInputPanelState extends State<QuickInputPanel>
 
   // 构建图表标签页
   Widget _buildChartTab() {
-    final scoreProvider = context.read<ScoreProvider>();
-    final currentSession = scoreProvider.currentSession;
+    final currentSession = ref.watch(scoreProvider).value?.currentSession;
 
     // 如果正在拖动，显示占位符
     if (_isDragging) {
@@ -287,9 +286,8 @@ class _QuickInputPanelState extends State<QuickInputPanel>
 
   // 处理数字按钮点击
   void _handleNumberPressed(int number) {
-    final provider = context.read<ScoreProvider>();
-    final highlight = provider.currentHighlight;
-    final session = provider.currentSession;
+    final highlight = ref.watch(scoreProvider).value?.currentHighlight;
+    final session = ref.watch(scoreProvider).value?.currentSession;
 
     HapticFeedback.mediumImpact();
 
@@ -303,11 +301,11 @@ class _QuickInputPanelState extends State<QuickInputPanel>
         final currentValue = playerScore.roundScores.length > highlight.value
             ? playerScore.roundScores[highlight.value] ?? 0
             : 0;
-        provider.updateScore(
-          highlight.key,
-          highlight.value,
-          currentValue + number,
-        );
+        ref.read(scoreProvider.notifier).updateScore(
+              highlight.key,
+              highlight.value,
+              currentValue + number,
+            );
       }
     }
   }
@@ -320,8 +318,9 @@ class _QuickInputPanelState extends State<QuickInputPanel>
     final playerNames = <String, String>{};
 
     // 提前获取模板数据
-    final template =
-        context.read<TemplateProvider>().getTemplate(session.templateId);
+    final template = ref.watch(templatesProvider).valueOrNull?.firstWhereOrNull(
+          (t) => t.tid == session.templateId,
+        );
     final playersMap = <String, PlayerInfo>{
       for (var p in template?.players ?? []) p.pid: p
     };

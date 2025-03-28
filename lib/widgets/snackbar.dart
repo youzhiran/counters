@@ -5,8 +5,9 @@ import '../utils/log.dart';
 
 class AppSnackBar {
   // 使用全局状态中的 key，不再需要自己的 messengerKey
-  static GlobalKey<ScaffoldMessengerState> get messengerKey =>
-      globalState.scaffoldMessengerKey;
+  static GlobalKey<ScaffoldMessengerState> get messengerKey {
+    return globalState.scaffoldMessengerKey;
+  }
 
   // 基础通用样式（蓝色）
   static void show(

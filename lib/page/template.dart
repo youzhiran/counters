@@ -1,7 +1,7 @@
 import 'package:counters/model/landlords.dart';
 import 'package:counters/page/poker50/config.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/base_template.dart';
 import '../model/poker50.dart';
@@ -12,41 +12,31 @@ import '../utils/log.dart';
 import 'home.dart';
 import 'landlords/config.dart';
 
-class TemplatePage extends StatefulWidget {
+class TemplatePage extends ConsumerStatefulWidget {
   const TemplatePage({super.key});
 
   @override
-  State<TemplatePage> createState() => _TemplatePageState();
+  ConsumerState<TemplatePage> createState() => _TemplatePageState();
 }
 
-class _TemplatePageState extends State<TemplatePage> {
-  Future<void> _refreshTemplates(BuildContext context) async {
-    await context.read<TemplateProvider>().reloadTemplates();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // 页面初始化时刷新模板列表
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshTemplates(context);
-    });
-  }
-
+class _TemplatePageState extends ConsumerState<TemplatePage> {
   @override
   Widget build(BuildContext context) {
-    return Consumer<TemplateProvider>(
-      builder: (context, provider, _) {
-        if (provider.templates.isEmpty) {
-          return Center(child: CircularProgressIndicator());
+    final templatesAsync = ref.watch(templatesProvider);
+
+    return templatesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('加载失败: $err')),
+      data: (templates) {
+        if (templates.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
         }
 
-        final templates = provider.templates;
         return RefreshIndicator(
-          onRefresh: () => _refreshTemplates(context),
+          onRefresh: () async => ref.invalidate(templatesProvider),
           child: GridView.builder(
-            padding: EdgeInsets.all(12),
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 200,
               mainAxisExtent: 150,
               crossAxisSpacing: 6,
@@ -62,13 +52,13 @@ class _TemplatePageState extends State<TemplatePage> {
   }
 }
 
-class _TemplateCard extends StatelessWidget {
+class _TemplateCard extends ConsumerWidget {
   final BaseTemplate template;
 
   const _TemplateCard({required this.template});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       elevation: 0,
       shape: OutlineInputBorder(
@@ -78,24 +68,24 @@ class _TemplateCard extends StatelessWidget {
         ),
       ),
       child: InkWell(
-        onTap: () => _handleTap(context),
+        onTap: () => _handleTap(context, ref),
         borderRadius: BorderRadius.circular(8.0),
         child: Stack(
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
                       template.templateName,
-                      style: TextStyle(fontSize: 18),
+                      style: const TextStyle(fontSize: 18),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text('玩家数量: ${template.playerCount}'),
                   Text('目标分数: ${template.targetScore}'),
                 ],
@@ -106,17 +96,17 @@ class _TemplateCard extends StatelessWidget {
               right: 8,
               top: 8,
               child: template.isSystemTemplate
-                  ? Icon(Icons.lock, color: Colors.blue)
-                  : Icon(Icons.edit, color: Colors.green),
+                  ? const Icon(Icons.lock, color: Colors.blue)
+                  : const Icon(Icons.edit, color: Colors.green),
             ),
             Positioned(
               left: 6,
               bottom: 6,
               child: template.isSystemTemplate
-                  ? Text('系统模板',
+                  ? const Text('系统模板',
                       style: TextStyle(fontSize: 10, color: Colors.grey))
-                  : Text('基于: ${_getRootBaseTemplateName(context)}',
-                      style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  : Text('基于: ${_getRootBaseTemplateName(ref)}',
+                      style: const TextStyle(fontSize: 10, color: Colors.grey)),
             ),
           ],
         ),
@@ -125,27 +115,32 @@ class _TemplateCard extends StatelessWidget {
   }
 
   // 添加获取根基础模板的方法
-  String _getRootBaseTemplateName(BuildContext context) {
+  String _getRootBaseTemplateName(WidgetRef ref) {
     String? baseId = template.baseTemplateId;
-    BaseTemplate? current =
-        context.read<TemplateProvider>().getTemplate(baseId ?? '');
+    final templatesData = ref.read(templatesProvider).valueOrNull;
+    if (templatesData == null) return '系统模板';
+
+    BaseTemplate? current = templatesData.firstWhere((t) => t.tid == baseId,
+        orElse: () => templatesData.first);
 
     // 递归查找直到系统模板
     while (current != null && !current.isSystemTemplate) {
       baseId = current.baseTemplateId;
-      current = context.read<TemplateProvider>().getTemplate(baseId ?? '');
+      current = templatesData.firstWhere((t) => t.tid == baseId,
+          orElse: () => templatesData.first);
     }
 
     return current?.templateName ?? '系统模板';
   }
 
   // 添加删除确认对话框
-  Future<void> _confirmDelete(BuildContext context) async {
-    final provider = context.read<ScoreProvider>();
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final scoreNotifier = ref.read(scoreProvider.notifier);
+    final currentSession = ref.read(scoreProvider).value?.currentSession;
 
     // 使用新方法检查模板是否正在计分
-    if (provider.currentSession != null) {
-      globalState.showCommonDialog<bool>(
+    if (currentSession != null) {
+      globalState.showCommonDialog(
         child: AlertDialog(
           title: const Text('删除模板'),
           content: const Text('无法删除该模板，当前模板正在计分，请结束计分后再删除！'),
@@ -157,23 +152,26 @@ class _TemplateCard extends StatelessWidget {
           ],
         ),
       );
-    } else if (await provider.checkSessionExists(template.tid)) {
+    } else if (await scoreNotifier.checkSessionExists(template.tid)) {
       globalState.showCommonDialog(
         child: AlertDialog(
-          title: Text('删除模板'),
-          content: Text('当前模板已有关联计分记录，会同步清除所有关联记录。\n是否继续删除？'),
+          title: const Text('删除模板'),
+          content: const Text('当前模板已有关联计分记录，会同步清除所有关联记录。\n是否继续删除？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('取消'),
+              child: const Text('取消'),
             ),
             TextButton(
               onPressed: () {
-                context.read<TemplateProvider>().deleteTemplate(template.tid);
-                provider.clearSessionsByTemplate(template.tid);
+                ref
+                    .read(templatesProvider.notifier)
+                    .deleteTemplate(template.tid);
+                scoreNotifier.clearSessionsByTemplate(template.tid);
                 Navigator.pop(context);
               },
-              child: Text('删除并清除关联计分', style: TextStyle(color: Colors.red)),
+              child:
+                  const Text('删除并清除关联计分', style: TextStyle(color: Colors.red)),
             ),
           ],
         ),
@@ -181,19 +179,21 @@ class _TemplateCard extends StatelessWidget {
     } else {
       globalState.showCommonDialog(
         child: AlertDialog(
-          title: Text('删除模板'),
-          content: Text('确定要永久删除此模板吗？'),
+          title: const Text('删除模板'),
+          content: const Text('确定要永久删除此模板吗？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('取消'),
+              child: const Text('取消'),
             ),
             TextButton(
               onPressed: () {
-                context.read<TemplateProvider>().deleteTemplate(template.tid);
+                ref
+                    .read(templatesProvider.notifier)
+                    .deleteTemplate(template.tid);
                 Navigator.pop(context);
               },
-              child: Text('删除', style: TextStyle(color: Colors.red)),
+              child: const Text('删除', style: TextStyle(color: Colors.red)),
             ),
           ],
         ),
@@ -201,17 +201,17 @@ class _TemplateCard extends StatelessWidget {
     }
   }
 
-  void _handleTap(BuildContext context) {
+  void _handleTap(BuildContext context, WidgetRef ref) {
     if (template.isSystemTemplate) {
       globalState.showCommonDialog(
         child: AlertDialog(
-          title: Text('系统模板操作'),
+          title: const Text('系统模板操作'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text('另存新模板'),
-                leading: Icon(Icons.edit),
+                title: const Text('另存新模板'),
+                leading: const Icon(Icons.edit),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -240,13 +240,13 @@ class _TemplateCard extends StatelessWidget {
     } else {
       globalState.showCommonDialog(
         child: AlertDialog(
-          title: Text('用户模板操作'),
+          title: const Text('用户模板操作'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text('编辑模板'),
-                leading: Icon(Icons.edit),
+                title: const Text('编辑模板'),
+                leading: const Icon(Icons.edit),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -269,10 +269,10 @@ class _TemplateCard extends StatelessWidget {
                 },
               ),
               ListTile(
-                title: Text('开始计分'),
-                leading: Icon(Icons.play_arrow),
+                title: const Text('开始计分'),
+                leading: const Icon(Icons.play_arrow),
                 onTap: () {
-                  context.read<ScoreProvider>().startNewGame(template);
+                  ref.read(scoreProvider.notifier).startNewGame(template);
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
@@ -283,11 +283,11 @@ class _TemplateCard extends StatelessWidget {
                 },
               ),
               ListTile(
-                title: Text('删除模板', style: TextStyle(color: Colors.red)),
-                leading: Icon(Icons.delete, color: Colors.red),
+                title: const Text('删除模板', style: TextStyle(color: Colors.red)),
+                leading: const Icon(Icons.delete, color: Colors.red),
                 onTap: () {
                   Navigator.pop(context);
-                  _confirmDelete(context);
+                  _confirmDelete(context, ref);
                 },
               ),
             ],

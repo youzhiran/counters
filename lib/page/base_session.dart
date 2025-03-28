@@ -1,28 +1,29 @@
 import 'package:counters/model/base_template.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../model/game_session.dart';
 import '../../model/player_info.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
-import '../../state.dart';
 import '../../widgets/snackbar.dart';
 import '../model/player_score.dart';
+import '../state.dart';
 
-abstract class BaseSessionPage extends StatefulWidget {
+abstract class BaseSessionPage extends ConsumerStatefulWidget {
   final String templateId;
 
   const BaseSessionPage({super.key, required this.templateId});
 }
 
 abstract class BaseSessionPageState<T extends BaseSessionPage>
-    extends State<T> {
+    extends ConsumerState<T> {
   @override
   Widget build(BuildContext context) {
     final template =
-        context.read<TemplateProvider>().getTemplate(widget.templateId);
-    final session = context.watch<ScoreProvider>().currentSession;
+        ref.read(templatesProvider.notifier).getTemplate(widget.templateId);
+
+    final session = ref.watch(scoreProvider).value?.currentSession;
 
     if (session == null || template == null) {
       return Scaffold(
@@ -57,8 +58,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   /// [context]: 构建上下文
   /// 返回：玩家名称或"未知玩家"
   String _getPlayerName(String playerId, BuildContext context) {
-    return context
-            .read<TemplateProvider>()
+    return ref
+            .read(templatesProvider.notifier)
             .getTemplate(widget.templateId)
             ?.players
             .firstWhere((p) => p.pid == playerId,
@@ -68,8 +69,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   void showGameResult(BuildContext context) {
-    final targetScore = context
-        .read<TemplateProvider>()
+    final targetScore = ref
+        .read(templatesProvider.notifier)
         .getTemplate(widget.templateId)
         ?.targetScore;
 
@@ -88,7 +89,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     }
 
     // ... 保持原有的游戏结果显示逻辑 ...
-    final scores = context.read<ScoreProvider>().currentSession?.scores ?? [];
+    final scores = ref.read(scoreProvider).value?.currentSession?.scores ?? [];
 
     // 划分失败玩家（分数>=目标分数）
     final failScores =
@@ -167,13 +168,12 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              final template = context
-                  .read<TemplateProvider>()
+              final template = ref
+                  .read(templatesProvider.notifier)
                   .getTemplate(widget.templateId);
-              final scoreProvider = context.read<ScoreProvider>();
-              await scoreProvider.resetGame(true);
+              await ref.read(scoreProvider.notifier).resetGame(true);
               if (template != null) {
-                scoreProvider.startNewGame(template);
+                ref.read(scoreProvider.notifier).startNewGame(template);
               } else {
                 AppSnackBar.warn('模板加载失败，请重试');
               }
@@ -186,8 +186,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   String getPlayerName(String playerId, BuildContext context) {
-    return context
-            .read<TemplateProvider>()
+    return ref
+            .read(templatesProvider.notifier)
             .getTemplate(widget.templateId)
             ?.players
             .firstWhere((p) => p.pid == playerId,

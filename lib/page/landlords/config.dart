@@ -1,10 +1,10 @@
 import 'package:counters/model/landlords.dart';
-import 'package:counters/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/template_provider.dart';
+import '../../state.dart';
 import '../base_config_page.dart';
 
 class LandlordsConfigPage extends BaseConfigPage {
@@ -14,7 +14,8 @@ class LandlordsConfigPage extends BaseConfigPage {
   });
 
   @override
-  State<LandlordsConfigPage> createState() => _LandlordsConfigPageState();
+  ConsumerState<LandlordsConfigPage> createState() =>
+      _LandlordsConfigPageState();
 }
 
 class _LandlordsConfigPageState
@@ -85,16 +86,15 @@ class _LandlordsConfigPageState
     );
 
     // 在异步操作前获取需要的对象
-    final templateProvider = context.read<TemplateProvider>();
+    final templateNotifier = ref.read(templatesProvider.notifier);
 
     // 等待用户确认
     final shouldProceed = await confirmCheckScoring();
 
     if (shouldProceed) {
-      // 使用之前保存的 provider 而不是通过 context 获取
-      templateProvider.updateTemplate(updated);
+      templateNotifier.updateTemplate(updated);
       globalState.navigatorKey.currentState?.pop();
-    } // 用户取消时不执行任何操作
+    }
   }
 
   @override
@@ -115,9 +115,8 @@ class _LandlordsConfigPageState
       baseTemplateId: rootId,
     );
 
-    context.read<TemplateProvider>().saveUserTemplate(newTemplate, rootId);
+    ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
     Navigator.pop(context);
-    return;
   }
 
   @override

@@ -1,9 +1,8 @@
 import 'package:counters/model/base_template.dart';
 import 'package:counters/page/base_session.dart';
-import 'package:counters/state.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../fragments/input_panel.dart';
 import '../../model/game_session.dart';
@@ -12,6 +11,7 @@ import '../../model/player_score.dart';
 import '../../model/poker50.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
+import '../../state.dart';
 import '../../widgets/snackbar.dart';
 
 /// 3人扑克50分
@@ -21,17 +21,18 @@ class Poker50SessionPage extends BaseSessionPage {
   const Poker50SessionPage({super.key, required super.templateId});
 
   @override
-  State<Poker50SessionPage> createState() => _Poker50SessionPageState();
+  ConsumerState<Poker50SessionPage> createState() => _Poker50SessionPageState();
 }
 
 class _Poker50SessionPageState
     extends BaseSessionPageState<Poker50SessionPage> {
   @override
   Widget build(BuildContext context) {
-    final template = context
-        .read<TemplateProvider>()
+    final template = ref
+        .read(templatesProvider.notifier)
         .getTemplate(widget.templateId) as Poker50Template;
-    final session = context.watch<ScoreProvider>().currentSession;
+
+    final session = ref.watch(scoreProvider).value?.currentSession;
 
     if (session == null) {
       return Scaffold(
@@ -40,7 +41,7 @@ class _Poker50SessionPageState
       );
     }
 
-    final currentRound = context.read<ScoreProvider>().currentRound;
+    final currentRound = ref.read(scoreProvider).value?.currentRound ?? 0;
     final failureScore = template.targetScore;
 
     // 当轮次完成时检查
@@ -91,7 +92,7 @@ class _Poker50SessionPageState
   Widget buildGameBody(
       BuildContext context, BaseTemplate template, GameSession session) {
     final poker50Template = template as Poker50Template;
-    final currentRound = context.read<ScoreProvider>().currentRound;
+    final currentRound = ref.read(scoreProvider).value?.currentRound ?? 0;
     final failureScore = poker50Template.targetScore;
 
     // 当轮次完成时检查
@@ -123,7 +124,7 @@ class _Poker50SessionPageState
 }
 
 /// 单个玩家得分列组件（垂直布局）
-class _ScoreColumn extends StatelessWidget {
+class _ScoreColumn extends ConsumerWidget {
   final String templateId;
   final PlayerInfo player;
   final List<int?> scores;
@@ -139,8 +140,12 @@ class _ScoreColumn extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final highlight = context.watch<ScoreProvider>().currentHighlight;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final highlight = ref.watch(scoreProvider).when(
+          loading: () => null, // 加载中时返回 null
+          error: (error, stack) => null, // 出错时返回 null
+          data: (state) => state.currentHighlight, // 成功时获取 currentHighlight
+        );
 
     return SizedBox(
       width: 80,
@@ -160,8 +165,8 @@ class _ScoreColumn extends StatelessWidget {
             return Expanded(
               // 新增 Expanded
               child: GestureDetector(
-                onTap: () => _showEditDialog(context, index),
-                behavior: HitTestBehavior.opaque, // 新增点击行为
+                onTap: () => _showEditDialog(ref, context, index),
+                behavior: HitTestBehavior.opaque,
                 child: Container(
                   key: isHighlight ? cellKey : null, // 仅高亮单元格设置 key
                   height: 48,
@@ -182,20 +187,19 @@ class _ScoreColumn extends StatelessWidget {
     );
   }
 
-  /// 显示分数编辑对话框
-  /// [context]: 构建上下文
-  /// [roundIndex]: 要编辑的回合索引
-  // 修改后的方法
-  void _showEditDialog(BuildContext context, int roundIndex) {
-    final scoreProvider = context.read<ScoreProvider>();
-    final currentRound = scoreProvider.currentRound;
+  void _showEditDialog(WidgetRef ref, BuildContext context, int roundIndex) {
+    final scoreNotifier = ref.read(scoreProvider.notifier);
+    final scoreState = ref.read(scoreProvider);
+
+    final currentRound = scoreState.value?.currentRound ?? 0;
+    final currentSession = scoreState.value?.currentSession;
 
     if (roundIndex < 0 || roundIndex > scores.length) return;
 
     if (roundIndex == scores.length) {
       // 添加currentRound有效性检查
       final canAddNewRound = currentRound == 0 ||
-          scoreProvider.currentSession!.scores.every((s) {
+          currentSession!.scores.every((s) {
             // 调整索引访问逻辑
             final lastRoundIndex = currentRound - 1;
             return s.roundScores.length > lastRoundIndex &&
@@ -203,7 +207,7 @@ class _ScoreColumn extends StatelessWidget {
           });
 
       if (canAddNewRound) {
-        scoreProvider.addNewRound();
+        scoreNotifier.addNewRound();
       } else {
         // 添加提示逻辑
         AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
@@ -220,7 +224,7 @@ class _ScoreColumn extends StatelessWidget {
         round: roundIndex + 1,
         initialValue: currentScore ?? 0,
         onConfirm: (newValue) {
-          scoreProvider.updateScore(
+          scoreNotifier.updateScore(
             player.pid,
             roundIndex,
             newValue,
@@ -231,17 +235,17 @@ class _ScoreColumn extends StatelessWidget {
   }
 }
 
-class _ScoreBoard extends StatefulWidget {
+class _ScoreBoard extends ConsumerStatefulWidget {
   final Poker50Template template;
   final GameSession session;
 
   const _ScoreBoard({required this.template, required this.session});
 
   @override
-  _ScoreBoardState createState() => _ScoreBoardState();
+  ConsumerState<_ScoreBoard> createState() => _ScoreBoardState();
 }
 
-class _ScoreBoardState extends State<_ScoreBoard> {
+class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
   final Map<String, GlobalKey> _cellKeys = {};
   final ScrollController _horizontalScrollController = ScrollController();
   late final ScrollController _headerHorizontalController = ScrollController();
@@ -262,14 +266,15 @@ class _ScoreBoardState extends State<_ScoreBoard> {
     });
     // 在初始化时更新高亮位置
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ScoreProvider>().updateHighlight();
+      ref.read(scoreProvider.notifier).updateHighlight();
+      // context.read<ScoreProvider>().updateHighlight();
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final highlight = context.watch<ScoreProvider>().currentHighlight;
+    final highlight = ref.watch(scoreProvider).value?.currentHighlight;
 
     if (highlight != null) {
       // 改为使用延迟执行
@@ -281,7 +286,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
 
   // 抽取滚动逻辑到单独的方法
   void _scrollToHighlight() {
-    final highlight = context.read<ScoreProvider>().currentHighlight;
+    final highlight = ref.read(scoreProvider).value?.currentHighlight;
     if (highlight != null) {
       final key = '${highlight.key}_${highlight.value}';
       final cellKey = _cellKeys[key];
@@ -298,8 +303,11 @@ class _ScoreBoardState extends State<_ScoreBoard> {
 
   @override
   Widget build(BuildContext context) {
-    final currentRound =
-        context.select<ScoreProvider, int>((p) => p.currentRound);
+    final currentRound = ref.watch(scoreProvider).when(
+          loading: () => 0,
+          error: (err, stack) => 0,
+          data: (state) => state.currentRound,
+        );
 
     return Column(
       children: [
@@ -410,7 +418,7 @@ class _ScoreBoardState extends State<_ScoreBoard> {
 /// [round]: 编辑的回合数
 /// [initialValue]: 初始分数值
 /// [onConfirm]: 确认修改回调
-class _ScoreEditDialog extends StatefulWidget {
+class _ScoreEditDialog extends ConsumerStatefulWidget {
   final String templateId;
   final PlayerInfo player;
   final int round;
@@ -429,7 +437,7 @@ class _ScoreEditDialog extends StatefulWidget {
   _ScoreEditDialogState createState() => _ScoreEditDialogState();
 }
 
-class _ScoreEditDialogState extends State<_ScoreEditDialog> {
+class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
   late TextEditingController _controller;
 
   @override
@@ -442,8 +450,8 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final template = context
-        .read<TemplateProvider>()
+    final template = ref
+        .read(templatesProvider.notifier)
         .getTemplate(widget.templateId) as Poker50Template;
     final isAllowNegative = template.isAllowNegative;
 
@@ -480,7 +488,7 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
               return;
             }
             widget.onConfirm(value);
-            context.read<ScoreProvider>().updateHighlight();
+            ref.read(scoreProvider.notifier).updateHighlight();
           },
           child: Text('确认'),
         ),
@@ -494,7 +502,7 @@ class _ScoreEditDialogState extends State<_ScoreEditDialog> {
 /// [score]: 当前回合得分（可选）
 /// [total]: 累计总得分
 /// [isHighlighted]: 是否高亮
-class _ScoreCell extends StatelessWidget {
+class _ScoreCell extends ConsumerWidget {
   final int? score;
   final int total;
   final bool isHighlighted;
@@ -506,7 +514,7 @@ class _ScoreCell extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: BoxDecoration(
         // 新增装饰

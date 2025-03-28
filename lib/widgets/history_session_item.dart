@@ -1,13 +1,14 @@
-import 'package:counters/state.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/game_session.dart';
 import '../providers/template_provider.dart';
+import '../state.dart';
 import '../utils/date_formatter.dart';
 import 'confirmation_dialog.dart';
 
-class HistorySessionItem extends StatelessWidget {
+class HistorySessionItem extends ConsumerWidget {
   final GameSession session;
   final VoidCallback onDelete;
   final VoidCallback onResume;
@@ -20,48 +21,62 @@ class HistorySessionItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final templateProvider = context.watch<TemplateProvider>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final templates = ref.watch(templatesProvider);
 
-    if (templateProvider.isLoading) {
-      return const ListTile(
-        title: Text("加载中..."),
-        leading: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
+    return templates.when(
+      data: (templates) {
+        final template = templates.firstWhereOrNull(
+          (t) => t.tid == session.templateId,
+        );
 
-    final template = templateProvider.getTemplateBySession(session);
-
-    return Dismissible(
-      key: Key(session.sid),
-      background: _buildDeleteBackground(),
-      confirmDismiss: (direction) => _confirmDismiss(direction, context),
-      onDismissed: (_) => onDelete(),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        title: Text(
-          template?.templateName ?? "未知模板",
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: _buildSessionSubtitle(),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red),
-          onPressed: () async {
-            final confirm = await globalState.showCommonDialog(
+        return Dismissible(
+          key: Key(session.sid),
+          background: _buildDeleteBackground(),
+          confirmDismiss: (direction) async {
+            return await globalState.showCommonDialog(
               child: ConfirmationDialog(
                 title: '确认删除',
                 content: '确定要删除这条记录吗？',
                 confirmText: '删除',
               ),
             );
-            if (confirm == true) onDelete();
           },
+          onDismissed: (_) => onDelete(),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            title: Text(
+              template?.templateName ?? "未知模板",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: _buildSessionSubtitle(),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: () async {
+                final confirm = await globalState.showCommonDialog(
+                  child: ConfirmationDialog(
+                    title: '确认删除',
+                    content: '确定要删除这条记录吗？',
+                    confirmText: '删除',
+                  ),
+                );
+                if (confirm == true) onDelete();
+              },
+            ),
+            onTap: onResume,
+          ),
+        );
+      },
+      loading: () => const ListTile(
+        title: Text("加载中..."),
+        leading: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
-        onTap: onResume,
+      ),
+      error: (error, stack) => ListTile(
+        title: Text("加载失败: $error"),
       ),
     );
   }
@@ -74,17 +89,17 @@ class HistorySessionItem extends StatelessWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       );
 
-  // 滑动删除
-  Future<bool?> _confirmDismiss(
-      DismissDirection direction, BuildContext context) async {
-    return await globalState.showCommonDialog(
-      child: ConfirmationDialog(
-        title: '确认删除',
-        content: '确定要删除这条记录吗？',
-        confirmText: '删除',
-      ),
-    );
-  }
+  // // 滑动删除
+  // Future<bool?> _confirmDismiss(
+  //     DismissDirection direction, BuildContext context) async {
+  //   return await  ref.read(globalStateProvider.notifier).showCommonDialog(
+  //     child: ConfirmationDialog(
+  //       title: '确认删除',
+  //       content: '确定要删除这条记录吗？',
+  //       confirmText: '删除',
+  //     ),
+  //   );
+  // }
 
   Widget _buildSessionSubtitle() {
     return Column(
