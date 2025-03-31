@@ -14,8 +14,8 @@ import '../state.dart';
 import '../widgets/confirmation_dialog.dart';
 import '../widgets/history_session_item.dart';
 import '../widgets/snackbar.dart';
-import 'landlords/landlords_session.dart';
-import 'poker50/poker50_session.dart';
+import 'landlords/landlords_page.dart';
+import 'poker50/poker50_page.dart';
 
 class _TemplateSelector extends ConsumerWidget {
   @override

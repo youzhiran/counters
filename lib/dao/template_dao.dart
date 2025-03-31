@@ -42,7 +42,7 @@ class TemplateDao {
       WHERE tp.template_id = ?
     ''', [tid]);
 
-    final players = playerMaps.map((map) => PlayerInfo.fromMap(map)).toList();
+    final players = playerMaps.map((map) => PlayerInfo.fromJson(map)).toList();
     return Poker50Template.fromMap(maps.first, players);
   }
 
@@ -63,7 +63,7 @@ class TemplateDao {
       WHERE tp.template_id = ?
     ''', [tid]);
 
-    final players = playerMaps.map((map) => PlayerInfo.fromMap(map)).toList();
+    final players = playerMaps.map((map) => PlayerInfo.fromJson(map)).toList();
     return LandlordsTemplate.fromMap(maps.first, players);
   }
 
@@ -100,7 +100,7 @@ class TemplateDao {
       await txn.insert('templates', template.toMap());
 
       for (var player in template.players) {
-        await txn.insert('players', player.toMap());
+        await txn.insert('players', player.toJson());
         await txn.insert('template_players', {
           'template_id': template.tid,
           'player_id': player.pid,

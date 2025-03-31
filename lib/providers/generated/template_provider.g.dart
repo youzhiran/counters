@@ -1,26 +1,25 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'database_provider.dart';
+part of '../template_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$databaseHash() => r'248a34737b97222a4afd569ba235f2455da430ef';
+String _$templatesHash() => r'8c766c98ac4ea1bf6f4b539d2dd82e24c94f808f';
 
-/// See also [database].
-@ProviderFor(database)
-final databaseProvider = AutoDisposeProvider<DatabaseHelper>.internal(
-  database,
-  name: r'databaseProvider',
+/// See also [Templates].
+@ProviderFor(Templates)
+final templatesProvider =
+    AutoDisposeAsyncNotifierProvider<Templates, List<BaseTemplate>>.internal(
+  Templates.new,
+  name: r'templatesProvider',
   debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$databaseHash,
+      const bool.fromEnvironment('dart.vm.product') ? null : _$templatesHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef DatabaseRef = AutoDisposeProviderRef<DatabaseHelper>;
+typedef _$Templates = AutoDisposeAsyncNotifier<List<BaseTemplate>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

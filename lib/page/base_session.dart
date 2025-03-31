@@ -7,7 +7,6 @@ import '../../model/player_info.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/snackbar.dart';
-import '../model/player_score.dart';
 import '../state.dart';
 
 abstract class BaseSessionPage extends ConsumerStatefulWidget {
@@ -21,33 +20,49 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   @override
   Widget build(BuildContext context) {
     final template =
-        ref.read(templatesProvider.notifier).getTemplate(widget.templateId);
+        ref.watch(templatesProvider.notifier).getTemplate(widget.templateId);
 
-    final session = ref.watch(scoreProvider).value?.currentSession;
+    final scoreAsync = ref.watch(scoreProvider);
 
-    if (session == null || template == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text('错误')),
-        body: Center(child: Text('模板加载失败')),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(template.templateName),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.sports_score),
-            onPressed: () => showGameResult(context),
-          ),
-          IconButton(
-            icon: Icon(Icons.restart_alt_rounded),
-            onPressed: () => showResetConfirmation(context),
-          )
-        ],
+    return scoreAsync.when(
+      loading: () => Scaffold(
+        appBar: AppBar(title: Text('加载中...')),
+        body: Center(child: CircularProgressIndicator()),
       ),
-      body: buildGameBody(context, template, session),
+      error: (error, stack) => Scaffold(
+        appBar: AppBar(title: Text('错误')),
+        body: Center(child: Text('加载分数失败: $error')),
+      ),
+      data: (scoreState) {
+        // final session = ref.watch(scoreProvider).value?.currentSession;
+        final session = scoreState.currentSession;
+
+        if (session == null || template == null) {
+          return Scaffold(
+            appBar: AppBar(title: Text('错误')),
+            body: Center(child: Text('模板加载失败')),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(template.templateName),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.sports_score),
+                onPressed: () => showGameResult(context),
+              ),
+              IconButton(
+                icon: Icon(Icons.restart_alt_rounded),
+                onPressed: () => showResetConfirmation(context),
+              )
+            ],
+          ),
+          body: buildGameBody(context, template, session),
+        );
+      },
     );
+
   }
 
   Widget buildGameBody(
@@ -88,58 +103,29 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       return;
     }
 
-    // ... 保持原有的游戏结果显示逻辑 ...
-    final scores = ref.read(scoreProvider).value?.currentSession?.scores ?? [];
-
-    // 划分失败玩家（分数>=目标分数）
-    final failScores =
-        scores.where((s) => s.totalScore >= targetScore).toList();
-    final hasFailures = failScores.isNotEmpty;
-
-    // 确定胜利者和失败者
-    final List<PlayerScore> winners;
-    final List<PlayerScore> losers;
-
-    if (hasFailures) {
-      // 存在失败玩家时，胜利者为未失败玩家中的最低分
-      final potentialWins =
-          scores.where((s) => s.totalScore < targetScore).toList();
-      potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
-      final minWinScore =
-          potentialWins.isNotEmpty ? potentialWins.first.totalScore : 0;
-      winners =
-          potentialWins.where((s) => s.totalScore == minWinScore).toList();
-      losers = failScores;
-    } else {
-      // 无失败玩家时，胜利者为全体最低分，失败者为全体最高分
-      scores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
-      final minScore = scores.first.totalScore;
-      final maxScore = scores.last.totalScore;
-
-      winners = scores.where((s) => s.totalScore == minScore).toList();
-      losers = scores.where((s) => s.totalScore == maxScore).toList();
-    }
+    final result =
+        ref.read(scoreProvider.notifier).calculateGameResult(targetScore);
 
     globalState.showCommonDialog(
       child: AlertDialog(
-        title: Text(hasFailures ? '游戏结束' : '当前游戏情况'),
+        title: Text(result.hasFailures ? '游戏结束' : '当前游戏情况'),
         content: SingleChildScrollView(
-          // 添加滚动视图
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (losers.isNotEmpty) ...[
-                Text('${hasFailures ? '😓 失败' : '⚠️ 最多计分'}：',
+              if (result.losers.isNotEmpty) ...[
+                Text('${result.hasFailures ? '😓 失败' : '⚠️ 最多计分'}：',
                     style: TextStyle(
-                        color: hasFailures ? Colors.red : Colors.orange)),
-                ...losers.map((s) => Text(
+                        color:
+                            result.hasFailures ? Colors.red : Colors.orange)),
+                ...result.losers.map((s) => Text(
                     '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
                 SizedBox(height: 16),
               ],
-              Text('${hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
+              Text('${result.hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
                   style: TextStyle(color: Colors.green)),
-              ...winners.map((s) => Text(
+              ...result.winners.map((s) => Text(
                   '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
             ],
           ),

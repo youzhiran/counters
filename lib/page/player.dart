@@ -59,7 +59,7 @@ class PlayerManagementPage extends ConsumerWidget {
               child: GridView.builder(
                 key: const PageStorageKey('player_list'),
                 // 为整个列表添加key
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 78),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 78),
                 gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: max(
                     250.0, // 最小宽度

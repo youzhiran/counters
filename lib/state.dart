@@ -58,6 +58,13 @@ class GlobalState {
   String? _progressDialogMessage;
   double _progressDialogValue = 0;
 
+  // 弹窗模糊
+  final filter = ImageFilter.blur(
+    sigmaX: 5,
+    sigmaY: 5,
+    tileMode: TileMode.mirror,
+  );
+
   // 私有构造函数
   GlobalState._internal();
 
@@ -164,16 +171,45 @@ class GlobalState {
   // 获取当前主题颜色
   Color get themeColor => _state.themeColor;
 
-  // 获取当前滤镜
-  ImageFilter get filter => _state.filter;
-
   // 获取当前进度信息
   String? get progressMessage => _state.progressMessage;
 
   // 获取当前进度值
   double get progressValue => _state.progressValue;
 
-  /// 显示进度对话框
+  /// 显示一个带进度更新的异步任务对话框
+  ///
+  /// 参数：
+  ///   - `title`：对话框标题文本
+  ///   - `task`：异步任务函数，接收一个进度回调函数
+  ///     - 进度回调参数：(message, progress)
+  ///       - message：当前进度描述文本
+  ///       - progress：进度值（0.0-1.0）
+  ///
+  /// 返回值：Future\<bool\>，表示任务最终执行结果
+  ///
+  /// 示例代码：
+  /// ```dart
+  /// final success = await globalState.showProgressDialog(
+  ///   title: '文件导出中',
+  ///   task: (updateProgress) async {
+  ///     updateProgress('正在准备数据...', 0.2);
+  ///     await Future.delayed(Duration(seconds: 1));
+  ///     updateProgress('正在处理内容...', 0.5);
+  ///     await Future.delayed(Duration(seconds: 1));
+  ///     updateProgress('正在生成文件...', 0.8);
+  ///     await Future.delayed(Duration(seconds: 1));
+  ///     updateProgress('导出完成！', 1.0);
+  ///     return true; // 返回最终结果
+  ///   },
+  /// );
+  /// if (success) {
+  ///   globalState.showMessage(
+  ///     title: '导出成功',
+  ///     message: TextSpan(text: '导出成功'),
+  ///   );
+  /// }
+  /// ```
   Future<bool> showProgressDialog({
     required String title,
     required Future<bool> Function(

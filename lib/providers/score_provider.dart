@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:counters/state.dart';
-import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -14,7 +12,19 @@ import '../model/player_score.dart';
 import '../providers/template_provider.dart';
 import '../utils/log.dart';
 
-part 'score_provider.g.dart';
+part 'generated/score_provider.g.dart';
+
+class GameResult {
+  final List<PlayerScore> winners;
+  final List<PlayerScore> losers;
+  final bool hasFailures;
+
+  const GameResult({
+    required this.winners,
+    required this.losers,
+    required this.hasFailures,
+  });
+}
 
 // 状态数据类
 class ScoreState {
@@ -22,12 +32,14 @@ class ScoreState {
   final int currentRound;
   final bool isInitialized;
   final MapEntry<String, int>? currentHighlight;
+  final bool showGameEndDialog;
 
   const ScoreState({
     this.currentSession,
     this.currentRound = 0,
     this.isInitialized = false,
     this.currentHighlight,
+    this.showGameEndDialog = false,
   });
 
   ScoreState copyWith({
@@ -35,12 +47,14 @@ class ScoreState {
     int? currentRound,
     bool? isInitialized,
     MapEntry<String, int>? currentHighlight,
+    bool? showGameEndDialog,
   }) {
     return ScoreState(
       currentSession: currentSession ?? this.currentSession,
       currentRound: currentRound ?? this.currentRound,
       isInitialized: isInitialized ?? this.isInitialized,
       currentHighlight: currentHighlight ?? this.currentHighlight,
+      showGameEndDialog: showGameEndDialog ?? this.showGameEndDialog,
     );
   }
 }
@@ -51,8 +65,28 @@ class Score extends _$Score {
 
   @override
   Future<ScoreState> build() async {
-    await _loadActiveSession();
-    return ScoreState(isInitialized: true);
+    final db = await _dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'game_sessions',
+      where: 'is_completed = ?',
+      whereArgs: [0],
+      orderBy: 'start_time DESC',
+      limit: 1,
+    );
+
+    if (maps.isNotEmpty) {
+      final scores = await _loadSessionScores(maps.first['sid']);
+      final session = GameSession.fromMap(maps.first, scores);
+      final currentRound = _calculateCurrentRound(session);
+
+      return ScoreState(
+        currentSession: session,
+        currentRound: currentRound,
+        isInitialized: true,
+      );
+    }
+
+    return const ScoreState(isInitialized: true);
   }
 
   Future<List<PlayerScore>> _loadSessionScores(String sessionId) async {
@@ -168,31 +202,6 @@ class Score extends _$Score {
     state = AsyncData(currentState.copyWith(currentSession: updatedSession));
   }
 
-  Future<void> _loadActiveSession() async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'game_sessions',
-      where: 'is_completed = ?',
-      whereArgs: [0],
-      orderBy: 'start_time DESC',
-      limit: 1,
-    );
-
-    if (maps.isNotEmpty) {
-      final scores = await _loadSessionScores(maps.first['sid']);
-      final session = GameSession.fromMap(maps.first, scores);
-      final currentRound = _calculateCurrentRound(session);
-
-      state = AsyncData(ScoreState(
-        currentSession: session,
-        currentRound: currentRound,
-        isInitialized: true,
-      ));
-
-      updateHighlight();
-    }
-  }
-
   int _calculateCurrentRound(GameSession? session) {
     return session?.scores
             .map((s) => s.roundScores.length)
@@ -258,7 +267,6 @@ class Score extends _$Score {
 
     playerScore.roundScores.add(score);
     _updateCurrentRound(session);
-    _checkGameEnd(session);
 
     state = AsyncData(currentState.copyWith(
       currentSession: session,
@@ -266,59 +274,9 @@ class Score extends _$Score {
     ));
 
     updateHighlight();
+    // 务必保持在倒数第二个，前面的方法可能会影响_checkGameEnd
+    _checkGameEnd(session);
     _saveSession();
-  }
-
-  void _updateCurrentRound(GameSession session) {
-    final currentRound = _calculateCurrentRound(session);
-
-    for (var playerScore in session.scores) {
-      while (playerScore.roundScores.length < currentRound) {
-        playerScore.roundScores.add(null);
-      }
-    }
-  }
-
-  void _checkGameEnd(GameSession session) {
-    final template = ref
-        .read(templatesProvider)
-        .valueOrNull
-        ?.firstWhereOrNull((t) => t.tid == session.templateId);
-    if (template == null) return;
-
-    final targetScore = template.targetScore;
-    final isGameEnded = session.scores.any((s) => s.totalScore >= targetScore);
-
-    if (isGameEnded) {
-      _handleGameEnd(session);
-    }
-  }
-
-  void _handleGameEnd(GameSession session) {
-    session.isCompleted = true;
-    session.endTime = DateTime.now();
-    _saveSession();
-
-    state = AsyncData(ScoreState(
-      currentSession: null,
-      currentRound: 0,
-      isInitialized: true,
-    ));
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      globalState.showCommonDialog(
-        child: AlertDialog(
-          title: const Text('游戏结束'),
-          content: const Text('已有玩家达到目标分数！'),
-          actions: [
-            TextButton(
-              onPressed: () => globalState..navigatorKey.currentState?.pop(),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      );
-    });
   }
 
   void updateScore(String playerId, int roundIndex, int newScore) {
@@ -342,7 +300,63 @@ class Score extends _$Score {
     ));
 
     updateHighlight();
+    // 务必保持在倒数第二个，前面的方法可能会影响_checkGameEnd
+    _checkGameEnd(session);
     _saveSession();
+  }
+
+  void _updateCurrentRound(GameSession session) {
+    final currentRound = _calculateCurrentRound(session);
+
+    for (var playerScore in session.scores) {
+      while (playerScore.roundScores.length < currentRound) {
+        playerScore.roundScores.add(null);
+      }
+    }
+  }
+
+  void _checkGameEnd(GameSession session) {
+    final template = ref
+        .read(templatesProvider)
+        .valueOrNull
+        ?.firstWhereOrNull((t) => t.tid == session.templateId);
+    if (template == null) return;
+
+    final targetScore = template.targetScore;
+    // 检查是否所有玩家的当前回合都有有效分数
+    final hasIncompleteScores = session.scores
+        .any((s) => s.roundScores.isEmpty || s.roundScores.last == null);
+    // 检查是否有玩家达到了目标分数
+    final isGameEnded = !hasIncompleteScores &&
+        session.scores.any((s) => s.totalScore >= targetScore);
+
+    if (isGameEnded) {
+      _handleGameEnd(session);
+    }
+  }
+
+  void resetGameEndDialog() {
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+
+    state = AsyncData(currentState.copyWith(
+      showGameEndDialog: false,
+    ));
+  }
+
+  void _handleGameEnd(GameSession session) {
+    session.isCompleted = true;
+    session.endTime = DateTime.now();
+    _saveSession();
+
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+
+    Log.i("处理游戏结束");
+
+    state = AsyncData(currentState.copyWith(
+      showGameEndDialog: true,
+    ));
   }
 
   void addNewRound() {
@@ -460,6 +474,45 @@ class Score extends _$Score {
       );
     });
 
-    state = AsyncData(state.valueOrNull ?? ScoreState(isInitialized: true));
+    state = AsyncData(state.valueOrNull ??
+        ScoreState(
+          isInitialized: true,
+        ));
+  }
+
+  GameResult calculateGameResult(int targetScore) {
+    final scores = state.valueOrNull?.currentSession?.scores ?? [];
+
+    // 划分失败玩家（分数>=目标分数）
+    final failScores =
+        scores.where((s) => s.totalScore >= targetScore).toList();
+    final hasFailures = failScores.isNotEmpty;
+
+    // 计算胜利者和失败者
+    final List<PlayerScore> winners;
+    final List<PlayerScore> losers;
+
+    if (hasFailures) {
+      final potentialWins =
+          scores.where((s) => s.totalScore < targetScore).toList();
+      potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
+      final minWinScore =
+          potentialWins.isNotEmpty ? potentialWins.first.totalScore : 0;
+      winners =
+          potentialWins.where((s) => s.totalScore == minWinScore).toList();
+      losers = failScores;
+    } else {
+      scores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
+      final minScore = scores.first.totalScore;
+      final maxScore = scores.last.totalScore;
+      winners = scores.where((s) => s.totalScore == minScore).toList();
+      losers = scores.where((s) => s.totalScore == maxScore).toList();
+    }
+
+    return GameResult(
+      winners: winners,
+      losers: losers,
+      hasFailures: hasFailures,
+    );
   }
 }

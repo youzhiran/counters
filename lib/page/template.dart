@@ -136,23 +136,27 @@ class _TemplateCard extends ConsumerWidget {
   // 添加删除确认对话框
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final scoreNotifier = ref.read(scoreProvider.notifier);
-    final currentSession = ref.read(scoreProvider).value?.currentSession;
 
-    // 使用新方法检查模板是否正在计分
-    if (currentSession != null) {
+    // 直接获取当前状态（不监听变化），等待scoreProvider加载完成
+    final scoreState = await ref.read(scoreProvider.future);
+
+    if (template.tid == scoreState.currentSession?.templateId) {
       globalState.showCommonDialog(
         child: AlertDialog(
-          title: const Text('删除模板'),
-          content: const Text('无法删除该模板，当前模板正在计分，请结束计分后再删除！'),
+          title: const Text('无法删除该模板'),
+          content: const Text('该模板正在计分，请结束计分后删除。'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(context),
               child: const Text('确认'),
             ),
           ],
         ),
       );
-    } else if (await scoreNotifier.checkSessionExists(template.tid)) {
+      return;
+    }
+
+    if (await scoreNotifier.checkSessionExists(template.tid)) {
       globalState.showCommonDialog(
         child: AlertDialog(
           title: const Text('删除模板'),
@@ -163,11 +167,12 @@ class _TemplateCard extends ConsumerWidget {
               child: const Text('取消'),
             ),
             TextButton(
-              onPressed: () {
-                ref
+              onPressed: () async {
+                await ref
                     .read(templatesProvider.notifier)
                     .deleteTemplate(template.tid);
-                scoreNotifier.clearSessionsByTemplate(template.tid);
+                await scoreNotifier.clearSessionsByTemplate(template.tid);
+                if (!context.mounted) return;
                 Navigator.pop(context);
               },
               child:
@@ -187,10 +192,11 @@ class _TemplateCard extends ConsumerWidget {
               child: const Text('取消'),
             ),
             TextButton(
-              onPressed: () {
-                ref
+              onPressed: () async {
+                await ref
                     .read(templatesProvider.notifier)
                     .deleteTemplate(template.tid);
+                if (!context.mounted) return;
                 Navigator.pop(context);
               },
               child: const Text('删除', style: TextStyle(color: Colors.red)),
@@ -271,8 +277,27 @@ class _TemplateCard extends ConsumerWidget {
               ListTile(
                 title: const Text('开始计分'),
                 leading: const Icon(Icons.play_arrow),
-                onTap: () {
+                onTap: () async {
+                  // 直接获取当前状态（不监听变化），等待scoreProvider加载完成
+                  final scoreState = await ref.read(scoreProvider.future);
+
+                  if (scoreState.currentSession != null) {
+                    globalState.showCommonDialog(
+                      child: AlertDialog(
+                        title: const Text('无法开始新计分'),
+                        content: const Text('当前已有正在进行的计分，请先完成当前计分后再开始新的计分。'),
+                        actions: [
+                          TextButton(
+                            child: const Text('确认'),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
                   ref.read(scoreProvider.notifier).startNewGame(template);
+                  if (!context.mounted) return;
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(

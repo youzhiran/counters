@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' show Color;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
 /// 全局日志工具类
@@ -20,7 +21,7 @@ class Log {
       errorMethodCount: 5, // error 时打印 5 层调用方法名
       lineLength: 120,
       colors: true,
-      printEmojis: true,
+      printEmojis: false,
       noBoxingByDefault: true,
     ),
     level: _level,
@@ -75,6 +76,25 @@ class Log {
     return 'Color(0x${color.toARGB32().toRadixString(16).padLeft(8, '0')})';
   }
 }
+
+class PLogger extends ProviderObserver {
+  @override
+  void didUpdateProvider(
+      ProviderBase provider,
+      Object? previousValue,
+      Object? newValue,
+      ProviderContainer container,
+      ) {
+    Log.d('''
+{
+  "provider": "${provider.name ?? provider.runtimeType}",
+   "oldValue": ${previousValue},
+  "newValue": ${newValue},
+  "stackTrace": "${StackTrace.current}"
+}''');
+  }
+}
+
 
 // 使用示例:
 // Log.d('调试信息');

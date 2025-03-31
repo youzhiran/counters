@@ -1,41 +1,31 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:uuid/uuid.dart';
 
-class PlayerInfo {
-  final String pid;
-  String name;
-  String avatar;
+part 'generated/player_info.freezed.dart';
+part 'generated/player_info.g.dart';
 
-  PlayerInfo({
+@freezed
+abstract class PlayerInfo with _$PlayerInfo {
+  const PlayerInfo._(); // 添加私有构造函数以支持自定义方法
+
+  const factory PlayerInfo._internal({
+    required String pid,
+    required String name,
+    required String avatar,
+  }) = _PlayerInfo;
+
+  factory PlayerInfo({
     String? pid,
-    required this.name,
-    required this.avatar,
-  }) : pid = pid ?? const Uuid().v4();
-
-  Map<String, dynamic> toMap() {
-    return {
-      'pid': pid,
-      'name': name,
-      'avatar': avatar,
-    };
-  }
-
-  static PlayerInfo fromMap(Map<String, dynamic> map) {
-    return PlayerInfo(
-      pid: map['pid'],
-      name: map['name'],
-      avatar: map['avatar'],
-    );
-  }
-
-  PlayerInfo copyWith({
-    String? pid,
-    String? name,
-    String? avatar,
+    required String name,
+    required String avatar,
   }) {
-    return PlayerInfo(
-      pid: pid ?? this.pid,
-      name: name ?? this.name,
-      avatar: avatar ?? this.avatar,
+    return PlayerInfo._internal(
+      pid: pid ?? Uuid().v4(),
+      name: name,
+      avatar: avatar,
     );
   }
+
+  factory PlayerInfo.fromJson(Map<String, dynamic> json) =>
+      _$PlayerInfoFromJson(json);
 }

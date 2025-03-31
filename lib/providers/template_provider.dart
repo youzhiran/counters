@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../model/base_template.dart';
 import '../model/game_session.dart';
 
-part 'template_provider.g.dart';
+part 'generated/template_provider.g.dart';
 
 @riverpod
 class Templates extends _$Templates {

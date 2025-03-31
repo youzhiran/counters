@@ -1,12 +1,12 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'score_provider.dart';
+part of '../score_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$scoreHash() => r'a97fa6a5cc5e9b81921eb1e688dad578e2e46086';
+String _$scoreHash() => r'6d0f34677a4897a3fee5b973d533e18c9cc2814b';
 
 /// See also [Score].
 @ProviderFor(Score)

@@ -21,7 +21,7 @@ class PlayerState {
     if (searchQuery.isEmpty) return players;
     return players!
         .where((player) =>
-        player.name.toLowerCase().contains(searchQuery.toLowerCase()))
+            player.name.toLowerCase().contains(searchQuery.toLowerCase()))
         .toList();
   }
 
@@ -51,7 +51,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
   Future<void> loadPlayers() async {
     final db = await _dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query('players');
-    final players = maps.map((map) => PlayerInfo.fromMap(map)).toList();
+    final players = maps.map((map) => PlayerInfo.fromJson(map)).toList();
 
     // 一次性加载所有玩家的游玩次数
     final playCountCache = await _getAllPlayersPlayCount();
@@ -68,7 +68,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   Future<void> addPlayer(PlayerInfo player) async {
     final db = await _dbHelper.database;
-    await db.insert('players', player.toMap());
+    await db.insert('players', player.toJson());
     await loadPlayers();
   }
 
@@ -76,7 +76,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     final db = await _dbHelper.database;
     await db.update(
       'players',
-      player.toMap(),
+      player.toJson(),
       where: 'pid = ?',
       whereArgs: [player.pid],
     );

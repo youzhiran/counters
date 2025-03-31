@@ -34,6 +34,8 @@ class _LandlordsSessionPageState
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     final template = ref
         .read(templatesProvider.notifier)
         .getTemplate(widget.templateId) as LandlordsTemplate;
@@ -46,56 +48,42 @@ class _LandlordsSessionPageState
       );
     }
 
-    final currentRound = ref.read(scoreProvider).value?.currentRound ?? 0;
+    // // 监听游戏结束状态
+    // final scoreState = ref.watch(scoreProvider).value;
+    // if (scoreState?.showGameEndDialog == true) {
+    //   WidgetsBinding.instance.addPostFrameCallback((_) {
+    //     showGameResult(context);
+    //     // 显示对话框后重置状态
+    //     ref.read(scoreProvider.notifier).resetGameEndDialog();
+    //   });
+    // }
 
-    final failureScore = template.targetScore;
-
-    // 当轮次完成时检查
-    if (currentRound > 0) {
-      final allPlayersFilled = session.scores.every((s) =>
-          s.roundScores.length >= currentRound &&
-          s.roundScores[currentRound - 1] != null);
-
-      if (allPlayersFilled) {
-        final overPlayers =
-            session.scores.where((s) => s.totalScore >= failureScore).toList();
-        if (overPlayers.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            showGameResult(context);
+    return PopScope(
+      canPop: !_isEditing,
+      onPopInvokedWithResult: (didPop, result) {
+        if (_isEditing) {
+          setState(() {
+            _isEditing = false;
+            _currentEditRound = -1;
           });
         }
-      }
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(template.templateName),
-        actions: [
-          // IconButton(
-          //   icon: Icon(Icons.switch_access_shortcut_add),
-          //   tooltip: '新样式，点击切换',
-          //   onPressed: () {
-          //     Navigator.pushReplacement(
-          //       context,
-          //       MaterialPageRoute(
-          //         builder: (context) => LandlordsSessionOldPage(
-          //           templateId: widget.templateId,
-          //         ),
-          //       ),
-          //     );
-          //   },
-          // ),
-          IconButton(
-            icon: Icon(Icons.sports_score),
-            onPressed: () => showGameResult(context),
-          ),
-          IconButton(
-            icon: Icon(Icons.restart_alt_rounded),
-            onPressed: () => showResetConfirmation(context),
-          )
-        ],
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(template.templateName),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.sports_score),
+              onPressed: () => showGameResult(context),
+            ),
+            IconButton(
+              icon: Icon(Icons.restart_alt_rounded),
+              onPressed: () => showResetConfirmation(context),
+            )
+          ],
+        ),
+        body: buildGameBody(context, template, session),
       ),
-      body: buildGameBody(context, template, session),
     );
   }
 
@@ -605,10 +593,10 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
   @override
   Widget build(BuildContext context) {
     final currentRound = ref.watch(scoreProvider).when(
-      loading: () => 0,
-      error: (err, stack) => 0,
-      data: (state) => state.currentRound,
-    );
+          loading: () => 0,
+          error: (err, stack) => 0,
+          data: (state) => state.currentRound,
+        );
 
     return Column(
       children: [

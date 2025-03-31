@@ -26,91 +26,11 @@ class Poker50SessionPage extends BaseSessionPage {
 
 class _Poker50SessionPageState
     extends BaseSessionPageState<Poker50SessionPage> {
-  @override
-  Widget build(BuildContext context) {
-    final template = ref
-        .read(templatesProvider.notifier)
-        .getTemplate(widget.templateId) as Poker50Template;
-
-    final session = ref.watch(scoreProvider).value?.currentSession;
-
-    if (session == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text('错误')),
-        body: Center(child: Text('模板加载失败')),
-      );
-    }
-
-    final currentRound = ref.read(scoreProvider).value?.currentRound ?? 0;
-    final failureScore = template.targetScore;
-
-    // 当轮次完成时检查
-    if (currentRound > 0) {
-      final allPlayersFilled = session.scores.every((s) =>
-          s.roundScores.length >= currentRound &&
-          s.roundScores[currentRound - 1] != null);
-
-      if (allPlayersFilled) {
-        final overPlayers =
-            session.scores.where((s) => s.totalScore >= failureScore).toList();
-        if (overPlayers.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            showGameResult(context);
-          });
-        }
-      }
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(template.templateName),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.sports_score),
-            onPressed: () => showGameResult(context),
-          ),
-          IconButton(
-            icon: Icon(Icons.restart_alt_rounded),
-            onPressed: () => showResetConfirmation(context),
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          // 可滚动的计分区
-          Expanded(
-            child: _ScoreBoard(template: template, session: session),
-          ),
-          // 固定快捷输入
-          QuickInputPanel(key: ValueKey('Panel')),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget buildGameBody(
       BuildContext context, BaseTemplate template, GameSession session) {
     final poker50Template = template as Poker50Template;
-    final currentRound = ref.read(scoreProvider).value?.currentRound ?? 0;
-    final failureScore = poker50Template.targetScore;
-
-    // 当轮次完成时检查
-    if (currentRound > 0) {
-      final allPlayersFilled = session.scores.every((s) =>
-          s.roundScores.length >= currentRound &&
-          s.roundScores[currentRound - 1] != null);
-
-      if (allPlayersFilled) {
-        final overPlayers =
-            session.scores.where((s) => s.totalScore >= failureScore).toList();
-        if (overPlayers.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            showGameResult(context);
-          });
-        }
-      }
-    }
 
     return Column(
       children: [
@@ -267,22 +187,9 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
     // 在初始化时更新高亮位置
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(scoreProvider.notifier).updateHighlight();
-      // context.read<ScoreProvider>().updateHighlight();
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final highlight = ref.watch(scoreProvider).value?.currentHighlight;
-
-    if (highlight != null) {
-      // 改为使用延迟执行
-      Future.delayed(Duration(milliseconds: 100), () {
-        _scrollToHighlight();
-      });
-    }
-  }
 
   // 抽取滚动逻辑到单独的方法
   void _scrollToHighlight() {
@@ -308,6 +215,15 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
           error: (err, stack) => 0,
           data: (state) => state.currentRound,
         );
+
+    // 添加监听器监听分数滚动到高亮
+    ref.listen(scoreProvider, (previous, next) {
+      if (next.value?.currentHighlight != null) {
+        Future.delayed(Duration(milliseconds: 100), () {
+          _scrollToHighlight();
+        });
+      }
+    });
 
     return Column(
       children: [

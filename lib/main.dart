@@ -5,7 +5,7 @@ import 'package:chinese_font_library/chinese_font_library.dart';
 import 'package:counters/page/home.dart';
 import 'package:counters/page/player.dart';
 import 'package:counters/page/poker50/config.dart';
-import 'package:counters/page/poker50/poker50_session.dart';
+import 'package:counters/page/poker50/poker50_page.dart';
 import 'package:counters/page/setting.dart';
 import 'package:counters/page/template.dart';
 import 'package:counters/utils/error_handler.dart';
@@ -64,7 +64,8 @@ void main() async {
   await container.read(themeProvider.notifier).init();
 
   runApp(ProviderScope(
-    child: MyApp(),
+    observers: [PLogger()],
+    child: const MyApp(),
   ));
 }
 
@@ -268,3 +269,4 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen> {
     );
   }
 }
+
