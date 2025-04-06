@@ -1,4 +1,5 @@
 import 'package:counters/model/landlords.dart';
+import 'package:counters/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -463,8 +464,79 @@ class _LandlordsSessionPageState
     );
   }
 
+  /// 检查春天相关规则
+  bool _checkSpringRules() {
+    final template = ref
+        .read(templatesProvider.notifier)
+        .getTemplate(widget.templateId) as LandlordsTemplate;
+
+    // 如果模板设置不检查翻倍逻辑，直接返回true
+    if (!template.checkMultiplier) {
+      return true;
+    }
+
+    // 检查所有玩家中最多只能有一个春天
+    int springCount = 0;
+    String? springPlayerId;
+    _springUsed.forEach((playerId, hasSpring) {
+      if (hasSpring) {
+        springCount++;
+        springPlayerId = playerId;
+      }
+    });
+
+    // 如果多于一个春天，重置所有春天状态
+    if (springCount > 1) {
+      setState(() {
+        _springUsed.updateAll((key, value) => false);
+      });
+      AppSnackBar.warn('每局游戏最多只能有一个「春天」，请重新选择');
+      return false;
+    }
+
+    // 检查存在春天的情况下，其他玩家不能有火箭，炸弹
+    if (springPlayerId != null) {
+      bool hasInvalidCombination = false;
+      _bombUsed.forEach((playerId, bombCount) {
+        if (playerId != springPlayerId && bombCount > 0) {
+          hasInvalidCombination = true;
+          _bombUsed[playerId] = 0;
+        }
+      });
+      _rocketUsed.forEach((playerId, hasRocket) {
+        if (playerId != springPlayerId && hasRocket) {
+          hasInvalidCombination = true;
+          _rocketUsed[playerId] = false;
+        }
+      });
+      if (hasInvalidCombination) {
+        setState(() {}); // 触发界面刷新
+        AppSnackBar.warn('春天时其他玩家不能有火箭和炸弹，已自动清除');
+        return false;
+      }
+
+      // 检查春天玩家必定为胜利方
+      final isSpringPlayerLandlord = springPlayerId == _currentLandlordId;
+      if ((isSpringPlayerLandlord && !_landlordWin) ||
+          (!isSpringPlayerLandlord && _landlordWin)) {
+        setState(() {
+          _landlordWin = isSpringPlayerLandlord;
+        });
+        AppSnackBar.warn('春天方必定为胜利方，已自动调整胜负结果');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   void _calculateAndSaveScores(
       LandlordsTemplate template, GameSession session) {
+    // 检查春天规则
+    if (!_checkSpringRules()) {
+      return;
+    }
+
     // 计算倍数
     int multiplier = 1;
 

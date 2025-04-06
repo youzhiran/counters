@@ -11,13 +11,19 @@ class LandlordsTemplate extends BaseTemplate {
     super.isSystemTemplate,
     super.baseTemplateId,
     int baseScore = 1,
+    bool checkMultiplier = true,
   }) {
     // 初始化时设置 baseScore
     setOtherSet('baseScore', baseScore);
+    setOtherSet('checkMultiplier', checkMultiplier);
   }
 
   // 获取底分，默认为1
   int get baseScore => getOtherSet<int>('baseScore', defaultValue: 1) ?? 1;
+
+  // 获取是否检查翻倍逻辑，默认为true
+  bool get checkMultiplier =>
+      getOtherSet<bool>('checkMultiplier', defaultValue: true) ?? true;
 
   @override
   Map<String, dynamic> toMap() {
@@ -60,7 +66,8 @@ class LandlordsTemplate extends BaseTemplate {
     bool? isSystemTemplate,
     String? baseTemplateId,
     Map<String, dynamic>? otherSet,
-    int? baseScore, // 添加 baseScore 参数
+    int? baseScore,
+    bool? checkMultiplier,
   }) {
     final template = LandlordsTemplate(
       tid: tid ?? this.tid,
@@ -77,6 +84,9 @@ class LandlordsTemplate extends BaseTemplate {
         otherSet ?? Map<String, dynamic>.from(this.otherSet ?? {});
     if (baseScore != null) {
       template.setOtherSet('baseScore', baseScore);
+    }
+    if (checkMultiplier != null) {
+      template.setOtherSet('checkMultiplier', checkMultiplier);
     }
 
     return template;

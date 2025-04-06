@@ -103,7 +103,10 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8, top: 16),
+          child: Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
+        ),
         SwitchListTile(
           contentPadding: const EdgeInsets.only(left: 16, right: 16),
           title: const Text('计分允许输入负数'),

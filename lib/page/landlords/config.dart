@@ -22,6 +22,7 @@ class _LandlordsConfigPageState
     extends BaseConfigPageState<LandlordsConfigPage> {
   late TextEditingController _baseScoreController;
   String? _baseScoreError;
+  bool _checkMultiplier = false;
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _LandlordsConfigPageState
     _baseScoreController = TextEditingController(
       text: template.baseScore.toString(),
     );
+    _checkMultiplier = template.checkMultiplier;
   }
 
   @override
@@ -83,6 +85,7 @@ class _LandlordsConfigPageState
       targetScore: int.parse(targetScoreController.text),
       baseScore: int.parse(_baseScoreController.text),
       players: players,
+      checkMultiplier: _checkMultiplier,
     );
 
     // 在异步操作前获取需要的对象
@@ -113,6 +116,7 @@ class _LandlordsConfigPageState
       players: players,
       baseScore: int.parse(_baseScoreController.text),
       baseTemplateId: rootId,
+      checkMultiplier: _checkMultiplier,  
     );
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
@@ -129,17 +133,17 @@ class _LandlordsConfigPageState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: 8, top: 16),
           child: Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
         ),
-        ListView.builder(
+        ListView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: 1,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              height: 80,
-              child: TextField(
+          children: [
+            // 基数设置
+            ListTile(
+              // height: 80,
+              title: TextField(
                 controller: _baseScoreController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
@@ -155,8 +159,17 @@ class _LandlordsConfigPageState
                 ),
                 onChanged: _handleBaseScoreChange,
               ),
-            );
-          },
+            ),
+            // 翻倍逻辑检查设置
+            SwitchListTile(
+              title: Text('检查翻倍逻辑'),
+              subtitle: Text('开启后将检查春天、火箭、炸弹等特殊牌型的合法性'),
+              value: _checkMultiplier,
+              onChanged: (value) {
+                setState(() => _checkMultiplier = value);
+              },
+            ),
+          ],
         ),
       ],
     );

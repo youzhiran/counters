@@ -408,13 +408,16 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('玩家设置', style: Theme.of(context).textTheme.titleLarge),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8, top: 16),
+          child: Text('玩家设置', style: Theme.of(context).textTheme.titleLarge),
+        ),
         ListView.builder(
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
           itemCount: players.length,
           itemBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
             child: ListTile(
               contentPadding: const EdgeInsets.only(left: 16, right: 16),
               leading: PlayerAvatar.build(context, players[index]),
