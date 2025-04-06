@@ -12,6 +12,7 @@ import 'package:counters/utils/error_handler.dart';
 import 'package:counters/utils/log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:window_manager/window_manager.dart';
@@ -63,8 +64,13 @@ void main() async {
   final container = ProviderContainer();
   await container.read(themeProvider.notifier).init();
 
+  // 获取Provider调试设置
+  final prefs = await SharedPreferences.getInstance();
+  final enableProviderLogger = prefs.getBool('enable_provider_logger') ?? false;
+
   runApp(ProviderScope(
-    observers: [PLogger()],
+    observers:
+        enableProviderLogger ? [PLogger()] : null, // 根据设置决定是否启用Provider调试
     child: const MyApp(),
   ));
 }
@@ -269,4 +275,3 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen> {
     );
   }
 }
-

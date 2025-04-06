@@ -34,7 +34,6 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         body: Center(child: Text('加载分数失败: $error')),
       ),
       data: (scoreState) {
-        // final session = ref.watch(scoreProvider).value?.currentSession;
         final session = scoreState.currentSession;
 
         if (session == null || template == null) {
@@ -62,7 +61,6 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         );
       },
     );
-
   }
 
   Widget buildGameBody(

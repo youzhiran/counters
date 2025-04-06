@@ -1,6 +1,8 @@
 import 'package:counters/model/player_score.dart';
 import 'package:uuid/uuid.dart';
 
+import '../utils/log.dart';
+
 /// ScoreProvider中存游戏计分的模型
 class GameSession {
   final String sid;
@@ -29,18 +31,37 @@ class GameSession {
     };
   }
 
+  @override
+  String toString() {
+    return 'GameSession{sid: $sid, templateId: $templateId, startTime: $startTime, '
+        'endTime: $endTime, isCompleted: $isCompleted, scores: $scores}';
+  }
+
   /// 从数据库中读取数据，将数据转换为GameSession对象
   static GameSession fromMap(
       Map<String, dynamic> map, List<PlayerScore> scores) {
-    return GameSession(
-      sid: map['sid'],
-      templateId: map['template_id'],
-      startTime: DateTime.fromMillisecondsSinceEpoch(map['start_time']),
-      endTime: map['end_time'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['end_time'])
-          : null,
-      isCompleted: map['is_completed'] == 1,
-      scores: scores,
-    );
+    try {
+      return GameSession(
+        sid: map['sid'],
+        templateId: map['template_id'],
+        startTime: DateTime.fromMillisecondsSinceEpoch(map['start_time'] is int
+            ? map['start_time']
+            : int.parse(map['start_time'])),
+        endTime: map['end_time'] != null
+            ? DateTime.fromMillisecondsSinceEpoch(map['end_time'] is int
+                ? map['end_time']
+                : int.parse(map['end_time']))
+            : null,
+        isCompleted: map['is_completed'] == 1,
+        scores: scores,
+      );
+    } catch (e) {
+      Log.e('解析GameSession失败: $e');
+      return GameSession(
+        templateId: map['template_id'] ?? 'error',
+        scores: scores,
+        startTime: DateTime.now(),
+      );
+    }
   }
 }

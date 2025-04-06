@@ -278,8 +278,8 @@ class _TemplateCard extends ConsumerWidget {
                 title: const Text('开始计分'),
                 leading: const Icon(Icons.play_arrow),
                 onTap: () async {
-                  // 直接获取当前状态（不监听变化），等待scoreProvider加载完成
-                  final scoreState = await ref.read(scoreProvider.future);
+                  // 获取当前状态，等待scoreProvider加载完成
+                  final scoreState = await ref.watch(scoreProvider.future);
 
                   if (scoreState.currentSession != null) {
                     globalState.showCommonDialog(

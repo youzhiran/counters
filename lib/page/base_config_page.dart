@@ -198,8 +198,8 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   Future<bool> confirmCheckScoring() async {
     final tid = widget.oriTemplate.tid;
     final provider = ref.read(scoreProvider.notifier);
-    final currentSession = ref.watch(scoreProvider).valueOrNull?.currentSession;
-    if (currentSession?.templateId == tid) {
+    final scoreState = await ref.read(scoreProvider.future);
+    if (scoreState.currentSession?.templateId == tid) {
       await globalState.showCommonDialog(
         child: AlertDialog(
           title: const Text('提示'),

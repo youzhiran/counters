@@ -29,6 +29,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   bool _isCustomPath = false;
   static const String _keyDataStoragePath = 'data_storage_path';
   static const String _keyIsCustomPath = 'is_custom_path';
+  bool _enableProviderLogger = false;
+  static const String _keyEnableProviderLogger = 'enable_provider_logger';
 
   // 添加计数器和显示状态
   int _versionClickCount = 0;
@@ -53,6 +55,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     _loadPackageInfo();
     _loadDevOptions();
     _loadStorageSettings();
+    _loadProviderLoggerSetting();
   }
 
   // 加载存储设置
@@ -352,6 +355,24 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     await prefs.setBool(_keyShowDevOptions, value);
   }
 
+  // 加载Provider调试设置
+  Future<void> _loadProviderLoggerSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _enableProviderLogger = prefs.getBool(_keyEnableProviderLogger) ?? false;
+    });
+  }
+
+  // 保存Provider调试设置
+  Future<void> _saveProviderLoggerSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyEnableProviderLogger, value);
+    setState(() {
+      _enableProviderLogger = value;
+    });
+    AppSnackBar.show('设置已保存，重启应用后生效');
+  }
+
   void _resetDatabase() {
     globalState.showCommonDialog(
       child: AlertDialog(
@@ -611,6 +632,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     icon: Icons.visibility_off,
                     title: '隐藏开发者选项',
                     onTap: _hideDevOptions,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.bug_report),
+                    title: const Text('启用 Provider 调试日志'),
+                    subtitle: const Text('重启应用后生效'),
+                    value: _enableProviderLogger,
+                    onChanged: _saveProviderLoggerSetting,
                   ),
                 ],
               ],

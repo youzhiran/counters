@@ -48,3 +48,4 @@ app.*.map.json
 ai-docs/
 dist/
 /android/app/.cxx
+.lingma/

@@ -17,8 +17,9 @@ class Log {
   // 日志实例
   static final Logger _logger = Logger(
     printer: PrettyPrinter(
-      methodCount: 3,
-      errorMethodCount: 5, // error 时打印 5 层调用方法名
+      methodCount: 0,
+      errorMethodCount: 5,
+      // error 时打印 5 层调用方法名
       lineLength: 120,
       colors: true,
       printEmojis: false,
@@ -80,21 +81,21 @@ class Log {
 class PLogger extends ProviderObserver {
   @override
   void didUpdateProvider(
-      ProviderBase provider,
-      Object? previousValue,
-      Object? newValue,
-      ProviderContainer container,
-      ) {
-    Log.d('''
-{
-  "provider": "${provider.name ?? provider.runtimeType}",
-   "oldValue": ${previousValue},
-  "newValue": ${newValue},
-  "stackTrace": "${StackTrace.current}"
-}''');
+    ProviderBase<dynamic> provider,
+    Object? previousValue,
+    Object? newValue,
+    ProviderContainer container,
+  ) {
+    final stackTrace = StackTrace.current;
+    print('''
+Provider "${provider.name ?? provider.runtimeType}" 已修改:
+- Previous value: $previousValue
+- New value: $newValue
+- 修改堆栈:
+$stackTrace
+''');
   }
 }
-
 
 // 使用示例:
 // Log.d('调试信息');
