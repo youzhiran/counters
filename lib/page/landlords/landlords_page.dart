@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:counters/model/landlords.dart';
 import 'package:counters/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
@@ -48,16 +50,6 @@ class _LandlordsSessionPageState
         body: Center(child: Text('模板加载失败')),
       );
     }
-
-    // // 监听游戏结束状态
-    // final scoreState = ref.watch(scoreProvider).value;
-    // if (scoreState?.showGameEndDialog == true) {
-    //   WidgetsBinding.instance.addPostFrameCallback((_) {
-    //     showGameResult(context);
-    //     // 显示对话框后重置状态
-    //     ref.read(scoreProvider.notifier).resetGameEndDialog();
-    //   });
-    // }
 
     return PopScope(
       canPop: !_isEditing,
@@ -548,7 +540,14 @@ class _LandlordsSessionPageState
 
     // 炸弹翻倍
     if (bombCount > 0) {
-      multiplier *= (1 + bombCount);
+      // 根据模板设置选择翻倍方式
+      if (template.bombMultiplyMode) {
+        // 每个炸弹都×2
+        multiplier *= pow(2, bombCount).toInt();
+      } else {
+        // 增加倍数模式
+        multiplier *= (1 + bombCount);
+      }
     }
 
     // 火箭翻倍

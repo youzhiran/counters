@@ -12,10 +12,12 @@ class LandlordsTemplate extends BaseTemplate {
     super.baseTemplateId,
     int baseScore = 1,
     bool checkMultiplier = true,
+    bool bombMultiplyMode = false,
   }) {
     // 初始化时设置 baseScore
     setOtherSet('baseScore', baseScore);
     setOtherSet('checkMultiplier', checkMultiplier);
+    setOtherSet('bombMultiplyMode', bombMultiplyMode);
   }
 
   // 获取底分，默认为1
@@ -24,6 +26,10 @@ class LandlordsTemplate extends BaseTemplate {
   // 获取是否检查翻倍逻辑，默认为true
   bool get checkMultiplier =>
       getOtherSet<bool>('checkMultiplier', defaultValue: true) ?? true;
+
+  // 获取炸弹翻倍方式，默认为false（增加倍数）
+  bool get bombMultiplyMode =>
+      getOtherSet<bool>('bombMultiplyMode', defaultValue: false) ?? false;
 
   @override
   Map<String, dynamic> toMap() {
@@ -68,6 +74,7 @@ class LandlordsTemplate extends BaseTemplate {
     Map<String, dynamic>? otherSet,
     int? baseScore,
     bool? checkMultiplier,
+    bool? bombMultiplyMode,
   }) {
     final template = LandlordsTemplate(
       tid: tid ?? this.tid,
@@ -87,6 +94,9 @@ class LandlordsTemplate extends BaseTemplate {
     }
     if (checkMultiplier != null) {
       template.setOtherSet('checkMultiplier', checkMultiplier);
+    }
+    if (bombMultiplyMode != null) {
+      template.setOtherSet('bombMultiplyMode', bombMultiplyMode);
     }
 
     return template;

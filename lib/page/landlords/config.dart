@@ -23,6 +23,7 @@ class _LandlordsConfigPageState
   late TextEditingController _baseScoreController;
   String? _baseScoreError;
   bool _checkMultiplier = false;
+  bool _bombMultiplyMode = false; // true: 每次×2, false: 增加倍数
 
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _LandlordsConfigPageState
       text: template.baseScore.toString(),
     );
     _checkMultiplier = template.checkMultiplier;
+     _bombMultiplyMode = template.bombMultiplyMode;
   }
 
   @override
@@ -86,6 +88,7 @@ class _LandlordsConfigPageState
       baseScore: int.parse(_baseScoreController.text),
       players: players,
       checkMultiplier: _checkMultiplier,
+       bombMultiplyMode: _bombMultiplyMode,
     );
 
     // 在异步操作前获取需要的对象
@@ -117,6 +120,7 @@ class _LandlordsConfigPageState
       baseScore: int.parse(_baseScoreController.text),
       baseTemplateId: rootId,
       checkMultiplier: _checkMultiplier,  
+       bombMultiplyMode: _bombMultiplyMode, 
     );
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
@@ -142,7 +146,6 @@ class _LandlordsConfigPageState
           children: [
             // 基数设置
             ListTile(
-              // height: 80,
               title: TextField(
                 controller: _baseScoreController,
                 keyboardType: TextInputType.number,
@@ -168,6 +171,39 @@ class _LandlordsConfigPageState
               onChanged: (value) {
                 setState(() => _checkMultiplier = value);
               },
+            ),
+            // 炸弹翻倍设置
+            ListTile(
+              title: Text('炸弹翻倍方式'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RadioListTile<bool>(
+                    title: Text('每个炸弹都×2'),
+                    subtitle: Text('例如：3个炸弹 = ×2×2×2 = 8倍'),
+                    value: true,
+                    groupValue: _bombMultiplyMode,
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _bombMultiplyMode = value);
+                      }
+                    },
+                    dense: true,
+                  ),
+                  RadioListTile<bool>(
+                    title: Text('炸弹增加倍数'),
+                    subtitle: Text('例如：3个炸弹 = (1+3) = 4倍'),
+                    value: false,
+                    groupValue: _bombMultiplyMode,
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _bombMultiplyMode = value);
+                      }
+                    },
+                    dense: true,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
