@@ -46,7 +46,7 @@ class _LandlordsConfigPageState
   int getMinPlayerCount() => 3;
 
   @override
-  int getMaxPlayerCount() => 3;
+  int getMaxPlayerCount() => 20;
 
   @override
   Widget buildOtherSettings() => _buildOtherList();
@@ -122,8 +122,7 @@ class _LandlordsConfigPageState
   @override
   String getTemplateDescription() =>
       '• 适用于：类似每局基于底分和倍数，结合胜负、炸弹/火箭翻倍及春天等牌型效果，计算地主与农民的得分或扣分的游戏。\n'
-      '• 一局结束：地主得分=2×胜负参数×基数×底分×倍数，农民得分=胜负参数×基数×底分×倍数，胜负参数：胜利方为1，失败方为-1，基数：由游戏产品配置决定，底分：初始叫分时的1、2、3分。\n'
-      '• 本模板仍在施工，敬请期待。';
+      '• 一局结束：地主得分=2×胜负参数×基数×底分×倍数，农民得分=胜负参数×基数×底分×倍数，胜负参数：胜利方为1，失败方为-1，基数：由游戏产品配置决定，底分：初始叫分时的1、2、3分。';
 
   Widget _buildOtherList() {
     return Column(

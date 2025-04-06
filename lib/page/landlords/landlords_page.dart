@@ -801,11 +801,20 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
                               child: Container(
                                 padding: EdgeInsets.all(2),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange,
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.orange.withValues(alpha: 0.5)
+                                      : Colors.orange,
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(Icons.star,
-                                    size: 12, color: Colors.white),
+                                child: Icon(
+                                  Icons.star,
+                                  size: 12,
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white.withValues(alpha: 0.5)
+                                      : Colors.white,
+                                ),
                               ),
                             ),
                           // 特殊标记
