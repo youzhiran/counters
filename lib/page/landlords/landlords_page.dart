@@ -12,7 +12,7 @@ import '../../model/player_score.dart';
 import '../../providers/score_provider.dart';
 import '../../providers/template_provider.dart';
 import '../../widgets/player_widget.dart';
-import '../base_session.dart';
+import '../base_page.dart';
 
 class LandlordsSessionPage extends BaseSessionPage {
   const LandlordsSessionPage({super.key, required super.templateId});
@@ -42,7 +42,7 @@ class _LandlordsSessionPageState
     final template = ref
         .read(templatesProvider.notifier)
         .getTemplate(widget.templateId) as LandlordsTemplate;
-    final session = ref.watch(scoreProvider).value?.currentSession;
+    final session = ref.read(scoreProvider).value?.currentSession;
 
     if (session == null) {
       return Scaffold(
@@ -576,19 +576,18 @@ class _LandlordsSessionPageState
   ) {
     final scoreNotifier = ref.read(scoreProvider.notifier);
 
-    // 计算每个玩家的得分
+    // 计算每个玩家的得分并收集
+    final playerScores = <String, int>{};
+    final extendedDataList = <String, Map<String, dynamic>>{};
+
     for (var playerScore in session.scores) {
       final isLandlord = playerScore.playerId == _currentLandlordId;
-      int score;
+      final score = isLandlord
+          ? 2 * (landlordWin ? 1 : -1) * baseValue
+          : (landlordWin ? -1 : 1) * baseValue;
 
-      if (isLandlord) {
-        score = 2 * (landlordWin ? 1 : -1) * baseValue;
-      } else {
-        score = (landlordWin ? -1 : 1) * baseValue;
-      }
-
-      // 保存扩展数据
-      final extendedData = {
+      playerScores[playerScore.playerId] = score;
+      extendedDataList[playerScore.playerId] = {
         'isLandlord': isLandlord,
         'baseScore': _baseScore,
         'bomb': _bombUsed[playerScore.playerId] ?? 0,
@@ -597,24 +596,57 @@ class _LandlordsSessionPageState
         'multiplier': baseValue / (template.baseScore * _baseScore),
         'landlordWin': landlordWin,
       };
-
-      // 更新或添加分数
-      if (_currentEditRound < playerScore.roundScores.length) {
-        scoreNotifier.updateScore(
-            playerScore.playerId, _currentEditRound, score);
-        // 为特定回合设置扩展字段
-        extendedData.forEach((key, value) {
-          playerScore.setRoundExtendedField(_currentEditRound, key, value);
-        });
-      } else {
-        scoreNotifier.addScore(playerScore.playerId, score);
-        final newRoundIndex = playerScore.roundScores.length - 1;
-        // 为新回合设置扩展字段
-        extendedData.forEach((key, value) {
-          playerScore.setRoundExtendedField(newRoundIndex, key, value);
-        });
-      }
     }
+
+    // 批量更新分数
+    scoreNotifier.updateRoundScores(session, _currentEditRound, playerScores);
+
+    // 设置扩展数据
+    for (var playerScore in session.scores) {
+      extendedDataList[playerScore.playerId]?.forEach((key, value) {
+        playerScore.setRoundExtendedField(_currentEditRound, key, value);
+      });
+    }
+
+    // // 计算每个玩家的得分
+    // for (var playerScore in session.scores) {
+    //   final isLandlord = playerScore.playerId == _currentLandlordId;
+    //   int score;
+
+    //   if (isLandlord) {
+    //     score = 2 * (landlordWin ? 1 : -1) * baseValue;
+    //   } else {
+    //     score = (landlordWin ? -1 : 1) * baseValue;
+    //   }
+
+    //   // 保存扩展数据
+    //   final extendedData = {
+    //     'isLandlord': isLandlord,
+    //     'baseScore': _baseScore,
+    //     'bomb': _bombUsed[playerScore.playerId] ?? 0,
+    //     'rocket': _rocketUsed[playerScore.playerId] ?? false,
+    //     'spring': _springUsed[playerScore.playerId] ?? false,
+    //     'multiplier': baseValue / (template.baseScore * _baseScore),
+    //     'landlordWin': landlordWin,
+    //   };
+
+    //   // 更新或添加分数
+    //   if (_currentEditRound < playerScore.roundScores.length) {
+    //     scoreNotifier.updateScore(
+    //         playerScore.playerId, _currentEditRound, score);
+    //     // 为特定回合设置扩展字段
+    //     extendedData.forEach((key, value) {
+    //       playerScore.setRoundExtendedField(_currentEditRound, key, value);
+    //     });
+    //   } else {
+    //     scoreNotifier.addScore(playerScore.playerId, score);
+    //     final newRoundIndex = playerScore.roundScores.length - 1;
+    //     // 为新回合设置扩展字段
+    //     extendedData.forEach((key, value) {
+    //       playerScore.setRoundExtendedField(newRoundIndex, key, value);
+    //     });
+    //   }
+    // }
 
     // 重置编辑状态
     setState(() {
@@ -651,6 +683,16 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
     // 同步两个滚动控制器
     _contentHorizontalController.addListener(() {
       _headerHorizontalController.jumpTo(_contentHorizontalController.offset);
+    });
+
+    // 预加载所有轮次的扩展数据
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentRound = widget.session.scores.first.roundScores.length;
+      for (var i = 0; i < currentRound; i++) {
+        ref
+            .read(scoreProvider.notifier)
+            .loadRoundExtendedData(widget.session.sid, i);
+      }
     });
   }
 
@@ -978,7 +1020,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
     return 0;
   }
 
-// 获取扩展数据
+  // 获取扩展数据
   Map<String, dynamic>? _getExtendedData(
     String playerId,
     int roundIndex,
@@ -989,16 +1031,8 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
         (score) => score.playerId == playerId,
       );
 
-      // 使用新的按轮次获取扩展字段的方法
-      final extendedData = playerScore.getExtendedField(roundIndex);
-      if (extendedData == null) {
-        // 尝试从数据库重新加载数据
-        final scoreNotifier = ref.read(scoreProvider.notifier);
-        scoreNotifier.loadRoundExtendedData(widget.session.sid, roundIndex);
-        return playerScore.getExtendedField(roundIndex);
-      }
-
-      return extendedData;
+      // 只返回现有数据，不触发加载
+      return playerScore.getExtendedField(roundIndex);
     } catch (e) {
       return null;
     }

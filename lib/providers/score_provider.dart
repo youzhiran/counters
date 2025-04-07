@@ -42,6 +42,12 @@ class ScoreState {
     this.showGameEndDialog = false,
   });
 
+  @override
+  String toString() {
+    return 'ScoreState{currentSession: $currentSession, currentRound: $currentRound, '
+        'isInitialized: $isInitialized, currentHighlight: $currentHighlight, showGameEndDialog: $showGameEndDialog}';
+  }
+
   ScoreState copyWith({
     GameSession? currentSession,
     int? currentRound,
@@ -301,6 +307,34 @@ class Score extends _$Score {
 
     updateHighlight();
     // 务必保持在倒数第二个，前面的方法可能会影响_checkGameEnd
+    _checkGameEnd(session);
+    _saveSession();
+  }
+
+  void updateRoundScores(
+      GameSession session, int roundIndex, Map<String, int> playerScores) {
+    final currentState = state.valueOrNull;
+    if (currentState?.currentSession == null) return;
+
+    // 更新所有玩家的分数
+    for (final playerScore in session.scores) {
+      final score = playerScores[playerScore.playerId];
+      if (score != null) {
+        while (playerScore.roundScores.length <= roundIndex) {
+          playerScore.roundScores.add(null);
+        }
+        playerScore.roundScores[roundIndex] = score;
+      }
+    }
+
+    _updateCurrentRound(session);
+
+    state = AsyncData(currentState!.copyWith(
+      currentSession: session,
+      currentRound: _calculateCurrentRound(session),
+    ));
+
+    updateHighlight();
     _checkGameEnd(session);
     _saveSession();
   }

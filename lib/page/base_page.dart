@@ -22,6 +22,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     final template =
         ref.watch(templatesProvider.notifier).getTemplate(widget.templateId);
 
+    // 添加监听器监听showGameEndDialog为true时显示结束对话框
+    ref.listen(scoreProvider, (previous, next) {
+      if (next.value?.showGameEndDialog == true) {
+        showGameResult(context);
+      }
+    });
+
     final scoreAsync = ref.watch(scoreProvider);
 
     return scoreAsync.when(
@@ -82,6 +89,11 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   void showGameResult(BuildContext context) {
+    // 检查是否已有对话框显示
+    if (ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+
     final targetScore = ref
         .read(templatesProvider.notifier)
         .getTemplate(widget.templateId)
@@ -105,6 +117,10 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         ref.read(scoreProvider.notifier).calculateGameResult(targetScore);
 
     globalState.showCommonDialog(
+        child: PopScope(
+      onPopInvokedWithResult: (didPop, result) async {
+        ref.read(scoreProvider.notifier).resetGameEndDialog();
+      },
       child: AlertDialog(
         title: Text(result.hasFailures ? '游戏结束' : '当前游戏情况'),
         content: SingleChildScrollView(
@@ -135,7 +151,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           ),
         ],
       ),
-    );
+    ));
   }
 
   void showResetConfirmation(BuildContext context) {

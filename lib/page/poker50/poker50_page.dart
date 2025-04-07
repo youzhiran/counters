@@ -1,5 +1,5 @@
 import 'package:counters/model/base_template.dart';
-import 'package:counters/page/base_session.dart';
+import 'package:counters/page/base_page.dart';
 import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -189,7 +189,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
       ref.read(scoreProvider.notifier).updateHighlight();
     });
   }
-
 
   // 抽取滚动逻辑到单独的方法
   void _scrollToHighlight() {

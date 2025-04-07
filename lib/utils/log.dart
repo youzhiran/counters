@@ -87,13 +87,16 @@ class PLogger extends ProviderObserver {
     ProviderContainer container,
   ) {
     final stackTrace = StackTrace.current;
-    print('''
-Provider "${provider.name ?? provider.runtimeType}" 已修改:
-- Previous value: $previousValue
-- New value: $newValue
-- 修改堆栈:
-$stackTrace
-''');
+
+    // 先打印基础信息
+    Log.d('Provider "${provider.name ?? provider.runtimeType}" 已修改:');
+    Log.d('- Previous value: $previousValue');
+    Log.d('- New value: $newValue');
+    Log.d('- 修改堆栈:');
+
+    // 拆分堆栈逐行打印
+    stackTrace.toString().split('\n').forEach(Log.d); // 每行堆栈单独打印
+    Log.d('-----------------------------');
   }
 }
 
