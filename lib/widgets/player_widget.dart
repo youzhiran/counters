@@ -30,7 +30,9 @@ class PlayerAvatar {
       backgroundColor: backgroundColor,
       child: player.avatar == 'default_avatar.png'
           ? Text(
-              player.name.isNotEmpty ? player.name[0] : '?',
+              player.name.isNotEmpty
+                  ? String.fromCharCodes(player.name.runes.take(1))
+                  : '?',
               style: TextStyle(
                 color: foregroundColor,
                 fontWeight: FontWeight.bold,
@@ -322,6 +324,23 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                 ),
+              ),
+              SizedBox(height: 16),
+              OverflowBar(
+                alignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(), // 取消
+                    child: Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      _selectedIcon = null; // 恢复默认头像
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('恢复默认'),
+                  ),
+                ],
               ),
             ],
           ),

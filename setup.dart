@@ -5,7 +5,7 @@ import 'package:yaml/yaml.dart';
 
 void main(List<String> args) {
   // 解析命令行参数
-  final buildAll = _parseArguments(args);
+  final pArg = _parseArguments(args);
 
   final pubspecVersion = _generateVersionFile();
 
@@ -15,16 +15,23 @@ void main(List<String> args) {
   }
 
   try {
-    if (buildAll) {
-      _buildWindows(pubspecVersion);
-      _buildAndroid(pubspecVersion);
-    } else {
-      // 根据当前平台构建
-      if (Platform.isWindows) {
+    switch (pArg) {
+      case 'win':
         _buildWindows(pubspecVersion);
-      } else {
+        break;
+      case 'android':
         _buildAndroid(pubspecVersion);
-      }
+        break;
+      case 'arm64':
+        _buildAndroid(pubspecVersion);
+        break;
+      case 'all':
+        _buildWindows(pubspecVersion);
+        _buildAndroid(pubspecVersion);
+        break;
+      default:
+        print('无效的参数: $pArg');
+        exit(1);
     }
   } catch (e) {
     print('发生错误: $e');
@@ -32,24 +39,35 @@ void main(List<String> args) {
   }
 }
 
-bool _parseArguments(List<String> args) {
-  if (args.isEmpty) {
-    return false;
+String _parseArguments(List<String> args) {
+  if (!(Platform.isWindows || Platform.isLinux)) {
+    print('错误：暂不支持的平台');
+    exit(1);
   }
 
   if (args.length == 1 && args[0] == 'all') {
     if (Platform.isWindows) {
-      return true;
+      return 'all';
     } else {
       print('错误："all" 参数仅在 Windows 系统下有效');
       exit(1);
     }
   }
 
-  print('无效参数，请使用 "all" 或留空');
+  if (args.length == 1 && args[0] == 'android') {
+    return 'android';
+  }
+
+  if (args.isEmpty) {
+    if (Platform.isWindows) {
+      return 'win';
+    } else if (Platform.isLinux) {
+      return 'android';
+    }
+  }
+  print('无效参数');
   exit(1);
 }
-
 
 String _generateVersionFile() {
   final versionFile = File(p.join('lib', 'version.dart'));
@@ -151,7 +169,7 @@ void _buildWindows(String version) {
 
   _runCommand(
     'powershell Compress-Archive -Path "${releaseDir.path}\\*" '
-        '-DestinationPath "${zipFile.path}" -Force',
+    '-DestinationPath "${zipFile.path}" -Force',
     workingDirectory: Directory.current.path,
   );
   print('Windows build compressed to ${zipFile.path}');

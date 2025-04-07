@@ -89,17 +89,6 @@ class HistorySessionItem extends ConsumerWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       );
 
-  // // 滑动删除
-  // Future<bool?> _confirmDismiss(
-  //     DismissDirection direction, BuildContext context) async {
-  //   return await  ref.read(globalStateProvider.notifier).showCommonDialog(
-  //     child: ConfirmationDialog(
-  //       title: '确认删除',
-  //       content: '确定要删除这条记录吗？',
-  //       confirmText: '删除',
-  //     ),
-  //   );
-  // }
 
   Widget _buildSessionSubtitle() {
     return Column(

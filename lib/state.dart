@@ -335,9 +335,9 @@ class GlobalState {
   }
 
   /// 打开外部链接
-  Future<void> openUrl(String url) async {
+  Future<void> openUrl(String url, [String msg = '']) async {
     final res = await showMessage(
-      message: TextSpan(text: url),
+      message: TextSpan(text: msg.isEmpty ? url : msg),
       title: '外部链接',
       confirmText: '前往',
     );

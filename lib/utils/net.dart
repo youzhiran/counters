@@ -33,7 +33,7 @@ class UpdateChecker {
             : releases.where((r) => r['name'].toString().contains('rc'));
         if (filtered.isEmpty) return null;
         final latestRelease = filtered.first;
-        latestReleaseUrl = latestRelease['html_url'].toString(); // 获取html_url
+        latestReleaseUrl = latestRelease['html_url'].toString();
         return latestRelease['name'].toString().replaceAll('v', '');
       }
       return null;
@@ -51,11 +51,11 @@ class UpdateChecker {
     var command = _compareVersions(currentVersion, latestVersion);
     switch (command) {
       case 1:
-        return 'v$latestVersion';
+        return 'v$latestVersion (当前: $currentVersion)';
       case 0:
-        return '已是最新版本';
+        return '已是最新版本 \n当前: $currentVersion, 远程: $latestVersion';
       case -1:
-        return '您的版本比远程版本高哦~';
+        return '您的版本比远程版本高哦~ \n当前: $currentVersion, 远程: $latestVersion';
       default:
         return '检查失败';
     }
@@ -131,6 +131,21 @@ class UpdateChecker {
         ],
       ),
     );
+  }
+
+  /// 通过key获取API数据
+  static Future<String?> fetchApiData(String key) async {
+    try {
+      final response = await http.get(Uri.parse('https://counters-api.devyi.com/$key'));
+      Log.i(response.body);
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+      return null;
+    } catch (e) {
+      Log.e('获取API数据失败: $e');
+      return null;
+    }
   }
 }
 

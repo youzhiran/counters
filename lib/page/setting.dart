@@ -311,6 +311,26 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     );
   }
 
+  // 处理"一起划水"点击事件
+  Future<void> _handleJoinChatTap() async {
+    final result = await globalState.showProgressDialog(
+      title: '获取QQ群链接',
+      task: (updateProgress) async {
+        updateProgress('正在获取链接...', 0.5);
+        final url = await UpdateChecker.fetchApiData('group');
+        updateProgress('获取完成', 1.0);
+        return url != null && url.isNotEmpty;
+      },
+    );
+
+    if (result) {
+      final url = await UpdateChecker.fetchApiData('group');
+      globalState.openUrl(url!, '点击前往唤起 QQ');
+    } else {
+      AppSnackBar.show('获取QQ群链接失败');
+    }
+  }
+
   // 添加加载开发者选项方法
   Future<void> _loadDevOptions() async {
     final prefs = await SharedPreferences.getInstance();
@@ -615,6 +635,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     ),
                   ),
                 ),
+                  _buildListTile(
+                    icon: Icons.chat,
+                    title: '一起划水',
+                    onTap: _handleJoinChatTap),
                 _buildListTile(
                     icon: Icons.update,
                     title: '检查更新',
@@ -634,7 +658,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     onTap: _hideDevOptions,
                   ),
                   SwitchListTile(
-                    secondary: const Icon(Icons.bug_report),
+                    secondary: const Icon(Icons.article),
                     title: const Text('启用 Provider 调试日志'),
                     subtitle: const Text('重启应用后生效'),
                     value: _enableProviderLogger,

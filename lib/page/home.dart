@@ -100,10 +100,12 @@ class HomePage extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('加载失败: $err')),
       data: (scoreState) {
-        if (scoreState.currentSession == null) {
+        // 有未完成的记录加载_buildScoringBoard
+        if (scoreState.currentSession?.isCompleted == false) {
+          return _buildScoringBoard(context, ref, scoreState);
+        } else {
           return _buildHomeWithHistory(context, ref);
         }
-        return _buildScoringBoard(context, ref, scoreState);
       },
     );
   }
