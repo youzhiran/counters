@@ -43,35 +43,30 @@ class DatabaseHelper {
 
   /// 删除并重新创建数据库
   Future<void> resetDatabase() async {
-    try {
-      // 关闭现有数据库连接
-      if (_database != null) {
-        await _database!.close();
-        _database = null;
-      }
-      String path = await getDbPath();
-
-      if (await databaseExists(path)) {
-        Log.i('尝试删除数据库：$path');
-        try {
-          await deleteDatabase(path);
-          // 检查删除是否成功
-          if (await databaseExists(path)) {
-            throw Exception('数据库文件删除失败，可能被其他程序占用');
-          }
-          Log.i('数据库文件删除成功');
-        } catch (e) {
-          throw Exception('删除数据库文件时出错: $e');
-        }
-      }
-
-      // 重新初始化数据库
-      Log.i('重新创建数据库');
-      _database = await _initDatabase();
-    } catch (e) {
-      Log.e('重置数据库失败: $e');
-      rethrow;
+    // 关闭现有数据库连接
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
     }
+    String path = await getDbPath();
+
+    if (await databaseExists(path)) {
+      Log.i('尝试删除数据库：$path');
+      try {
+        await deleteDatabase(path);
+        // 检查删除是否成功
+        if (await databaseExists(path)) {
+          throw Exception('数据库文件删除失败，可能被其他程序占用');
+        }
+        Log.i('数据库文件删除成功');
+      } catch (e) {
+        throw Exception('删除数据库文件时出错: $e');
+      }
+    }
+
+    // 重新初始化数据库
+    Log.i('重新创建数据库');
+    _database = await _initDatabase();
   }
 
   Future<void> _onCreate(Database db, int version) async {

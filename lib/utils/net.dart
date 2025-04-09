@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
+import 'error_handler.dart';
 import 'log.dart';
 
 class UpdateChecker {
@@ -136,14 +137,15 @@ class UpdateChecker {
   /// 通过key获取API数据
   static Future<String?> fetchApiData(String key) async {
     try {
-      final response = await http.get(Uri.parse('https://counters-api.devyi.com/$key'));
+      final response =
+          await http.get(Uri.parse('https://counters-api.devyi.com/$key'));
       Log.i(response.body);
       if (response.statusCode == 200) {
         return response.body;
       }
       return null;
     } catch (e) {
-      Log.e('获取API数据失败: $e');
+      ErrorHandler.handle(e, null, prefix: '网络错误');
       return null;
     }
   }

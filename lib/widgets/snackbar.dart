@@ -34,9 +34,10 @@ class AppSnackBar {
     _showSnackBar(
       context: context,
       content: Text(message),
+      duration: duration,
       backgroundColor: Colors.orange,
     );
-    Log.w(message);
+    Log.i(message);
   }
 
   // 错误样式（红色）
@@ -48,6 +49,7 @@ class AppSnackBar {
     _showSnackBar(
       context: context,
       content: Text(message),
+      duration: duration,
       backgroundColor: Colors.red,
     );
     Log.e(message);

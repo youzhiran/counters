@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:animations/animations.dart';
-import 'package:counters/widgets/snackbar.dart';
+import 'package:counters/utils/error_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -79,7 +79,8 @@ class GlobalState {
     try {
       _prefs = await SharedPreferences.getInstance();
     } catch (e) {
-      Log.e('读取SharedPreferences出错: $e');
+      ErrorHandler.handle(e, StackTrace.current,
+          prefix: '读取SharedPreferences出错');
     }
 
     // 加载主题设置
@@ -347,10 +348,7 @@ class GlobalState {
     try {
       await launchUrl(Uri.parse(url));
     } catch (e) {
-      Log.e('打开链接失败: $e');
-      if (navigatorKey.currentState?.context != null) {
-        AppSnackBar.show('无法打开链接: $url');
-      }
+      ErrorHandler.handle(e, StackTrace.current, prefix: '打开链接失败');
     }
   }
 }

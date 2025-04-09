@@ -138,7 +138,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     final newTargetScore = int.tryParse(targetScoreController.text);
 
     if (newPlayerCount == null || newTargetScore == null) {
-      AppSnackBar.error('玩家数量和目标分数必须为有效数字');
+      AppSnackBar.warn('玩家数量和目标分数必须为有效数字');
       return false;
     }
 

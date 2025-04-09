@@ -96,7 +96,7 @@ class PLogger extends ProviderObserver {
 
     // 拆分堆栈逐行打印
     stackTrace.toString().split('\n').forEach(Log.d); // 每行堆栈单独打印
-    Log.d('-----------------------------');
+    Log.d('---------------END--------------');
   }
 }
 

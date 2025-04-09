@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../db/db_helper.dart';
 import '../providers/theme_provider.dart';
 import '../state.dart';
+import '../utils/error_handler.dart';
 import '../utils/log.dart';
 import '../utils/net.dart';
 
@@ -117,12 +118,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
             await targetDir.create(recursive: true);
             AppSnackBar.show('已清空目标目录');
           } catch (e) {
-            AppSnackBar.error('清空目标目录失败：$e');
+            ErrorHandler.handle(e, StackTrace.current, prefix: '清空目标目录失败');
             return false;
           }
         }
       } catch (e) {
-        Log.e('检查目标目录失败：$e');
+        ErrorHandler.handle(e, StackTrace.current, prefix: '检查目标目录失败');
         return false;
       }
     }
@@ -297,10 +298,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 }
               } catch (e) {
                 if (mounted) {
-                  globalState.showMessage(
-                    title: '错误',
-                    message: TextSpan(text: '重置设置失败：$e'),
-                  );
+                  ErrorHandler.handle(e, StackTrace.current, prefix: '重置设置失败');
                 }
               }
             },
@@ -313,21 +311,21 @@ class _SettingPageState extends ConsumerState<SettingPage> {
 
   // 处理"一起划水"点击事件
   Future<void> _handleJoinChatTap() async {
+    String? url;
     final result = await globalState.showProgressDialog(
-      title: '获取QQ群链接',
+      title: '获取群组链接',
       task: (updateProgress) async {
         updateProgress('正在获取链接...', 0.5);
-        final url = await UpdateChecker.fetchApiData('group');
+        url = await UpdateChecker.fetchApiData('group');
         updateProgress('获取完成', 1.0);
-        return url != null && url.isNotEmpty;
+        return url != null && url!.isNotEmpty;
       },
     );
 
-    if (result) {
-      final url = await UpdateChecker.fetchApiData('group');
-      globalState.openUrl(url!, '点击前往唤起 QQ');
+    if (result && url != null) {
+      globalState.openUrl(url!, '点击前往唤起群组应用');
     } else {
-      AppSnackBar.show('获取QQ群链接失败');
+      AppSnackBar.show('获取群组链接失败');
     }
   }
 
@@ -418,10 +416,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 }
               } catch (e) {
                 if (mounted) {
-                  globalState.showMessage(
-                    title: '错误',
-                    message: TextSpan(text: '重置数据库失败：$e'),
-                  );
+                  ErrorHandler.handle(e, StackTrace.current, prefix: '重置数据库失败');
                 }
               }
             },
@@ -635,10 +630,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     ),
                   ),
                 ),
-                  _buildListTile(
-                    icon: Icons.chat,
-                    title: '一起划水',
-                    onTap: _handleJoinChatTap),
+                _buildListTile(
+                    icon: Icons.chat, title: '一起划水', onTap: _handleJoinChatTap),
                 _buildListTile(
                     icon: Icons.update,
                     title: '检查更新',

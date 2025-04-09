@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -40,6 +42,8 @@ class PlayerState {
 
 class PlayerNotifier extends Notifier<PlayerState> {
   final _dbHelper = DatabaseHelper.instance;
+  Timer? _searchDebounceTimer;
+  String _lastSearchQuery = '';
 
   @override
   PlayerState build() {
@@ -63,7 +67,17 @@ class PlayerNotifier extends Notifier<PlayerState> {
   }
 
   void setSearchQuery(String query) {
-    state = state.copyWith(searchQuery: query);
+    // 如果查询内容未变化，则不更新
+    if (_lastSearchQuery == query) return;
+    _lastSearchQuery = query;
+
+    // 取消之前的延迟操作
+    _searchDebounceTimer?.cancel();
+
+    // 设置新的延迟操作
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      state = state.copyWith(searchQuery: query);
+    });
   }
 
   Future<void> addPlayer(PlayerInfo player) async {

@@ -10,6 +10,7 @@ import '../model/base_template.dart';
 import '../model/game_session.dart';
 import '../model/player_score.dart';
 import '../providers/template_provider.dart';
+import '../utils/error_handler.dart';
 import '../utils/log.dart';
 
 part 'generated/score_provider.g.dart';
@@ -132,7 +133,7 @@ class Score extends _$Score {
             );
           }
         } catch (e) {
-          Log.w('解析扩展字段失败: $e');
+          ErrorHandler.handle(e, StackTrace.current, prefix: '解析扩展字段失败');
         }
       }
     }
@@ -450,7 +451,7 @@ class Score extends _$Score {
       }
       return sessions;
     } catch (e) {
-      Log.w('获取会话列表失败: $e');
+      ErrorHandler.handle(e, StackTrace.current, prefix: '获取会话列表失败');
       return [];
     }
   }

@@ -27,12 +27,12 @@ void main() async {
 
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) {
-    ErrorHandler.handleError(details.exception, details.stack,
-        prefix: 'Flutter');
+    ErrorHandler.handle(details.exception, details.stack,
+        prefix: 'Flutter错误');
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    ErrorHandler.handleError(error, stack, prefix: '未捕获');
+    ErrorHandler.handle(error, stack, prefix: '未捕获错误');
     return true;
   };
 

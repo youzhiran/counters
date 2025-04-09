@@ -7,14 +7,14 @@ import '../widgets/snackbar.dart';
 import 'log.dart';
 
 class ErrorHandler {
-  static void handleError(Object error, StackTrace? stack,
+  static void handle(Object error, StackTrace? stack,
       {String prefix = '', WidgetRef? ref}) {
     Log.e('$prefix错误: $error');
     if (stack != null) Log.e('Stack: $stack');
 
     Future.microtask(() async {
       if (globalState.scaffoldMessengerKey.currentState != null) {
-        final message = '$prefix错误: ${error.toString().split('\n').first}';
+        final message = '$prefix: ${error.toString().split('\n').first}';
         globalState.scaffoldMessengerKey.currentState!.showSnackBar(
           SnackBar(
             content: Text(message),
@@ -28,7 +28,7 @@ class ErrorHandler {
                   globalState.showCommonDialog(
                     child: Builder(
                       builder: (context) => AlertDialog(
-                        title: Text('$prefix错误详情'),
+                        title: Text('$prefix 详情'),
                         content: SingleChildScrollView(
                           child: SelectableText('$error\n\n${stack ?? ''}'),
                         ),
