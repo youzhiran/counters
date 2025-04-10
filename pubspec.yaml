@@ -50,6 +50,7 @@ dependencies:
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
   freezed_annotation: ^3.0.0
+  flutter_svg: ^2.0.17
 
 
 dev_dependencies:
@@ -90,6 +91,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/svg/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
