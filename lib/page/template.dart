@@ -9,6 +9,7 @@ import '../providers/score_provider.dart';
 import '../providers/template_provider.dart';
 import '../state.dart';
 import '../utils/log.dart';
+import '../utils/util.dart';
 import 'home.dart';
 import 'landlords/config.dart';
 
@@ -78,6 +79,12 @@ class _TemplateCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(8.0),
         child: Stack(
           children: [
+            // 背景图标
+            Positioned(
+              right: -5,
+              bottom: -5,
+              child: _getTemplateIcon(context),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Column(
@@ -117,6 +124,29 @@ class _TemplateCard extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+ Widget _getTemplateIcon(BuildContext context) {
+    if (template is Poker50Template) {
+      return SvgIconUtils.getIcon(
+        SvgIconUtils.poker_cards,
+        size: 100,
+        color: Theme.of(context).colorScheme.primary,
+        opacity: 0.1,
+      );
+    } else if (template is LandlordsTemplate) {
+      return SvgIconUtils.getIcon(
+        SvgIconUtils.gardener,
+        size: 100,
+        color: Theme.of(context).colorScheme.primary,
+        opacity: 0.1,
+      );
+    }
+    return Icon(
+      Icons.games,
+      size: 100,
+      color: Theme.of(context).colorScheme.primary.withAlpha(25),
     );
   }
 

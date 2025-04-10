@@ -122,6 +122,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   title: '重置数据库',
                   onTap: _resetDatabase,
                 ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.local_fire_department),
+                  title: const Text('匿名统计'),
+                  subtitle: const Text('我们使用 Google Firebase 来匿名统计一些错误和使用数据来使得本应用变得更加好用'),
+                  value: _enableProviderLogger,
+                  onChanged: _saveProviderLoggerSetting,
+                ),
                 _buildSectionHeader('关于'),
                 _buildListTile(
                   icon: Icons.info,
@@ -134,7 +141,17 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                           '欢迎访问我的网站：devyi.com\n\n'
                           '版本 $_versionName($_versionCode)\n'
                           'Git版本号: $gitCommit\n'
-                          '编译时间: $buildTime',
+                          '编译时间: $buildTime\n',
+                      children: [
+                        TextSpan(
+                          text: '\n部分图标来自 iconscout.com',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            height: 2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -175,7 +192,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
               padding: const EdgeInsets.all(16),
               child: Text(
                 '版本 $_versionName($_versionCode)\n'
-                    'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除应用数据/重置应用数据库/重装程序。',
+                'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除应用数据/重置应用数据库/重装程序。',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey[600],
@@ -700,6 +717,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   Widget _buildListTile({
     required IconData icon,
     required String title,
+    String? subtitle,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
@@ -712,11 +730,25 @@ class _SettingPageState extends ConsumerState<SettingPage> {
           child: Row(
             children: [
               Icon(icon, size: 24),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).textTheme.bodySmall?.color,
+                            ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (trailing != null) ...[
