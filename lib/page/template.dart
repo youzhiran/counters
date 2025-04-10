@@ -24,30 +24,36 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
   Widget build(BuildContext context) {
     final templatesAsync = ref.watch(templatesProvider);
 
-    return templatesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(child: Text('加载失败: $err')),
-      data: (templates) {
-        if (templates.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('模板'),
+        automaticallyImplyLeading: false,
+      ),
+      body: templatesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('加载失败: $err')),
+        data: (templates) {
+          if (templates.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-        return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(templatesProvider),
-          child: GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 200,
-              mainAxisExtent: 150,
-              crossAxisSpacing: 6,
-              mainAxisSpacing: 6,
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(templatesProvider),
+            child: GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 200,
+                mainAxisExtent: 150,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
+              ),
+              itemCount: templates.length,
+              itemBuilder: (context, index) =>
+                  _TemplateCard(template: templates[index]),
             ),
-            itemCount: templates.length,
-            itemBuilder: (context, index) =>
-                _TemplateCard(template: templates[index]),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

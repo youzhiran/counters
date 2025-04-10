@@ -96,18 +96,23 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scoreAsync = ref.watch(scoreProvider);
 
-    return scoreAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(child: Text('加载失败: $err')),
-      data: (scoreState) {
-        // 有未完成的记录加载_buildScoringBoard
-        if (scoreState.currentSession?.isCompleted == false) {
-          return _buildScoringBoard(context, ref, scoreState);
-        } else {
-          return _buildHomeWithHistory(context, ref);
-        }
-      },
-    );
+    return Scaffold(
+        appBar: AppBar(
+          title: const Text('首页'),
+          automaticallyImplyLeading: false,
+        ),
+        body: scoreAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('加载失败: $err')),
+          data: (scoreState) {
+            // 有未完成的记录加载_buildScoringBoard
+            if (scoreState.currentSession?.isCompleted == false) {
+              return _buildScoringBoard(context, ref, scoreState);
+            } else {
+              return _buildHomeWithHistory(context, ref);
+            }
+          },
+        ));
   }
 
   Widget _buildHomeWithHistory(BuildContext context, WidgetRef ref) {

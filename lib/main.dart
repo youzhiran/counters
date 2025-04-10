@@ -27,8 +27,7 @@ void main() async {
 
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) {
-    ErrorHandler.handle(details.exception, details.stack,
-        prefix: 'Flutter错误');
+    ErrorHandler.handle(details.exception, details.stack, prefix: 'Flutter错误');
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
@@ -214,33 +213,7 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> appBarTitles = ['首页', '玩家', '模板', '设置'];
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text(appBarTitles[_selectedIndex]),
-        automaticallyImplyLeading: false,
-        actions: _selectedIndex == 1
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: () {
-                    showSearch(
-                      context: context,
-                      delegate: PlayerSearchDelegate(),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_sweep),
-                  onPressed: () {
-                    const PlayerManagementPage()
-                        .showCleanPlayersDialog(context, ref);
-                  },
-                ),
-              ]
-            : null,
-      ),
       body: PageView(
         physics: const NeverScrollableScrollPhysics(),
         controller: _pageController,

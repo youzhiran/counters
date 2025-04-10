@@ -59,6 +59,136 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     _loadProviderLoggerSetting();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('设置'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 0),
+              children: [
+                _buildSectionHeader('主题'),
+                _buildListTile(
+                  icon: Icons.dark_mode,
+                  title: '深色模式',
+                  trailing: Text(
+                    _getThemeModeText(ref.watch(themeProvider).themeMode),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  onTap: _showThemeModeMenu,
+                ),
+                _buildListTile(
+                  icon: Icons.palette,
+                  title: '主题色彩',
+                  trailing: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: ref.watch(themeProvider).themeColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ),
+                  onTap: _showColorPickerDialog,
+                ),
+                _buildSectionHeader('通用'),
+                if (Platform.isWindows) // 只在Windows平台显示
+                  _buildListTile(
+                    icon: Icons.folder,
+                    title: '数据存储位置',
+                    trailing: Text(
+                      _isCustomPath ? '自定义' : '默认',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    onTap: _showStoragePathDialog,
+                  ),
+                _buildListTile(
+                  icon: Icons.settings_backup_restore,
+                  title: '重置设置',
+                  onTap: _resetSettings,
+                ),
+                _buildListTile(
+                  icon: Icons.delete_forever,
+                  title: '重置数据库',
+                  onTap: _resetDatabase,
+                ),
+                _buildSectionHeader('关于'),
+                _buildListTile(
+                  icon: Icons.info,
+                  title: '关于应用',
+                  onTap: () => globalState.showMessage(
+                    title: '关于',
+                    message: TextSpan(
+                      text: '一个flutter计分板应用，支持多平台运行。\n'
+                          'https://github.com/youzhiran/counters\n'
+                          '欢迎访问我的网站：devyi.com\n\n'
+                          '版本 $_versionName($_versionCode)\n'
+                          'Git版本号: $gitCommit\n'
+                          '编译时间: $buildTime',
+                    ),
+                  ),
+                ),
+                _buildListTile(
+                    icon: Icons.chat, title: '一起划水', onTap: _handleJoinChatTap),
+                _buildListTile(
+                    icon: Icons.update,
+                    title: '检查更新',
+                    onTap: () => checkUpdate(context, ref)),
+                _buildListTile(
+                  icon: Icons.bug_report,
+                  title: '问题反馈',
+                  onTap: () => globalState.openUrl(
+                    'https://github.com/youzhiran/counters/',
+                  ),
+                ),
+                if (_showDevOptions) ...[
+                  _buildSectionHeader('开发者选项'),
+                  _buildListTile(
+                    icon: Icons.visibility_off,
+                    title: '隐藏开发者选项',
+                    onTap: _hideDevOptions,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.article),
+                    title: const Text('启用 Provider 调试日志'),
+                    subtitle: const Text('重启应用后生效'),
+                    value: _enableProviderLogger,
+                    onChanged: _saveProviderLoggerSetting,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: _handleVersionTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '版本 $_versionName($_versionCode)\n'
+                    'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除应用数据/重置应用数据库/重装程序。',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 加载存储设置
   Future<void> _loadStorageSettings() async {
     if (!Platform.isWindows) return;
@@ -550,133 +680,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 0),
-              children: [
-                _buildSectionHeader('主题'),
-                _buildListTile(
-                  icon: Icons.dark_mode,
-                  title: '深色模式',
-                  trailing: Text(
-                    _getThemeModeText(ref.watch(themeProvider).themeMode),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  onTap: _showThemeModeMenu,
-                ),
-                _buildListTile(
-                  icon: Icons.palette,
-                  title: '主题色彩',
-                  trailing: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: ref.watch(themeProvider).themeColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                  ),
-                  onTap: _showColorPickerDialog,
-                ),
-                _buildSectionHeader('通用'),
-                if (Platform.isWindows) // 只在Windows平台显示
-                  _buildListTile(
-                    icon: Icons.folder,
-                    title: '数据存储位置',
-                    trailing: Text(
-                      _isCustomPath ? '自定义' : '默认',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    onTap: _showStoragePathDialog,
-                  ),
-                _buildListTile(
-                  icon: Icons.settings_backup_restore,
-                  title: '重置设置',
-                  onTap: _resetSettings,
-                ),
-                _buildListTile(
-                  icon: Icons.delete_forever,
-                  title: '重置数据库',
-                  onTap: _resetDatabase,
-                ),
-                _buildSectionHeader('关于'),
-                _buildListTile(
-                  icon: Icons.info,
-                  title: '关于应用',
-                  onTap: () => globalState.showMessage(
-                    title: '关于',
-                    message: TextSpan(
-                      text: '一个flutter计分板应用，支持多平台运行。\n'
-                          'https://github.com/youzhiran/counters\n'
-                          '欢迎访问我的网站：devyi.com\n\n'
-                          '版本 $_versionName($_versionCode)\n'
-                          'Git版本号: $gitCommit\n'
-                          '编译时间: $buildTime',
-                    ),
-                  ),
-                ),
-                _buildListTile(
-                    icon: Icons.chat, title: '一起划水', onTap: _handleJoinChatTap),
-                _buildListTile(
-                    icon: Icons.update,
-                    title: '检查更新',
-                    onTap: () => checkUpdate(context, ref)),
-                _buildListTile(
-                  icon: Icons.bug_report,
-                  title: '问题反馈',
-                  onTap: () => globalState.openUrl(
-                    'https://github.com/youzhiran/counters/',
-                  ),
-                ),
-                if (_showDevOptions) ...[
-                  _buildSectionHeader('开发者选项'),
-                  _buildListTile(
-                    icon: Icons.visibility_off,
-                    title: '隐藏开发者选项',
-                    onTap: _hideDevOptions,
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.article),
-                    title: const Text('启用 Provider 调试日志'),
-                    subtitle: const Text('重启应用后生效'),
-                    value: _enableProviderLogger,
-                    onChanged: _saveProviderLoggerSetting,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: _handleVersionTap,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '版本 $_versionName($_versionCode)\n'
-                'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除应用数据/重置应用数据库/重装程序。',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
