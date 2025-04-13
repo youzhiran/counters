@@ -15,6 +15,7 @@ import '../state.dart';
 import '../utils/error_handler.dart';
 import '../utils/log.dart';
 import '../utils/net.dart';
+import '../utils/umeng.dart';
 
 class SettingPage extends ConsumerStatefulWidget {
   const SettingPage({super.key});
@@ -61,6 +62,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
 
   @override
   Widget build(BuildContext context) {
+    UmengUtil.onEvent("setting", {"type": "auto"});
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -122,13 +124,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   title: '重置数据库',
                   onTap: _resetDatabase,
                 ),
-                SwitchListTile(
-                  secondary: const Icon(Icons.local_fire_department),
-                  title: const Text('匿名统计'),
-                  subtitle: const Text('我们使用 Google Firebase 来匿名统计一些错误和使用数据来使得本应用变得更加好用'),
-                  value: _enableProviderLogger,
-                  onChanged: _saveProviderLoggerSetting,
-                ),
+                // SwitchListTile(
+                //   secondary: const Icon(Icons.local_fire_department),
+                //   title: const Text('匿名统计'),
+                //   subtitle: const Text('我们匿名统计一些错误和使用数据来使得本应用变得更加好用'),
+                //   value: _enableProviderLogger,
+                //   onChanged: _saveProviderLoggerSetting,
+                // ),
                 _buildSectionHeader('关于'),
                 _buildListTile(
                   icon: Icons.info,
@@ -144,7 +146,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                           '编译时间: $buildTime\n',
                       children: [
                         TextSpan(
-                          text: '\n部分图标来自 iconscout.com',
+                          text: '\n本应用部分图标来自 iconscout.com\n'
+                              '本应用移动版使用了友盟匿名统计一些错误和使用数据来使得本应用变得更加好用',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -730,7 +733,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
           child: Row(
             children: [
               Icon(icon, size: 24),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,7 +747,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       Text(
                         subtitle,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).textTheme.bodySmall?.color,
+                              color:
+                                  Theme.of(context).textTheme.bodySmall?.color,
                             ),
                       ),
                     ],

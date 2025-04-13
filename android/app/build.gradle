@@ -33,16 +33,16 @@ def isRelease = defStoreFile.exists() && defStorePassword != null && defKeyAlias
 
 android {
     namespace = "com.devyi.counters"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 35
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_17
     }
 
     signingConfigs {
@@ -65,6 +65,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        consumerProguardFiles 'proguard-rules.pro'
     }
 
     // 配置 ABI 拆分
@@ -102,4 +103,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation 'com.umeng.umsdk:common:9.8.0'// 必选
+    implementation 'com.umeng.umsdk:asms:1.8.7'// 必选
+    implementation 'com.umeng.umsdk:apm:2.0.1'
 }

@@ -916,7 +916,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
                                 decoration: BoxDecoration(
                                   color: Theme.of(context).brightness ==
                                           Brightness.dark
-                                      ? Colors.orange.withValues(alpha: 0.5)
+                                      ? Colors.orange.withOpacity(0.5)
                                       : Colors.orange,
                                   shape: BoxShape.circle,
                                 ),
@@ -925,7 +925,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
                                   size: 12,
                                   color: Theme.of(context).brightness ==
                                           Brightness.dark
-                                      ? Colors.white.withValues(alpha: 0.5)
+                                      ? Colors.white.withOpacity(0.5)
                                       : Colors.white,
                                 ),
                               ),
@@ -970,13 +970,13 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
 
   Widget _buildMarker(String text, Color baseColor) {
     final color = Theme.of(context).brightness == Brightness.dark
-        ? baseColor.withValues(alpha: 0.7) // 深色模式下稍微调亮
+        ? baseColor.withOpacity(0.7) // 深色模式下稍微调亮
         : baseColor;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       margin: EdgeInsets.only(right: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
+        color: color.withOpacity(0.2),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(

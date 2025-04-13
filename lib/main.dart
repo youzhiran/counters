@@ -10,6 +10,7 @@ import 'package:counters/page/setting.dart';
 import 'package:counters/page/template.dart';
 import 'package:counters/utils/error_handler.dart';
 import 'package:counters/utils/log.dart';
+import 'package:counters/utils/umeng.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +25,9 @@ import 'state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 友盟初始化
+  UmengUtil.init();
 
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) {

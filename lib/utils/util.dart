@@ -19,7 +19,7 @@ class SvgIconUtils {
       height: size,
       colorFilter: color != null
           ? ColorFilter.mode(
-              color.withValues(alpha: opacity),
+              color.withOpacity( opacity),
               BlendMode.srcIn,
             )
           : null,

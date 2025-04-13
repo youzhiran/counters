@@ -6,6 +6,7 @@ import 'package:counters/widgets/player_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../model/game_session.dart';
 import '../model/player_info.dart';
 import '../model/player_score.dart';
@@ -126,7 +127,7 @@ class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.8),
+              color: Colors.grey.withOpacity(0.8),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -445,7 +446,7 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
+                  color: Colors.black.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Column(

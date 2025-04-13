@@ -71,7 +71,7 @@ class _TemplateCard extends ConsumerWidget {
       shape: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
         borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
         ),
       ),
       child: InkWell(
@@ -127,7 +127,7 @@ class _TemplateCard extends ConsumerWidget {
     );
   }
 
- Widget _getTemplateIcon(BuildContext context) {
+  Widget _getTemplateIcon(BuildContext context) {
     if (template is Poker50Template) {
       return SvgIconUtils.getIcon(
         SvgIconUtils.poker_cards,
