@@ -1,4 +1,4 @@
 // Generated file - DO NOT EDIT. The information in this file may be out of date.
-const String gitCommit = '3065293';
-const String buildTime = '2025-04-13 16:43:16';
-const String appVersion = '0.9.11-beta';
+const String gitCommit = 'b9af632';
+const String buildTime = '2025-04-16 16:06:52';
+const String appVersion = '0.9.12-beta';

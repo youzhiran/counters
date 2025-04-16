@@ -4,11 +4,13 @@ import 'package:counters/utils/data.dart';
 import 'package:counters/version.dart';
 import 'package:counters/widgets/snackbar.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config.dart';
 import '../db/db_helper.dart';
 import '../providers/theme_provider.dart';
 import '../state.dart';
@@ -139,20 +141,45 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     title: '关于',
                     message: TextSpan(
                       text: '一个flutter计分板应用，支持多平台运行。\n'
-                          'https://github.com/youzhiran/counters\n'
+                          '${Config.urlGithub}\n'
                           '欢迎访问我的网站：devyi.com\n\n'
                           '版本 $_versionName($_versionCode)\n'
                           'Git版本号: $gitCommit\n'
                           '编译时间: $buildTime\n',
                       children: [
                         TextSpan(
-                          text: '\n本应用部分图标来自 iconscout.com\n'
-                              '本应用移动版使用了友盟匿名统计一些错误和使用数据来使得本应用变得更加好用',
+                          text: '\n本应用部分图标来自 iconscout.com\n',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
                             height: 2,
                           ),
+                        ),
+                        TextSpan(
+                          text: '《Counters 隐私政策》\n',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () => globalState.openUrl(
+                                  Config.urlPrivacyPolicy,
+                                  '点击前往查看隐私政策',
+                                ),
+                        ),
+                        TextSpan(
+                          text: '开发者网站',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () => globalState.openUrl(
+                                  Config.urlDevyi,
+                                  '点击前往访问开发者网站',
+                                ),
                         ),
                       ],
                     ),
@@ -168,7 +195,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   icon: Icons.bug_report,
                   title: '问题反馈',
                   onTap: () => globalState.openUrl(
-                    'https://github.com/youzhiran/counters/',
+                    Config.urlGithub,
                   ),
                 ),
                 if (_showDevOptions) ...[
@@ -466,7 +493,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       title: '获取群组链接',
       task: (updateProgress) async {
         updateProgress('正在获取链接...', 0.5);
-        url = await UpdateChecker.fetchApiData('group');
+        url = await ApiChecker.fetchApiData('group');
         updateProgress('获取完成', 1.0);
         return url != null && url!.isNotEmpty;
       },

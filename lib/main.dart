@@ -26,9 +26,6 @@ import 'state.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 友盟初始化
-  UmengUtil.init();
-
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) {
     ErrorHandler.handle(details.exception, details.stack, prefix: 'Flutter错误');
@@ -95,8 +92,16 @@ class MyApp extends ConsumerWidget {
       darkTheme: _buildTheme(themeState.themeColor, Brightness.dark)
           .useSystemChineseFont(Brightness.dark),
       themeMode: themeState.themeMode,
+      home: Builder(
+        builder: (context) {
+          // 只在第一次构建时初始化友盟
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            UmengUtil.initWithPrivacy(context);
+          });
+          return const MainTabsScreen();
+        },
+      ),
       routes: {
-        '/': (context) => const MainTabsScreen(),
         '/templates': (context) => const MainTabsScreen(initialIndex: 2),
         '/poker50_session': (context) => Scaffold(
               // 为子页面包裹Scaffold

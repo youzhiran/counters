@@ -43,6 +43,11 @@
   dart .\setup.dart all
   ```
 
+### Windows打包安卓
+
+  ```bash
+  dart .\setup.dart android
+  ```
 
 ## Todo list
 
@@ -56,7 +61,8 @@
 - [x] 数据迁移功能（目前仅限Windows）
 - [x] 新增斗地主计分系统模板
 - [x] 使用 Riverpod 管理状态
-- [ ] 更多新特性...
+- [x] 玩家头像优化，支持显示 emoji 
+- [x] 玩家页面支持搜索
 
 ### v0.10.x
 

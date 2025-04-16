@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:counters/config.dart';
+import 'package:counters/utils/util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -11,9 +13,8 @@ import 'error_handler.dart';
 import 'log.dart';
 
 class UpdateChecker {
-  static const String releasesUrl =
-      'https://api.github.com/repos/youzhiran/counters/releases';
   static String latestReleaseUrl = '';
+  static String latestReleaseBody = '';
 
   String versionExtra = '';
 
@@ -25,7 +26,7 @@ class UpdateChecker {
   static Future<String?> getLatestVersion(
       {bool includePrereleases = false}) async {
     try {
-      final response = await http.get(Uri.parse(releasesUrl));
+      final response = await http.get(Uri.parse(Config.urlReleases));
       if (response.statusCode == 200) {
         final releases = json.decode(response.body) as List;
         if (releases.isEmpty) return null;
@@ -35,6 +36,7 @@ class UpdateChecker {
         if (filtered.isEmpty) return null;
         final latestRelease = filtered.first;
         latestReleaseUrl = latestRelease['html_url'].toString();
+        latestReleaseBody = latestRelease['body'].toString();
         return latestRelease['name'].toString().replaceAll('v', '');
       }
       return null;
@@ -50,9 +52,12 @@ class UpdateChecker {
         await getLatestVersion(includePrereleases: includePrereleases);
     if (latestVersion == null) return '网络错误';
     var command = _compareVersions(currentVersion, latestVersion);
+     // 处理 Markdown 格式的更新说明
+    latestReleaseBody = StrUtil.md2Str(latestReleaseBody);
     switch (command) {
       case 1:
-        return 'v$latestVersion (当前: $currentVersion)';
+        return 'v$latestVersion\n(当前: $currentVersion)\n\n'
+            '更新日志：\n$latestReleaseBody';
       case 0:
         return '已是最新版本 \n当前: $currentVersion, 远程: $latestVersion';
       case -1:
@@ -132,22 +137,6 @@ class UpdateChecker {
         ],
       ),
     );
-  }
-
-  /// 通过key获取API数据
-  static Future<String?> fetchApiData(String key) async {
-    try {
-      final response =
-          await http.get(Uri.parse('https://counters-api.devyi.com/$key'));
-      Log.i(response.body);
-      if (response.statusCode == 200) {
-        return response.body;
-      }
-      return null;
-    } catch (e) {
-      ErrorHandler.handle(e, null, prefix: '网络错误');
-      return null;
-    }
   }
 }
 
@@ -245,5 +234,23 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
           ),
       ],
     );
+  }
+}
+
+class ApiChecker {
+  /// 通过key获取API数据
+  static Future<String?> fetchApiData(String key) async {
+    try {
+      final response =
+          await http.get(Uri.parse('https://counters.devyi.com/api/$key'));
+      Log.i(response.body);
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+      return null;
+    } catch (e) {
+      ErrorHandler.handle(e, null, prefix: '网络错误');
+      return null;
+    }
   }
 }
