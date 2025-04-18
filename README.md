@@ -4,16 +4,17 @@
 
 个人学习作品。本大量项目使用 ai 辅助编程，代码中注释可能由ai生成，仅供参考。
 
-程序支持：
+## 程序主要功能与截图
 
-- 自定义存储位置（Windows）
-- 自定义计分模板
-- 深色模式与8种预定义主题
-- 计分功能与图表走势
-- 快捷输入分数
+Counters 是一款用于桌游计分的 flutter 多平台计分程序，目前程序支持以下游戏的计分。
+
+- 计分扑克牌
+- 斗地主
+
 
 <p style="text-align: center;">
-    <img alt="snapshots" src="snapshots/img.png">
+    <img alt="snapshots" src="snapshots/1.png">
+    <img alt="snapshots" src="snapshots/2.png">
 </p>
 
 ## 下载
