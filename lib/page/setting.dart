@@ -212,6 +212,14 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     value: _enableProviderLogger,
                     onChanged: _saveProviderLoggerSetting,
                   ),
+                  _buildListTile(
+                    icon: Icons.network_check, // 使用网络相关的图标
+                    title: '局域网通信测试',
+                    onTap: () {
+                      // 使用命名路由导航到测试页面
+                      Navigator.pushNamed(context, '/lan_test');
+                    },
+                  ),
                 ],
               ],
             ),

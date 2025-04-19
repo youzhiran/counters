@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:chinese_font_library/chinese_font_library.dart';
 import 'package:counters/page/home.dart';
+import 'package:counters/page/lan_test_page.dart';
 import 'package:counters/page/player.dart';
 import 'package:counters/page/poker50/config.dart';
 import 'package:counters/page/poker50/poker50_page.dart';
@@ -103,6 +104,7 @@ class MyApp extends ConsumerWidget {
       ),
       routes: {
         '/templates': (context) => const MainTabsScreen(initialIndex: 2),
+        '/lan_test': (context) => const LanTestPage(), // 添加测试页面路由
         '/poker50_session': (context) => Scaffold(
               // 为子页面包裹Scaffold
               appBar: AppBar(
