@@ -2,15 +2,18 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:chinese_font_library/chinese_font_library.dart';
-import 'package:counters/page/home.dart';
-import 'package:counters/page/player.dart';
-import 'package:counters/page/poker50/config.dart';
-import 'package:counters/page/poker50/poker50_page.dart';
-import 'package:counters/page/setting.dart';
-import 'package:counters/page/template.dart';
-import 'package:counters/utils/error_handler.dart';
-import 'package:counters/utils/log.dart';
-import 'package:counters/utils/umeng.dart';
+import 'package:counters/common/db/db_helper.dart';
+import 'package:counters/common/model/poker50.dart';
+import 'package:counters/common/utils/error_handler.dart';
+import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/umeng.dart';
+import 'package:counters/features/lan/lan_test_page.dart';
+import 'package:counters/features/player/player_page.dart';
+import 'package:counters/features/score/poker50/config.dart';
+import 'package:counters/features/score/poker50/poker50_page.dart';
+import 'package:counters/features/score/template_page.dart';
+import 'package:counters/features/setting/setting.dart';
+import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,10 +21,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'db/db_helper.dart';
-import 'model/poker50.dart';
-import 'providers/theme_provider.dart';
-import 'state.dart';
+import 'app/state.dart';
+import 'features/setting/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -103,6 +104,7 @@ class MyApp extends ConsumerWidget {
       ),
       routes: {
         '/templates': (context) => const MainTabsScreen(initialIndex: 2),
+        '/lan_test': (context) => const LanTestPage(), // 添加测试页面路由
         '/poker50_session': (context) => Scaffold(
               // 为子页面包裹Scaffold
               appBar: AppBar(

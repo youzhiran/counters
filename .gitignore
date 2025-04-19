@@ -49,3 +49,8 @@ ai-docs/
 dist/
 /android/app/.cxx
 .lingma/
+.trae/
+
+# FVM Version Cache
+.fvm/
+.fvmrc
