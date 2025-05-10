@@ -160,7 +160,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     value: 'lan_test',
                     child: Row(
                       children: [
-                        Icon(Icons.wifi_find),
+                        Icon(Icons.network_check),
                         SizedBox(width: 8),
                         Text('局域网联机测试'),
                       ],

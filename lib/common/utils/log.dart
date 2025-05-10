@@ -172,16 +172,20 @@ class PLogger extends ProviderObserver {
     ProviderContainer container,
   ) {
     final stackTrace = StackTrace.current;
+    final providerName = provider.name ?? provider.runtimeType;
 
-    // 先打印基础信息
-    Log.d('-------- Provider "${provider.name ?? provider.runtimeType}" 已修改:');
-    Log.d('- Previous value: $previousValue');
-    Log.d('- New value: $newValue');
-    Log.d('- 修改堆栈:');
+    // 使用 Log._logger 实例直接打印，避免通过 Log.d() 等方法触发 _logStreamController
+    Log._logger.d('---------------START--------------');
+    Log._logger.d('Provider "$providerName" 已修改:');
+    Log._logger.d('- Previous value: $previousValue');
+    Log._logger.d('- New value: $newValue');
+    Log._logger.d('- 修改堆栈:');
 
     // 拆分堆栈逐行打印
-    stackTrace.toString().split('\n').forEach(Log.d); // 每行堆栈单独打印
-    Log.d('---------------END--------------');
+    stackTrace.toString().split('\n').forEach((line) {
+      Log._logger.d(line); // 直接使用 _logger 实例打印每一行
+    });
+    Log._logger.d('---------------END--------------');
   }
 }
 

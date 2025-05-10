@@ -28,7 +28,7 @@ class LanTestPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('局域网通信测试&日志'),
+        title: const Text('通信测试&日志'),
         actions: [
           // 新增：广播控制按钮（仅主机模式显示）
           if (lanState.isHost)

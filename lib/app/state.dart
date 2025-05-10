@@ -4,9 +4,9 @@ import 'package:animations/animations.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 
 // 状态数据类
 class GlobalStateData {
@@ -355,3 +355,11 @@ class GlobalState {
 
 // 全局实例
 final globalState = GlobalState();
+
+// 新增：用于提供 Provider 日志在启动时的实际状态
+final providerLoggerActuallyEnabledProvider = Provider<bool>((ref) {
+  // 此 Provider 应该在 main.dart 中的 ProviderScope 进行 override。
+  // 如果没有 override 就直接使用，会抛出这个错误，以提醒开发者配置。
+  throw StateError('providerLoggerActuallyEnabledProvider was not overridden. '
+      'Ensure it is overridden in ProviderScope in main.dart.');
+});
