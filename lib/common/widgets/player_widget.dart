@@ -22,7 +22,8 @@ class PlayerAvatar {
   static Widget build(BuildContext context, PlayerInfo player) {
     // 根据玩家ID生成固定的随机颜色
     final colorIndex = player.pid.hashCode % avatarColors.length;
-    final backgroundColor = avatarColors[colorIndex].withOpacity(0.2);
+    final backgroundColor =
+        avatarColors[colorIndex].withAlpha((0.2 * 255).toInt());
     final foregroundColor = avatarColors[colorIndex];
 
     return CircleAvatar(

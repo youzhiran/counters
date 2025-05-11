@@ -19,7 +19,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 0.10.0-alpha+25041800
 
 environment:
-  sdk: '>=3.5.0 <3.6.99'
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.29.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -44,14 +45,14 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.31
   path: ^1.9.0
   chinese_font_library: ^1.2.0
-  file_picker: ^9.1.0
+  file_picker: ^10.1.7
   window_manager: ^0.4.3
   json_annotation: ^4.9.0
-  flutter_riverpod: ^2.5.1
-  riverpod_annotation: ^2.3.5
-  freezed_annotation: ^2.4.1
-  flutter_svg: ^2.0.17
-  umeng_common_sdk: ^1.2.8
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+  freezed_annotation: ^3.0.0
+  flutter_svg: ^2.1.0
+  umeng_common_sdk: ^1.2.9
   web_socket_channel: ^3.0.3
 
 
@@ -62,12 +63,12 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   yaml: ^3.1.3
   test: ^1.21.0
-  riverpod_generator: ^2.5.3
+  riverpod_generator: ^2.6.4
   build_runner: ^2.4.11
   custom_lint: ^0.7.0
   riverpod_lint: ^2.5.3
   json_serializable: ^6.9.0
-  freezed: ^2.5.2
+  freezed: ^3.0.6
 
 flutter_launcher_icons: # 新增图标配置段
   android: true

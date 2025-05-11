@@ -14,12 +14,12 @@ class SvgIconUtils {
     double opacity = 1.0,
   }) {
     return SvgPicture.asset(
-     'assets/svg/$name.svg',
+      'assets/svg/$name.svg',
       width: size,
       height: size,
       colorFilter: color != null
           ? ColorFilter.mode(
-              color.withOpacity( opacity),
+              color.withAlpha((opacity * 255).toInt()),
               BlendMode.srcIn,
             )
           : null,
@@ -36,21 +36,19 @@ class StrUtil {
   static String md2Str(String markdown) {
     // 移除 Markdown 链接语法，只保留文本
     var text = markdown.replaceAll(RegExp(r'\[([^\]]+)\]\([^)]+\)'), markdown);
-    
+
     // 移除 HTML 标签
     text = text.replaceAll(RegExp(r'<[^>]+>'), '');
-    
+
     // 处理标题格式
     text = text.replaceAll(RegExp(r'#{1,6}\s'), '• ');
-    
+
     // 处理列表格式
     text = text.replaceAll(RegExp(r'[-*]\s'), '- ');
-    
+
     // 移除多余的空行
-    text = text.split('\n')
-        .where((line) => line.trim().isNotEmpty)
-        .join('\n');
+    text = text.split('\n').where((line) => line.trim().isNotEmpty).join('\n');
 
     return text.trim();
-  } 
+  }
 }

@@ -82,11 +82,9 @@ class ScoreNetworkManager {
   /// [message] 要发送的字符串消息 (通常是 JSON 字符串)。
   void sendMessage(String message) {
     if (isHost) {
-      // === 修复点 2：通过内部 _server 实例调用 broadcast ===
-      // 注意：这里是 ScoreNetworkManager 的 sendMessage，在 Host 模式下它会调用 WsHost 的 broadcast
       _server?.broadcast(message);
     } else if (_client != null) {
-      _client.send(message);
+      _client!.send(message);
     } else {
       Log.w('ScoreNetworkManager: 尝试发送消息，但管理器未初始化为 Client');
     }
@@ -97,7 +95,7 @@ class ScoreNetworkManager {
   /// === 新增方法 ===
   void broadcast(String message) {
     if (isHost && _server != null) {
-      _server.broadcast(message); // 调用内部 WsHost 的 broadcast
+      _server!.broadcast(message); // 调用内部 WsHost 的 broadcast
     } else {
       Log.w('ScoreNetworkManager: broadcast 仅在 Host 模式下可用');
     }
@@ -131,7 +129,7 @@ class ScoreNetworkManager {
     if (isHost) {
       await _server?.stop(); // 停止 Host 服务器
     } else if (_client != null) {
-      await _client.disconnect(); // 断开 Client 连接
+      await _client!.disconnect(); // 断开 Client 连接
     }
     Log.d('ScoreNetworkManager disposed.');
   }

@@ -135,7 +135,7 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .outline
-                                    .withOpacity(0.2),
+                                    .withAlpha((0.2 * 255).toInt()),
                               ),
                             ),
                             key: ValueKey(player.pid),

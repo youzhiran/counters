@@ -2,13 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/lan_provider.dart';
-import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/score/template_provider.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
@@ -136,25 +134,6 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
         AppSnackBar.error('连接或同步时出错: $e');
       }
     }
-  }
-
-  Future<void> _saveTemplate() async {
-    final players = ref.read(playerProvider).players ?? [];
-    final template = LandlordsTemplate(
-      templateName: '斗地主模板',
-      playerCount: 3,
-      targetScore: 0,
-      players: players,
-      baseScore: 1,
-      checkMultiplier: true,
-      bombMultiplyMode: false,
-    );
-
-    await ref.read(templatesProvider.notifier).saveUserTemplate(template, null);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('模板保存成功')),
-    );
   }
 
   @override

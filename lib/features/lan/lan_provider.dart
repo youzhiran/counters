@@ -162,7 +162,7 @@ class LanNotifier extends StateNotifier<LanState> {
               final players = playersJson
                   .map((e) => PlayerInfo.fromJson(e as Map<String, dynamic>))
                   .toList();
-              Log.i("解析到玩家数据，players=${players}");
+              Log.i("解析到玩家数据，players=$players");
 
               // 获取当前页面需要的templateId（从当前session或_scoreProvider中获取）
               String? requiredTid;
@@ -277,7 +277,7 @@ class LanNotifier extends StateNotifier<LanState> {
             if (data is List) {
               Log.i('收到玩家信息同步');
               try {
-                final players = (data as List)
+                final players = (data)
                     .map((item) =>
                         PlayerInfo.fromJson(item as Map<String, dynamic>))
                     .toList();
@@ -528,8 +528,8 @@ class LanNotifier extends StateNotifier<LanState> {
       state = state.copyWith(
           networkManager: hostManager, // 存储主机管理器
           connectionStatus:
-              '主机运行中于 ${state.localIp}:${_currentWsPort}, 正在连接客户端...');
-      Log.i('主机运行中于 ${state.localIp}:${_currentWsPort}, 正在连接客户端...');
+              '主机运行中于 ${state.localIp}:$_currentWsPort, 正在连接客户端...');
+      Log.i('主机运行中于 ${state.localIp}:$_currentWsPort, 正在连接客户端...');
       await _startDiscoveryBroadcast(_currentWsPort, templateId);
 
       // TODO: Host 启动成功后，通知 ScoreNotifier 准备同步状态

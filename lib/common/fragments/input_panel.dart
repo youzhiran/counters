@@ -126,7 +126,7 @@ class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.8),
+              color: Colors.grey.withAlpha((0.8 * 255).toInt()),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -446,7 +446,7 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withAlpha((0.7 * 255).toInt()),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Column(

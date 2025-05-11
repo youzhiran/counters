@@ -90,10 +90,16 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+        color: Theme.of(context)
+            .colorScheme
+            .primary
+            .withAlpha((0.1 * 255).toInt()),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          color: Theme.of(context)
+              .colorScheme
+              .primary
+              .withAlpha((0.3 * 255).toInt()),
         ),
       ),
       child: Column(

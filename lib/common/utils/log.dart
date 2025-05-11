@@ -154,7 +154,7 @@ class Log {
 
   /// 将颜色对象转换为字符串表示
   static String _colorToString(Color color) {
-    return 'Color(0x${color.value.toRadixString(16).padLeft(8, '0')})';
+    return 'Color(0x${color.toARGB32().toRadixString(16).padLeft(8, '0')})';
   }
 
   // 新增: 关闭流的方法 (在应用退出时调用，可选)
