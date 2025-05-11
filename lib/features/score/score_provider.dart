@@ -81,11 +81,10 @@ class ScoreState {
 
 @riverpod
 class Score extends _$Score {
-  late final GameSessionDao _sessionDao;
+  late final GameSessionDao _sessionDao = ref.read(gameSessionDaoProvider);
 
   @override
   Future<ScoreState> build() async {
-    _sessionDao = ref.read(gameSessionDaoProvider);
     final session = await _sessionDao.getLastIncompleteGameSession();
     List<PlayerInfo> initialPlayers = [];
 
@@ -334,7 +333,6 @@ class Score extends _$Score {
     await _saveSession();
   }
 
-
   void resetGameEndDialog() {
     final currentState = state.valueOrNull;
     if (currentState == null || !currentState.showGameEndDialog) return;
@@ -506,7 +504,6 @@ class Score extends _$Score {
     final jsonString = jsonEncode(message.toJson());
     lanNotifier.sendJsonMessage(jsonString);
   }
-
 
   void _broadcastSyncRoundData(
       String sessionId,
@@ -782,7 +779,6 @@ class Score extends _$Score {
       showGameEndDialog: true,
     ));
   }
-
 
   void broadcastTemplateInfo(BaseTemplate template) {
     final lanNotifier = ref.read(lanProvider.notifier);

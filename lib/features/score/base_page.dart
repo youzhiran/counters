@@ -99,114 +99,158 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           );
         }
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(template.templateName),
-            actions: [
-              if (lanState.isHost || lanState.isConnected)
-                IconButton(
-                  icon: ScaleTransition(
-                    scale: _broadcastScaleAnimation,
-                    child: Icon(
-                      lanState.isHost ? Icons.wifi_tethering : Icons.wifi,
-                      color:
-                          lanState.isConnected ? Colors.green : Colors.orange,
-                    ),
+        // 客户端模式退出提示
+        return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (bool didPop, Object? result) async {
+              if (didPop) {
+                return;
+              }
+              final lanState = ref.read(lanProvider);
+              if (lanState.isConnected && !lanState.isHost) {
+                final confirmed = await globalState.showCommonDialog(
+                  child: AlertDialog(
+                    title: Text('确认退出'),
+                    content: Text('退出当前页面将会断开与主机的连接，确定要退出吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(true);
+                        },
+                        child: Text('确定'),
+                      ),
+                    ],
                   ),
-                  tooltip: lanState.isHost
-                      ? '主机模式: ${lanState.connectionStatus}'
-                      : '客户端模式: ${lanState.connectionStatus}',
-                  onPressed: () => showLanStatus(context),
-                ),
-              IconButton(
-                icon: Icon(Icons.sports_score),
-                tooltip: '当前游戏情况',
-                onPressed: () => showGameResult(context),
-              ),
-              IconButton(
-                icon: Icon(Icons.restart_alt_rounded),
-                tooltip: '重置游戏',
-                onPressed: () => showResetConfirmation(context),
-              ),
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert),
-                tooltip: '更多操作',
-                onSelected: (String result) {
-                  switch (result) {
-                    case 'lan_test':
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LanTestPage()),
-                      );
-                      break;
-                    case 'lan_conn':
-                      _toggleLanConnection(context, template);
-                      break;
-                    case 'lan_discovery':
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LanDiscoveryPage()),
-                      );
-                      break;
-                    case 'Template_set':
-                      AppSnackBar.show('模板设置功能待实现');
-                      break;
+                );
+                if (confirmed == true) {
+                  ref.read(lanProvider.notifier).disposeManager();
+                  ref.invalidate(scoreProvider);
+                  AppSnackBar.show('已断开连接');
+                  if (mounted) {
+                    Navigator.of(context).pop();
                   }
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  PopupMenuItem<String>(
-                    value: 'lan_test',
-                    child: Row(
-                      children: [
-                        Icon(Icons.network_check),
-                        SizedBox(width: 8),
-                        Text('局域网联机测试'),
-                      ],
+                }
+              } else {
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+              }
+            },
+            child: Scaffold(
+              appBar: AppBar(
+                title: Text(template.templateName),
+                actions: [
+                  if (lanState.isHost || lanState.isConnected)
+                    IconButton(
+                      icon: ScaleTransition(
+                        scale: _broadcastScaleAnimation,
+                        child: Icon(
+                          lanState.isHost ? Icons.wifi_tethering : Icons.wifi,
+                          color: lanState.isConnected
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
+                      ),
+                      tooltip: lanState.isHost
+                          ? '主机模式: ${lanState.connectionStatus}'
+                          : '客户端模式: ${lanState.connectionStatus}',
+                      onPressed: () => showLanStatus(context),
                     ),
+                  IconButton(
+                    icon: Icon(Icons.sports_score),
+                    tooltip: '当前游戏情况',
+                    onPressed: () => showGameResult(context),
                   ),
-                  PopupMenuItem<String>(
-                    value: 'lan_conn',
-                    enabled: !lanState.isConnected,
-                    child: Row(
-                      children: [
-                        Icon(Icons.wifi),
-                        SizedBox(width: 8),
-                        Text(lanState.isHost ? '停止主机' : '开启局域网联机'),
-                      ],
-                    ),
+                  IconButton(
+                    icon: Icon(Icons.restart_alt_rounded),
+                    tooltip: '重置游戏',
+                    onPressed: () => showResetConfirmation(context),
                   ),
-                  PopupMenuItem<String>(
-                    value: 'lan_discovery',
-                    enabled: !lanState.isHost,
-                    child: Row(
-                      children: [
-                        Icon(Icons.search,
-                            color: !lanState.isHost ? null : Colors.grey),
-                        SizedBox(width: 8),
-                        Text('发现局域网游戏',
-                            style: TextStyle(
-                                color: !lanState.isHost ? null : Colors.grey)),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'Template_set',
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline),
-                        SizedBox(width: 8),
-                        Text('查看模板设置'),
-                      ],
-                    ),
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert),
+                    tooltip: '更多操作',
+                    onSelected: (String result) {
+                      switch (result) {
+                        case 'lan_test':
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const LanTestPage()),
+                          );
+                          break;
+                        case 'lan_conn':
+                          _toggleLanConnection(context, template);
+                          break;
+                        case 'lan_discovery':
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const LanDiscoveryPage()),
+                          );
+                          break;
+                        case 'Template_set':
+                          AppSnackBar.show('模板设置功能待实现');
+                          break;
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'lan_test',
+                        child: Row(
+                          children: [
+                            Icon(Icons.network_check),
+                            SizedBox(width: 8),
+                            Text('局域网联机测试'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'lan_conn',
+                        enabled: !lanState.isConnected,
+                        child: Row(
+                          children: [
+                            Icon(Icons.wifi),
+                            SizedBox(width: 8),
+                            Text(lanState.isHost ? '停止主机' : '开启局域网联机'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'lan_discovery',
+                        enabled: !lanState.isHost,
+                        child: Row(
+                          children: [
+                            Icon(Icons.search,
+                                color: !lanState.isHost ? null : Colors.grey),
+                            SizedBox(width: 8),
+                            Text('发现局域网游戏',
+                                style: TextStyle(
+                                    color:
+                                        !lanState.isHost ? null : Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'Template_set',
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline),
+                            SizedBox(width: 8),
+                            Text('查看模板设置'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-          body: buildGameBody(context, template, session),
-        );
+              body: buildGameBody(context, template, session),
+            ));
       },
     );
   }
@@ -231,7 +275,6 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   void showLanStatus(BuildContext context) {
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -247,6 +290,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
               currentStatusText += '连接状态: ${currentLanState.connectionStatus}';
             } else if (currentLanState.isConnected) {
               currentStatusText = '客户端模式\n';
+              currentStatusText += 'IP地址: ${currentLanState.localIp}\n';
               currentStatusText +=
                   '已连接到主机地址: ${currentLanState.connectionStatus}';
             } else {
