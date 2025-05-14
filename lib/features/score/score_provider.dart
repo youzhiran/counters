@@ -85,34 +85,55 @@ class Score extends _$Score {
 
   @override
   Future<ScoreState> build() async {
+    Log.d('ScoreNotifier: build() called.');
+    List<BaseTemplate>? initialTemplates;
+    try {
+      Log.d('ScoreNotifier: 正在等待 templatesProvider.future...');
+      initialTemplates = await ref.watch(templatesProvider.future);
+      Log.d(
+          'ScoreNotifier: templatesProvider.future 完成。获取 ${initialTemplates?.length} 个模板.');
+    } catch (e, s) {
+      Log.e('ScoreNotifier: 等待 templatesProvider.future 时出错： $e\nStack: $s');
+    }
+
     final session = await _sessionDao.getLastIncompleteGameSession();
+    Log.d(
+        'ScoreNotifier: Session from DAO: ${session?.sid}, templateId: ${session?.templateId}');
     List<PlayerInfo> initialPlayers = [];
 
     if (session != null) {
       final currentRound = _calculateCurrentRound(session);
-      // 尝试从会话的 templateId 加载玩家信息
       if (session.templateId.isNotEmpty) {
-        final template = ref
-            .read(templatesProvider)
-            .valueOrNull
-            ?.firstWhereOrNull((t) => t.tid == session.templateId);
-        if (template != null) {
-          initialPlayers = template.players;
-          Log.i(
-              'ScoreNotifier build: 从模板 "${template.templateName}" (TID: ${template.tid}) 加载了 ${initialPlayers.length} 个玩家信息');
+        final List<BaseTemplate>? templatesList =
+            initialTemplates; // 使用已经 await 过的结果
+
+        if (templatesList != null) {
+          Log.d(
+              'ScoreNotifier：等待的将来的可用模板 ID：${templatesList.map((t) => t.tid).join(", ")}');
+          final template = templatesList
+              .firstWhereOrNull((t) => t.tid == session.templateId);
+          if (template != null) {
+            initialPlayers = template.players;
+            Log.i(
+                'ScoreNotifier build: 从模板 "${template.templateName}" (TID: ${template.tid}) 加载了 ${initialPlayers.length} 个玩家信息');
+          } else {
+            Log.w(
+                'ScoreNotifier build: 未找到模板 ID: ${session.templateId} (模板已加载，但在列表中找不到 ID).');
+          }
         } else {
           Log.w(
-              'ScoreNotifier build: 未找到模板 ID: ${session.templateId} 对应的模板，无法初始化玩家列表');
+              'ScoreNotifier build: templatesList 为 null（initialTemplates 在 await 后为 null）。找不到模板 ID：${session.templateId}.');
         }
       }
       return ScoreState(
         currentSession: session,
         currentRound: currentRound,
         isInitialized: true,
-        players: initialPlayers,
+        players: initialPlayers, // initialPlayers 可能为空
       );
     }
 
+    Log.d('ScoreNotifier: 未找到活动会话。返回默认 ScoreState。');
     return const ScoreState(isInitialized: true, players: []);
   }
 
