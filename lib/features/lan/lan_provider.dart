@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:counters/app/config.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/landlords.dart';
+import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/model/sync_messages.dart';
@@ -14,7 +15,7 @@ import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/network_manager.dart';
 // 引入 Score Provider 和 消息 Payload 类
 import 'package:counters/features/score/score_provider.dart';
-import 'package:counters/features/score/template_provider.dart';
+import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -185,6 +186,8 @@ class LanNotifier extends StateNotifier<LanState> {
                 template = LandlordsTemplate.fromMap(templateMap, players);
               } else if (templateType == 'poker50') {
                 template = Poker50Template.fromMap(templateMap, players);
+              } else if (templateType == 'mahjong') {
+                template = MahjongTemplate.fromMap(templateMap, players);
               } else {
                 Log.e('未知的模板类型: $templateType');
                 break;

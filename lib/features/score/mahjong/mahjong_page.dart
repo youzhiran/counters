@@ -1,47 +1,50 @@
 import 'package:counters/app/state.dart';
-import 'package:counters/common/fragments/input_panel.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
+import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/player_score.dart';
-import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/score/base_page.dart';
 import 'package:counters/features/score/score_provider.dart';
-import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
-/// 3人扑克50分
-///
-/// 玩家打牌计分，首先达到50分的失败，计分少的胜利。
-class Poker50SessionPage extends BaseSessionPage {
-  const Poker50SessionPage({super.key, required super.templateId});
+class MahjongPage extends BaseSessionPage {
+  const MahjongPage({super.key, required super.templateId});
 
   @override
-  ConsumerState<Poker50SessionPage> createState() => _Poker50SessionPageState();
+  ConsumerState<MahjongPage> createState() => _MahjongPageState();
 }
 
-class _Poker50SessionPageState
-    extends BaseSessionPageState<Poker50SessionPage> {
+class _MahjongPageState extends BaseSessionPageState<MahjongPage> {
+  final Map<String, TextEditingController> _scoreControllers = {};
+
+  @override
+  void dispose() {
+    for (var controller in _scoreControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget buildGameBody(
       BuildContext context, BaseTemplate template, GameSession session) {
-    final poker50Template = template as Poker50Template;
+    final mahjongTemplate = template as MahjongTemplate;
 
     return Column(
       children: [
         Expanded(
-          child: _ScoreBoard(template: poker50Template, session: session),
+          child: _ScoreBoard(template: mahjongTemplate, session: session),
         ),
-        QuickInputPanel(key: ValueKey('Panel')),
+        // QuickInputPanel(key: ValueKey('Panel')), // 麻将计分通常比较复杂，暂时移除快捷输入
       ],
     );
   }
+
 }
 
 /// 单个玩家得分列组件（垂直布局）
@@ -63,9 +66,9 @@ class _ScoreColumn extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final highlight = ref.watch(scoreProvider).when(
-          loading: () => null, // 加载中时返回 null
-          error: (error, stack) => null, // 出错时返回 null
-          data: (state) => state.currentHighlight, // 成功时获取 currentHighlight
+          loading: () => null,
+          error: (error, stack) => null,
+          data: (state) => state.currentHighlight,
         );
 
     return SizedBox(
@@ -79,17 +82,15 @@ class _ScoreColumn extends ConsumerWidget {
                 highlight.value == index;
             final score = index < scores.length ? scores[index] : null;
 
-            // 为每个单元格生成唯一标识
             final key = '${player.pid}_$index';
             final cellKey = cellKeys.putIfAbsent(key, () => GlobalKey());
 
             return Expanded(
-              // 新增 Expanded
               child: GestureDetector(
                 onTap: () => _showEditDialog(ref, context, index),
                 behavior: HitTestBehavior.opaque,
                 child: Container(
-                  key: isHighlight ? cellKey : null, // 仅高亮单元格设置 key
+                  key: isHighlight ? cellKey : null,
                   height: 48,
                   alignment: Alignment.center,
                   child: _ScoreCell(
@@ -117,11 +118,10 @@ class _ScoreColumn extends ConsumerWidget {
 
     if (roundIndex < 0 || roundIndex > scores.length) return;
 
+    // 麻将逻辑：每轮必须所有人都输入分数才能开始下一轮
     if (roundIndex == scores.length) {
-      // 添加currentRound有效性检查
       final canAddNewRound = currentRound == 0 ||
           currentSession!.scores.every((s) {
-            // 调整索引访问逻辑
             final lastRoundIndex = currentRound - 1;
             return s.roundScores.length > lastRoundIndex &&
                 s.roundScores[lastRoundIndex] != null;
@@ -130,7 +130,6 @@ class _ScoreColumn extends ConsumerWidget {
       if (canAddNewRound) {
         scoreNotifier.addNewRound();
       } else {
-        // 添加提示逻辑
         AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
         return;
       }
@@ -157,7 +156,7 @@ class _ScoreColumn extends ConsumerWidget {
 }
 
 class _ScoreBoard extends ConsumerStatefulWidget {
-  final Poker50Template template;
+  final MahjongTemplate template;
   final GameSession session;
 
   const _ScoreBoard({required this.template, required this.session});
@@ -175,23 +174,25 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
   @override
   void dispose() {
     _horizontalScrollController.dispose();
+    _headerHorizontalController.dispose();
+    _contentHorizontalController.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    // 监听内容区域的滚动事件，同步到标题行
     _contentHorizontalController.addListener(() {
-      _headerHorizontalController.jumpTo(_contentHorizontalController.offset);
+      if (_headerHorizontalController.hasClients &&
+          _contentHorizontalController.hasClients) {
+        _headerHorizontalController.jumpTo(_contentHorizontalController.offset);
+      }
     });
-    // 在初始化时更新高亮位置
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(scoreProvider.notifier).updateHighlight();
     });
   }
 
-  // 抽取滚动逻辑到单独的方法
   void _scrollToHighlight() {
     final highlight = ref.read(scoreProvider).value?.currentHighlight;
     if (highlight != null) {
@@ -216,10 +217,9 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
           data: (state) => state.currentRound,
         );
 
-    // 添加监听器监听分数滚动到高亮
     ref.listen(scoreProvider, (previous, next) {
       if (next.value?.currentHighlight != null) {
-        Future.delayed(Duration(milliseconds: 100), () {
+        Future.delayed(const Duration(milliseconds: 100), () {
           _scrollToHighlight();
         });
       }
@@ -227,7 +227,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
 
     return Column(
       children: [
-        // 标题行（禁用用户手动滚动）
         SizedBox(
           height: 80,
           child: SingleChildScrollView(
@@ -237,22 +236,20 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
             child: _buildHeaderRow(),
           ),
         ),
-        // 内容区域（垂直 + 水平滚动）
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
                 scrollDirection: Axis.vertical,
                 child: SizedBox(
-                  // 动态设置内容区域的最小宽度（确保水平滚动可用）
-                  width: constraints.maxWidth, // 保持与父级同宽
+                  width: constraints.maxWidth,
                   child: SingleChildScrollView(
                     controller: _contentHorizontalController,
                     scrollDirection: Axis.horizontal,
-                    physics: const AlwaysScrollableScrollPhysics(), // 强制允许滚动
+                    physics: const AlwaysScrollableScrollPhysics(),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        minWidth: constraints.maxWidth, // 最小宽度填满父容器
+                        minWidth: constraints.maxWidth,
                       ),
                       child: _buildContentRow(currentRound),
                     ),
@@ -280,7 +277,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
                   Text(
                     player.name,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(height: 1.2),
+                    style: const TextStyle(height: 1.2),
                   ),
                 ],
               ),
@@ -292,11 +289,10 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
   Widget _buildContentRow(int currentRound) {
     return IntrinsicHeight(
       child: Row(
-        mainAxisSize: MainAxisSize.max, // 扩展 Row 至最大可用宽度
-        mainAxisAlignment: MainAxisAlignment.center, // 子项水平居中
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 左侧回合标签列
           Column(
             children: List.generate(
               currentRound + 1,
@@ -308,7 +304,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
               ),
             ),
           ),
-          // 玩家得分列
           ...widget.template.players.map((player) {
             final score = widget.session.scores.firstWhere(
               (s) => s.playerId == player.pid,
@@ -319,6 +314,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
               player: player,
               scores: score.roundScores,
               currentRound: currentRound + 1,
+              // 传递的是总轮次数，用于List.generate
               cellKeys: _cellKeys,
             );
           }),
@@ -328,12 +324,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
   }
 }
 
-/// 分数编辑对话框组件
-/// 参数说明：
-/// [player]: 关联的玩家信息
-/// [round]: 编辑的回合数
-/// [initialValue]: 初始分数值
-/// [onConfirm]: 确认修改回调
 class _ScoreEditDialog extends ConsumerStatefulWidget {
   final String templateId;
   final PlayerInfo player;
@@ -359,20 +349,17 @@ class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
   @override
   void initState() {
     super.initState();
-    final initialText =
-        widget.initialValue != 0 ? widget.initialValue.toString() : '';
-    _controller = TextEditingController(text: initialText);
+    // 将传入的整数分转换为带两位小数的字符串进行显示
+    final initialDisplayScore =
+        (widget.initialValue / 100.0).toStringAsFixed(2);
+    _controller = TextEditingController(
+        text: initialDisplayScore == '0.00' ? '' : initialDisplayScore);
   }
 
   @override
   Widget build(BuildContext context) {
-    final template = ref
-        .read(templatesProvider.notifier)
-        .getTemplate(widget.templateId) as Poker50Template;
-    final isAllowNegative = template.isAllowNegative;
-
     return AlertDialog(
-      title: Text('修改分数'),
+      title: const Text('修改分数'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,13 +368,15 @@ class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
           const SizedBox(height: 16),
           TextField(
             controller: _controller,
-            keyboardType:
-                TextInputType.numberWithOptions(signed: true, decimal: false),
+            // 支持小数输入
+            keyboardType: const TextInputType.numberWithOptions(
+                signed: true, decimal: true),
             autofocus: true,
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
+              // 允许输入数字、小数点和负号，并限制小数位数
+              FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d{0,2}')),
             ],
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: '输入新分数',
               border: OutlineInputBorder(),
             ),
@@ -397,34 +386,38 @@ class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('取消'),
+          child: const Text('取消'),
         ),
         TextButton(
           onPressed: () {
-            final value = int.tryParse(_controller.text) ?? 0;
-            Navigator.pop(context);
-            if (!isAllowNegative && value < 0) {
-              AppSnackBar.warn('当前模板设置不允许输入负数！');
+            final inputText = _controller.text.trim();
+            if (inputText.isEmpty) {
+              widget.onConfirm(0); // 如果为空，则认为是0分
+              Navigator.pop(context);
+              ref.read(scoreProvider.notifier).updateHighlight();
               return;
             }
-            widget.onConfirm(value);
+            final value = double.tryParse(inputText);
+            if (value == null) {
+              AppSnackBar.show('请输入有效的数字');
+              return;
+            }
+            // 将输入的小数分乘以100并四舍五入转为整数存储
+            final scoreToSave = (value * 100).round();
+            Navigator.pop(context);
+            widget.onConfirm(scoreToSave);
             ref.read(scoreProvider.notifier).updateHighlight();
           },
-          child: Text('确认'),
+          child: const Text('确认'),
         ),
       ],
     );
   }
 }
 
-/// 单个得分单元格组件
-/// 参数说明：
-/// [score]: 当前回合得分（可选）
-/// [total]: 累计总得分
-/// [isHighlighted]: 是否高亮
 class _ScoreCell extends ConsumerWidget {
-  final int? score;
-  final int total;
+  final int? score; // 存储的仍然是乘以100后的整数
+  final int total; // 存储的仍然是乘以100后的整数
   final bool isHighlighted;
 
   const _ScoreCell({
@@ -435,9 +428,13 @@ class _ScoreCell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 将整数分数转换为带两位小数的字符串进行显示
+    final displayScore =
+        score == null ? '--' : (score! / 100.0).toStringAsFixed(2);
+    final displayTotal = (total / 100.0).toStringAsFixed(2);
+
     return Container(
       decoration: BoxDecoration(
-        // 新增装饰
         color: isHighlighted
             ? Theme.of(context).colorScheme.primaryContainer
             : null,
@@ -452,8 +449,8 @@ class _ScoreCell extends ConsumerWidget {
         alignment: Alignment.center,
         children: [
           Text(
-            score == null ? '--' : (score == 0 ? '🏆' : '$total'),
-            style: TextStyle(
+            score == null ? '--' : (score == 0 ? '0.00' : displayTotal),
+            style: const TextStyle(
               fontSize: 18,
             ),
           ),
@@ -462,7 +459,7 @@ class _ScoreCell extends ConsumerWidget {
               right: 0,
               top: 0,
               child: Text(
-                score! >= 0 ? '+$score' : '$score',
+                (score! >= 0 ? '+' : '') + displayScore,
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.grey,
@@ -470,7 +467,7 @@ class _ScoreCell extends ConsumerWidget {
               ),
             ),
           if (score == null)
-            Positioned(
+            const Positioned(
               right: 0,
               top: 0,
               child: Text('--', style: TextStyle(color: Colors.grey)),

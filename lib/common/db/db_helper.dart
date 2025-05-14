@@ -100,6 +100,10 @@ class DatabaseHelper {
     INSERT INTO templates (tid, template_name, player_count, target_score, is_system_template, base_template_id, template_type, other_set) 
     VALUES ('landlords', '斗地主', 3, 100, 1, NULL, 'landlords', null);
     ''');
+    await db.execute('''
+    INSERT INTO templates (tid, template_name, player_count, target_score, is_system_template, base_template_id, template_type, other_set) 
+    VALUES ('mahjong', '麻将', 4, 100, 1, NULL, 'mahjong', null);
+    ''');
 
     // 创建模板-玩家关联表
     await db.execute('''

@@ -15,7 +15,7 @@ import 'package:counters/common/widgets/snackbar.dart';
 // 引入 LAN Provider 和 消息 Payload 类
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/score/game_session_dao_provider.dart';
-import 'package:counters/features/score/template_provider.dart';
+import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart'; // 确保导入 PlayerInfo 用于 applySyncState

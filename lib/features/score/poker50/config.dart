@@ -1,7 +1,7 @@
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/features/score/base_config_page.dart';
-import 'package:counters/features/score/template_provider.dart';
+import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

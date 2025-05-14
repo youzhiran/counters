@@ -1,6 +1,7 @@
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/landlords.dart';
+import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
@@ -82,6 +83,27 @@ class TemplateDao {
 
     final players = playerMaps.map((map) => PlayerInfo.fromJson(map)).toList();
     return LandlordsTemplate.fromMap(maps.first, players);
+  }
+
+  Future<MahjongTemplate?> getMahjongTemplate(String tid) async {
+    final db = await dbHelper.database;
+    final maps = await db.query(
+      'templates',
+      where: 'tid = ? AND template_type = ?',
+      whereArgs: [tid, 'mahjong'],
+    );
+
+    if (maps.isEmpty) return null;
+
+    // 获取关联的玩家
+    final playerMaps = await db.rawQuery('''
+      SELECT p.* FROM players p
+      INNER JOIN template_players tp ON p.pid = tp.player_id
+      WHERE tp.template_id = ?
+    ''', [tid]);
+
+    final players = playerMaps.map((map) => PlayerInfo.fromJson(map)).toList();
+    return MahjongTemplate.fromMap(maps.first, players);
   }
 
   Future<void> deleteTemplate(String tid) async {
@@ -171,6 +193,8 @@ class TemplateDao {
         template = await getPoker50Template(map['tid'] as String);
       } else if (map['template_type'] == 'landlords') {
         template = await getLandlordsTemplate(map['tid'] as String);
+      } else if (map['template_type'] == 'mahjong') {
+        template = await getMahjongTemplate(map['tid'] as String);
       }
       if (template != null) {
         result.add(template);

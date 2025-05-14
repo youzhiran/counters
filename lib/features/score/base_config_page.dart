@@ -6,7 +6,7 @@ import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/player/player_select_dialog.dart';
 import 'package:counters/features/score/score_provider.dart';
-import 'package:counters/features/score/template_provider.dart';
+import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -2,7 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/utils/log.dart';
-import 'package:counters/features/score/template_dao.dart';
+import 'package:counters/features/template/template_dao.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 

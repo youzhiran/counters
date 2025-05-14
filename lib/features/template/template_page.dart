@@ -1,13 +1,15 @@
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/landlords.dart';
+import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/util.dart';
 import 'package:counters/features/score/landlords/config.dart';
+import 'package:counters/features/score/mahjong/config.dart';
 import 'package:counters/features/score/poker50/config.dart';
 import 'package:counters/features/score/score_provider.dart';
-import 'package:counters/features/score/template_provider.dart';
+import 'package:counters/features/template/template_provider.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -144,6 +146,13 @@ class _TemplateCard extends ConsumerWidget {
         color: Theme.of(context).colorScheme.primary,
         opacity: 0.1,
       );
+    } else if (template is MahjongTemplate) {
+      return SvgIconUtils.getIcon(
+        SvgIconUtils.mahjong,
+        size: 100,
+        color: Theme.of(context).colorScheme.primary,
+        opacity: 0.1,
+      );
     }
     return Icon(
       Icons.games,
@@ -271,6 +280,9 @@ class _TemplateCard extends ConsumerWidget {
                         } else if (template is LandlordsTemplate) {
                           return LandlordsConfigPage(
                               oriTemplate: template as LandlordsTemplate);
+                        } else if (template is MahjongTemplate) {
+                          return MahjongConfigPage(
+                              oriTemplate: template as MahjongTemplate);
                         } else {
                           Log.w('不支持的模板类型: ${template.runtimeType}');
                           return const SizedBox.shrink();
@@ -306,6 +318,9 @@ class _TemplateCard extends ConsumerWidget {
                         } else if (template is LandlordsTemplate) {
                           return LandlordsConfigPage(
                               oriTemplate: template as LandlordsTemplate);
+                        } else if (template is MahjongTemplate) {
+                          return MahjongConfigPage(
+                              oriTemplate: template as MahjongTemplate);
                         } else {
                           Log.w('不支持的模板类型: ${template.runtimeType}');
                           return const SizedBox.shrink();

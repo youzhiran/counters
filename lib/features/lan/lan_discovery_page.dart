@@ -7,7 +7,7 @@ import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/lan_provider.dart';
-import 'package:counters/features/score/template_provider.dart';
+import 'package:counters/features/template/template_provider.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
