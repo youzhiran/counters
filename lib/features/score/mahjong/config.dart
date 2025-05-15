@@ -67,7 +67,7 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
   @override
   String getTemplateDescription() => '• 适用于：麻将游戏，支持4人玩法。\n'
       '• 一局结束：根据胡牌类型和番数计算得分。\n'
-      '• 本模板支持 2 位小数计分';
+      '• 本模板显示为 2 位小数计分';
 
   @override
   Future<void> updateTempConf() async {

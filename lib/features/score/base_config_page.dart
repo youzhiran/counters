@@ -439,34 +439,36 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
             ),
           ),
         ),
-        if (players.length < (int.tryParse(playerCountController.text) ?? 0))
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final result = await globalState.showCommonDialog(
-                  child: PlayerSelectDialog(
-                    selectedPlayers: players,
-                    maxCount:
-                        int.parse(playerCountController.text) - players.length,
-                  ),
-                );
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: OutlinedButton.icon(
+            onPressed: (players.length <
+                    (int.tryParse(playerCountController.text) ?? 0))
+                ? () async {
+                    final result = await globalState.showCommonDialog(
+                      child: PlayerSelectDialog(
+                        selectedPlayers: players,
+                        maxCount: int.parse(playerCountController.text) -
+                            players.length,
+                      ),
+                    );
 
-                if (result != null) {
-                  setState(() {
-                    for (var player in result) {
-                      players.add(player);
-                      nameControllers
-                          .add(TextEditingController(text: player.name));
-                    }
-                  });
-                }
-              },
-              icon: Icon(Icons.person_add),
-              label:
-                  Text('选择玩家（${players.length}/${playerCountController.text}）'),
-            ),
+                    if (result != null) {
+                setState(() {
+                  for (var player in result) {
+                    players.add(player);
+                    nameControllers
+                        .add(TextEditingController(text: player.name));
+                  }
+                });
+              }
+            }
+                : null,
+            icon: Icon(Icons.person_add),
+            label:
+            Text('选择玩家（${players.length}/${playerCountController.text}）'),
           ),
+        ),
       ],
     );
   }

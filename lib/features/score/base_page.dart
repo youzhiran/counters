@@ -2,6 +2,7 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/player_info.dart';
+import 'package:counters/common/widgets/score_chart_bottom_sheet.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
@@ -166,35 +167,40 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     onPressed: () => showGameResult(context),
                   ),
                   IconButton(
-                    icon: Icon(Icons.restart_alt_rounded),
-                    tooltip: '重置游戏',
-                    onPressed: () => showResetConfirmation(context),
+                    icon: Icon(Icons.stacked_line_chart),
+                    tooltip: '查看计分图表',
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (BuildContext modalContext) {
+                          return ScoreChartBottomSheet(session: session);
+                        },
+                      );
+                    },
                   ),
                   PopupMenuButton<String>(
                     icon: Icon(Icons.more_vert),
                     tooltip: '更多操作',
-                    onSelected: (String result) {
-                      switch (result) {
-                        case 'lan_test':
-                          Navigator.push(
+                    onSelected: (String value) {
+                      if (value == 'Template_set') {
+                        AppSnackBar.show('模板设置功能待实现');
+                      } else if (value == 'reset_game') {
+                        showResetConfirmation(context);
+                      } else if (value == 'lan_debug') {
+                        Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => const LanTestPage()),
-                          );
-                          break;
-                        case 'lan_conn':
-                          _toggleLanConnection(context, template);
-                          break;
-                        case 'lan_discovery':
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const LanDiscoveryPage()),
-                          );
-                          break;
-                        case 'Template_set':
-                          AppSnackBar.show('模板设置功能待实现');
-                          break;
+                                builder: (_) => const LanTestPage()));
+                      } else if (value == 'lan_conn') {
+                        _toggleLanConnection(context, template);
+                      } else if (value == 'lan_discovery') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const LanDiscoveryPage()),
+                        );
                       }
                     },
                     itemBuilder: (BuildContext context) =>
@@ -232,6 +238,16 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                                 style: TextStyle(
                                     color:
                                         !lanState.isHost ? null : Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'reset_game',
+                        child: Row(
+                          children: [
+                            Icon(Icons.restart_alt_rounded),
+                            SizedBox(width: 8),
+                            Text('重置游戏'),
                           ],
                         ),
                       ),
