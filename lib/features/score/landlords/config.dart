@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class LandlordsConfigPage extends BaseConfigPage {
   const LandlordsConfigPage({
     required super.oriTemplate,
+    super.isReadOnly,
     super.key,
   });
 
@@ -52,7 +53,9 @@ class _LandlordsConfigPageState
   int getMaxPlayerCount() => 20;
 
   @override
-  Widget buildOtherSettings() => _buildOtherList();
+  Widget buildOtherSettings() {
+    return _buildOtherList();
+  }
 
   // 底分验证方法
   void _handleBaseScoreChange(String value) {

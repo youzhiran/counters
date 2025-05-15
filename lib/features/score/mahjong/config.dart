@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class MahjongConfigPage extends BaseConfigPage {
   const MahjongConfigPage({
     required super.oriTemplate,
+    super.isReadOnly,
     super.key,
   });
 
@@ -127,7 +128,9 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
   }
 
   @override
-  Widget buildOtherSettings() => _buildOtherList();
+  Widget buildOtherSettings() {
+    return _buildOtherList();
+  }
 
   // 底分验证方法
   void _handleBaseScoreChange(String value) {

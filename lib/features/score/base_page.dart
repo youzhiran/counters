@@ -1,12 +1,18 @@
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
+import 'package:counters/common/model/landlords.dart';
+import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
+import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/widgets/score_chart_bottom_sheet.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/lan_test_page.dart';
+import 'package:counters/features/score/landlords/config.dart';
+import 'package:counters/features/score/mahjong/config.dart';
+import 'package:counters/features/score/poker50/config.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
@@ -185,7 +191,25 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     tooltip: '更多操作',
                     onSelected: (String value) {
                       if (value == 'Template_set') {
-                        AppSnackBar.show('模板设置功能待实现');
+                        Widget configPage;
+                        if (template is LandlordsTemplate) {
+                          configPage = LandlordsConfigPage(
+                              oriTemplate: template, isReadOnly: true);
+                        } else if (template is Poker50Template) {
+                          configPage = Poker50ConfigPage(
+                              oriTemplate: template, isReadOnly: true);
+                        } else if (template is MahjongTemplate) {
+                          configPage = MahjongConfigPage(
+                              oriTemplate: template, isReadOnly: true);
+                        } else {
+                          AppSnackBar.warn(
+                              '该模板类型暂不支持查看设置: ${template.runtimeType}');
+                          return;
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => configPage),
+                        );
                       } else if (value == 'reset_game') {
                         showResetConfirmation(context);
                       } else if (value == 'lan_debug') {

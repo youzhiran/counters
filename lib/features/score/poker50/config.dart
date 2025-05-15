@@ -5,11 +5,10 @@ import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
-
 class Poker50ConfigPage extends BaseConfigPage {
   const Poker50ConfigPage({
     required super.oriTemplate,
+    super.isReadOnly,
     super.key,
   });
 
@@ -44,7 +43,9 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
   int getMaxPlayerCount() => 20;
 
   @override
-  Widget buildOtherSettings() => _buildOtherList();
+  Widget buildOtherSettings() {
+    return _buildOtherList();
+  }
 
   @override
   Future<void> updateTempConf() async {

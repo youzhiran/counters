@@ -3,7 +3,6 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
-import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/player/player_select_dialog.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -13,9 +12,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 abstract class BaseConfigPage extends ConsumerStatefulWidget {
   final BaseTemplate oriTemplate;
+  final bool isReadOnly;
 
   const BaseConfigPage({
     required this.oriTemplate,
+    this.isReadOnly = false,
     super.key,
   });
 }
@@ -54,7 +55,6 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkHistoryTemp();
-      _updatePlayerCount(widget.oriTemplate.playerCount);
     });
   }
 
@@ -172,10 +172,10 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
       setState(() => _playerCountError = '必须为数字');
     } else {
       final num = int.parse(value);
-      if (num < 1) {
-        setState(() => _playerCountError = '至少1人');
-      } else if (num > 20) {
-        setState(() => _playerCountError = '最多20人');
+      if (num < getMinPlayerCount()) {
+        setState(() => _playerCountError = '至少${getMinPlayerCount()}人');
+      } else if (num > getMaxPlayerCount()) {
+        setState(() => _playerCountError = '最多${getMaxPlayerCount()}人');
       } else {
         setState(() => _playerCountError = null);
       }
@@ -256,57 +256,69 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   @override
   Widget build(BuildContext context) {
     final isSystem = widget.oriTemplate.isSystemTemplate;
+
+    // 定义页面核心内容列
+    final pageContentColumn = Column(
+      children: [
+        buildTemplateInfo(),
+        buildBasicSettings(getMinPlayerCount(), getMaxPlayerCount()),
+        buildOtherSettings(),
+        buildPlayerList(),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            '原模板名：${widget.oriTemplate.templateName}\nID：${widget.oriTemplate.tid}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 12,
+            ),
+          ),
+        )
+      ],
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('配置模板'),
+            Text(widget.isReadOnly ? '查看模板' : '配置模板'),
             Text(
               isSystem ? '系统模板' : '基于 ${getRootBaseTemplateName()} 创建',
               style: TextStyle(fontSize: 12),
             ),
           ],
         ),
-        actions: [
-          if (!isSystem) // 用户模板显示保存按钮
-            Tooltip(
-              message: '保存模板',
-              child: IconButton(
-                icon:
-                    Icon(Icons.save, color: hasHistory ? Colors.orange : null),
-                onPressed: updateTempConf,
-              ),
-            ),
-          Tooltip(
-            message: '另存为新模板',
-            child: IconButton(
-              icon: Icon(Icons.save_as),
-              onPressed: saveAsTemplate,
-            ),
-          ),
-        ],
+        actions: widget.isReadOnly
+            ? []
+            : [
+                if (!isSystem) // 用户模板显示保存按钮
+                  Tooltip(
+                    message: '保存模板',
+                    child: IconButton(
+                      icon: Icon(Icons.save,
+                          color: hasHistory ? Colors.orange : null),
+                      onPressed: updateTempConf,
+                    ),
+                  ),
+                Tooltip(
+                  message: '另存为新模板',
+                  child: IconButton(
+                    icon: Icon(Icons.save_as),
+                    onPressed: saveAsTemplate,
+                  ),
+                ),
+              ],
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            buildTemplateInfo(),
-            buildBasicSettings(getMinPlayerCount(), getMaxPlayerCount()),
-            buildOtherSettings(),
-            buildPlayerList(),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                '原模板名：${widget.oriTemplate.templateName}\nID：${widget.oriTemplate.tid}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            )
-          ],
+        padding: const EdgeInsets.all(16), // 内边距移到 SingleChildScrollView
+        child: Opacity(
+          opacity: widget.isReadOnly ? 0.6 : 1.0,
+          child: AbsorbPointer(
+            absorbing: widget.isReadOnly,
+            child: pageContentColumn, // 将核心内容列放在这里
+          ),
         ),
       ),
     );
@@ -323,7 +335,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   /// 基础设置组件，包含模板名称，玩家设置
   /// [minPlayerCount] 最小玩家数量
   /// [maxPlayerCount] 最大玩家数量
-  Widget buildBasicSettings(minPlayerCount, int maxPlayerCount) {
+  Widget buildBasicSettings(int minPlayerCount, int maxPlayerCount) {
     return Column(
       children: [
         SizedBox(
@@ -348,7 +360,6 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                   controller: playerCountController,
                   keyboardType: TextInputType.number,
                   enabled: minPlayerCount != maxPlayerCount,
-                  readOnly: minPlayerCount == maxPlayerCount,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(2)
@@ -361,24 +372,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                         ? '固定$minPlayerCount人'
                         : '输入$minPlayerCount-$maxPlayerCount人',
                   ),
-                  onChanged: (value) {
-                    if (value.isEmpty) {
-                      setState(() => _playerCountError = '不能为空');
-                    } else if (int.tryParse(value) == null) {
-                      setState(() => _playerCountError = '必须为数字');
-                    } else {
-                      final num = int.parse(value);
-                      if (num < minPlayerCount) {
-                        setState(
-                            () => _playerCountError = '至少$minPlayerCount人');
-                      } else if (num > maxPlayerCount) {
-                        setState(
-                            () => _playerCountError = '最多$maxPlayerCount人');
-                      } else {
-                        setState(() => _playerCountError = null);
-                      }
-                    }
-                  },
+                  onChanged: _handlePlayerCountChange,
                 ),
               ),
             ),
@@ -427,15 +421,17 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
               contentPadding: const EdgeInsets.only(left: 16, right: 16),
               leading: PlayerAvatar.build(context, players[index]),
               title: Text(players[index].name),
-              trailing: IconButton(
-                icon: Icon(Icons.close),
-                onPressed: () {
-                  setState(() {
-                    players.removeAt(index);
-                    nameControllers.removeAt(index);
-                  });
-                },
-              ),
+              trailing: widget.isReadOnly
+                  ? null
+                  : IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () {
+                        setState(() {
+                          players.removeAt(index);
+                          nameControllers.removeAt(index);
+                        });
+                      },
+                    ),
             ),
           ),
         ),
@@ -445,28 +441,45 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
             onPressed: (players.length <
                     (int.tryParse(playerCountController.text) ?? 0))
                 ? () async {
+                    final currentEnteredPlayerCount =
+                        int.tryParse(playerCountController.text);
+                    if (currentEnteredPlayerCount == null ||
+                        _playerCountError != null) {
+                      AppSnackBar.warn('请先设置有效的玩家数量');
+                      return;
+                    }
+                    if (players.length >= currentEnteredPlayerCount) {
+                      AppSnackBar.show('已达到玩家数量上限');
+                      return;
+                    }
+
                     final result = await globalState.showCommonDialog(
                       child: PlayerSelectDialog(
                         selectedPlayers: players,
-                        maxCount: int.parse(playerCountController.text) -
-                            players.length,
+                        maxCount: (currentEnteredPlayerCount - players.length)
+                            .clamp(0, 20),
                       ),
                     );
 
                     if (result != null) {
-                setState(() {
-                  for (var player in result) {
-                    players.add(player);
-                    nameControllers
-                        .add(TextEditingController(text: player.name));
+                      setState(() {
+                        for (var player in result) {
+                          if (players.length < currentEnteredPlayerCount) {
+                            players.add(player);
+                            nameControllers
+                                .add(TextEditingController(text: player.name));
+                          } else {
+                            AppSnackBar.show('已达到玩家数量上限，部分玩家未添加');
+                            break;
+                          }
+                        }
+                      });
+                    }
                   }
-                });
-              }
-            }
                 : null,
             icon: Icon(Icons.person_add),
             label:
-            Text('选择玩家（${players.length}/${playerCountController.text}）'),
+                Text('选择玩家（${players.length}/${playerCountController.text}）'),
           ),
         ),
       ],
@@ -493,20 +506,5 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     } else {
       setState(() => _targetScoreError = null);
     }
-  }
-
-  void _updatePlayerCount(int newCount) async {
-    final dbPlayers = ref.watch(playerProvider).players ?? [];
-
-    if (newCount > players.length) {
-      for (int i = players.length; i < newCount && i < dbPlayers.length; i++) {
-        players.add(dbPlayers[i]);
-        nameControllers.add(TextEditingController(text: dbPlayers[i].name));
-      }
-    } else if (newCount < players.length) {
-      players.removeRange(newCount, players.length);
-      nameControllers.removeRange(newCount, nameControllers.length);
-    }
-    setState(() {});
   }
 }
