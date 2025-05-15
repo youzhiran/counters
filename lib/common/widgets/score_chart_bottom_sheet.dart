@@ -7,6 +7,7 @@ import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/features/template/template_provider.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,6 +24,21 @@ class DataPoint {
     required this.score,
     required this.position,
   });
+
+  // 添加 operator== 和 hashCode 以便比较 DataPoint 实例
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DataPoint &&
+          runtimeType == other.runtimeType &&
+          playerId == other.playerId &&
+          round == other.round &&
+          score == other.score &&
+          position == other.position;
+
+  @override
+  int get hashCode =>
+      playerId.hashCode ^ round.hashCode ^ score.hashCode ^ position.hashCode;
 }
 
 // 折线图绘制器
@@ -120,7 +136,7 @@ class ScoreChartWithTooltip extends StatefulWidget {
 }
 
 class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
-  DataPoint? _activePoint;
+  List<DataPoint> _activePoints = []; // 修改：从单个DataPoint? 改为 List<DataPoint>
   Timer? _hideTimer;
 
   static const double _painterMargin =
@@ -146,10 +162,12 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
               maxScore: widget.maxScore,
             ),
           ),
-          if (_activePoint != null)
+          if (_activePoints.isNotEmpty) // 修改：检查 _activePoints 是否为空
             Positioned(
-              left: _calculateTooltipX(_activePoint!.position.dx),
-              top: _calculateTooltipY(_activePoint!.position.dy),
+              left: _calculateTooltipX(
+                  _activePoints.first.position.dx), // 修改：使用第一个点定位
+              top: _calculateTooltipY(
+                  _activePoints.first.position.dy), // 修改：使用第一个点定位
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -165,23 +183,42 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
                   ],
                 ),
                 child: Column(
+                  // 修改：使用Column显示多个点的信息
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      widget.playerNames[_activePoint!.playerId] ?? '未知玩家',
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      '轮次: ${_activePoint!.round + 1}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                    Text(
-                      '总分: ${_activePoint!.score}',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ],
+                  children: _activePoints.map((point) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.playerNames[point.playerId] ?? '未知玩家',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '轮次: ${point.round + 1}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12),
+                          ),
+                          Text(
+                            '总分: ${point.score}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12),
+                          ),
+                          if (_activePoints.length > 1 &&
+                              point != _activePoints.last)
+                            const Divider(
+                                color: Colors.white54,
+                                height: 8,
+                                thickness: 0.5)
+                        ],
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
             ),
@@ -202,20 +239,32 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
   }
 
   double _calculateTooltipY(double y) {
-    // 假设Tooltip高度约为80，根据实际内容调整
-    const double tooltipHeight = 60.0;
+    // 估算Tooltip高度，考虑多个条目
+    final double estimatedItemHeight = 55.0; // 估算每个条目的高度 (名称+轮次+分数+内边距)
+    final double verticalPadding = 16.0; // Tooltip容器的上下总padding (8*2)
+    final double dividerHeight = _activePoints.length > 1
+        ? (_activePoints.length - 1) * 1.0
+        : 0; // 估算分隔线总高度
+
+    final estimatedTooltipHeight = _activePoints.isNotEmpty
+        ? (_activePoints.length * estimatedItemHeight) +
+            verticalPadding +
+            dividerHeight
+        : 60.0; // fallback or default height for a single item
+
     // 向上偏移一点，避免直接覆盖数据点
-    double targetY = y - tooltipHeight - 5;
+    double targetY = y - estimatedTooltipHeight - 10; // 10是额外的偏移量
     // 确保Tooltip不会超出上下边界
-    return targetY.clamp(
-        _painterMargin, widget.size.height - tooltipHeight - _painterMargin);
+    // clamp的下限是 _painterMargin (顶部), 上限是 widget.size.height - estimatedTooltipHeight - _painterMargin (底部)
+    return targetY.clamp(_painterMargin,
+        widget.size.height - estimatedTooltipHeight - _painterMargin);
   }
 
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
-        setState(() => _activePoint = null);
+        setState(() => _activePoints.clear()); // 修改：清空列表
       }
     });
   }
@@ -225,14 +274,13 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
     final width = widget.size.width;
     final height = widget.size.height;
 
-    // 使用与Painter一致的计算方式
     final double effectiveMaxRounds =
         (widget.maxRounds > 1 ? widget.maxRounds - 1 : 1).toDouble();
     final xStep = (width - _painterMargin * 2) / effectiveMaxRounds;
     final yScale = (height - _painterMargin * 2) /
         (widget.maxScore > 0 ? widget.maxScore : 1);
 
-    DataPoint? closestPoint;
+    List<DataPoint> newActivePoints = []; // 修改：用于收集所有符合条件的点
     double minDistance = 20; // 最小检测距离 (半径)
 
     widget.playerScoreHistory.forEach((playerId, scores) {
@@ -242,26 +290,30 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
         final distance = (position - Offset(x, y)).distance;
 
         if (distance < minDistance) {
-          minDistance = distance;
-          closestPoint = DataPoint(
+          newActivePoints.add(DataPoint(
+            // 修改：添加点到列表
             playerId: playerId,
             round: i,
             score: scores[i],
-            position: Offset(x, y), // 使用计算出的精确点位置
-          );
+            position: Offset(x, y),
+          ));
         }
       }
     });
 
-    if (closestPoint != null && _activePoint != closestPoint) {
-      // 仅当点变化时更新
+    // 可选：对点进行排序，例如按分数或玩家ID，以确保显示顺序的一致性
+    // 这里简单地按玩家ID和轮次排序
+    newActivePoints.sort((a, b) {
+      int playerCompare = a.playerId.compareTo(b.playerId);
+      if (playerCompare != 0) return playerCompare;
+      return a.round.compareTo(b.round);
+    });
+
+    // 仅当点列表变化时更新
+    // listEquals 需要 'package:flutter/foundation.dart'，通常已由 material.dart 导入
+    if (!listEquals(_activePoints, newActivePoints)) {
       setState(() {
-        _activePoint = closestPoint;
-      });
-    } else if (closestPoint == null && _activePoint != null) {
-      // 如果移出所有点，则清除
-      setState(() {
-        _activePoint = null;
+        _activePoints = newActivePoints;
       });
     }
   }
