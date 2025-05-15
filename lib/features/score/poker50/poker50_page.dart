@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
 /// 3人扑克50分
 ///
 /// 玩家打牌计分，首先达到50分的失败，计分少的胜利。
@@ -27,7 +26,6 @@ class Poker50SessionPage extends BaseSessionPage {
 
 class _Poker50SessionPageState
     extends BaseSessionPageState<Poker50SessionPage> {
-
   @override
   Widget buildGameBody(
       BuildContext context, BaseTemplate template, GameSession session) {
