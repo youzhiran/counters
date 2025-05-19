@@ -4,12 +4,45 @@ import 'package:counters/common/utils/log.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
   static Database? _database;
+
+  // 定义初始系统模板数据
+  static final List<Map<String, dynamic>> _initialSystemTemplates = [
+    {
+      'tid': 'poker50',
+      'template_name': '3人扑克50分',
+      'player_count': 3,
+      'target_score': 50,
+      'is_system_template': 1,
+      'base_template_id': null,
+      'template_type': 'poker50',
+      'other_set': null
+    },
+    {
+      'tid': 'landlords',
+      'template_name': '斗地主',
+      'player_count': 3,
+      'target_score': 100,
+      'is_system_template': 1,
+      'base_template_id': null,
+      'template_type': 'landlords',
+      'other_set': null
+    },
+    {
+      'tid': 'mahjong',
+      'template_name': '麻将',
+      'player_count': 4,
+      'target_score': 10000,
+      'is_system_template': 1,
+      'base_template_id': null,
+      'template_type': 'mahjong',
+      'other_set': null
+    }
+    // 如果有新的系统模板，在这里添加
+  ];
 
   DatabaseHelper._();
 
@@ -29,6 +62,7 @@ class DatabaseHelper {
       options: OpenDatabaseOptions(
         version: 1,
         onCreate: _onCreate,
+        onOpen: _onOpen,
       ),
     );
   }
@@ -92,18 +126,11 @@ class DatabaseHelper {
         other_set TEXT
       );
       ''');
-    await db.execute('''
-    INSERT INTO templates (tid, template_name, player_count, target_score, is_system_template, base_template_id, template_type, other_set) 
-    VALUES ('poker50', '3人扑克50分', 3, 50, 1, NULL, 'poker50', null);
-    ''');
-    await db.execute('''
-    INSERT INTO templates (tid, template_name, player_count, target_score, is_system_template, base_template_id, template_type, other_set) 
-    VALUES ('landlords', '斗地主', 3, 100, 1, NULL, 'landlords', null);
-    ''');
-    await db.execute('''
-    INSERT INTO templates (tid, template_name, player_count, target_score, is_system_template, base_template_id, template_type, other_set) 
-    VALUES ('mahjong', '麻将', 4, 100, 1, NULL, 'mahjong', null);
-    ''');
+
+    // 插入初始系统模板
+    for (var template in _initialSystemTemplates) {
+      await db.insert('templates', template);
+    }
 
     // 创建模板-玩家关联表
     await db.execute('''
@@ -136,5 +163,25 @@ class DatabaseHelper {
         PRIMARY KEY (session_id, player_id, round_number)
       )
     ''');
+  }
+
+  Future<void> _onOpen(Database db) async {
+    await _checkAndAddSystemTemplates(db);
+  }
+
+  Future<void> _checkAndAddSystemTemplates(Database db) async {
+    // 检查每个系统模板是否存在
+    for (var templateData in _initialSystemTemplates) {
+      final count = Sqflite.firstIntValue(await db.rawQuery(
+        'SELECT COUNT(*) FROM templates WHERE tid = ?',
+        [templateData['tid']],
+      ));
+
+      // 如果模板不存在，则添加它
+      if (count == 0) {
+        Log.i('添加缺失的系统模板: ${templateData['template_name']}');
+        await db.insert('templates', templateData);
+      }
+    }
   }
 }

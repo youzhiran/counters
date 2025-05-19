@@ -67,8 +67,8 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
 
   @override
   String getTemplateDescription() => '• 适用于：麻将游戏，支持4人玩法。\n'
-      '• 一局结束：根据胡牌类型和番数计算得分。\n'
-      '• 本模板显示为 2 位小数计分';
+      '• 本模板显示为 2 位小数计分\n'
+      '• 这里目标分数1分=实际游戏中0.01分';
 
   @override
   Future<void> updateTempConf() async {
@@ -179,48 +179,6 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
                   suffixText: '分',
                 ),
                 onChanged: _handleBaseScoreChange,
-              ),
-            ),
-            // 番数检查设置
-            SwitchListTile(
-              title: Text('检查番数'),
-              subtitle: Text('开启后将检查胡牌类型和番数的合法性'),
-              value: _checkMultiplier,
-              onChanged: (value) {
-                setState(() => _checkMultiplier = value);
-              },
-            ),
-            // 番数计算方式
-            ListTile(
-              title: Text('番数计算方式'),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RadioListTile<bool>(
-                    title: Text('每个番数都×2'),
-                    subtitle: Text('例如：3番 = ×2×2×2 = 8倍'),
-                    value: true,
-                    groupValue: _bombMultiplyMode,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _bombMultiplyMode = value);
-                      }
-                    },
-                    dense: true,
-                  ),
-                  RadioListTile<bool>(
-                    title: Text('番数增加倍数'),
-                    subtitle: Text('例如：3番 = (1+3) = 4倍'),
-                    value: false,
-                    groupValue: _bombMultiplyMode,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _bombMultiplyMode = value);
-                      }
-                    },
-                    dense: true,
-                  ),
-                ],
               ),
             ),
           ],

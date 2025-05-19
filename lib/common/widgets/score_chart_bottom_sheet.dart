@@ -46,14 +46,18 @@ class ScoreLineChartPainter extends CustomPainter {
   final Map<String, List<int>> playerScoreHistory;
   final Map<String, Color> playerColors;
   final int maxRounds;
+  final int minScore;
   final int maxScore;
+  final Color zeroLineColor; // 新增: 0分线颜色
   static const double margin = 15.0; // 统一定义边距
 
   ScoreLineChartPainter({
     required this.playerScoreHistory,
     required this.playerColors,
     required this.maxRounds,
+    required this.minScore,
     required this.maxScore,
+    required this.zeroLineColor, // 新增
   });
 
   @override
@@ -72,6 +76,21 @@ class ScoreLineChartPainter extends CustomPainter {
     canvas.drawLine(Offset(margin, margin), Offset(margin, height - margin),
         axisPaint); // 调整Y轴起点以适应上边距
 
+    // 绘制0分线
+    final double scoreRange = (maxScore - minScore).toDouble();
+    if (scoreRange > 0 && minScore <= 0 && maxScore >= 0) {
+      final yScale = (height - margin * 2) / scoreRange;
+      final yZero = height - margin - (0 - minScore) * yScale;
+      // 确保0分线在图表绘制区域内
+      if (yZero >= margin && yZero <= height - margin) {
+        final zeroLinePaint = Paint()
+          ..color = zeroLineColor // 使用传入的颜色
+          ..strokeWidth = 1.0;
+        canvas.drawLine(Offset(margin, yZero), Offset(width - margin, yZero),
+            zeroLinePaint);
+      }
+    }
+
     // 绘制每个玩家的折线
     playerScoreHistory.forEach((playerId, scores) {
       final path = Path();
@@ -84,12 +103,15 @@ class ScoreLineChartPainter extends CustomPainter {
       final double effectiveMaxRounds =
           (maxRounds > 1 ? maxRounds - 1 : 1).toDouble();
       final xStep = (width - margin * 2) / effectiveMaxRounds;
-      final yScale = (height - margin * 2) / (maxScore > 0 ? maxScore : 1);
+      // 调整 yScale 以处理 minScore
+      final double scoreRange = (maxScore - minScore).toDouble();
+      final yScale = (height - margin * 2) / (scoreRange > 0 ? scoreRange : 1);
 
       for (var i = 0; i < scores.length; i++) {
         final x = margin + i * xStep;
-        // Y轴原点在顶部，所以是 height - margin - score_value
-        final y = height - margin - scores[i] * yScale;
+        // Y轴原点在顶部，需要根据 minScore 调整
+        // (scores[i] - minScore) 是相对最低点的偏移量
+        final y = height - margin - (scores[i] - minScore) * yScale;
         if (i == 0) {
           path.moveTo(x, y);
         } else {
@@ -118,6 +140,7 @@ class ScoreChartWithTooltip extends StatefulWidget {
   final Map<String, Color> playerColors;
   final Map<String, String> playerNames;
   final int maxRounds;
+  final int minScore; // 新增
   final int maxScore;
   final Size size;
 
@@ -127,6 +150,7 @@ class ScoreChartWithTooltip extends StatefulWidget {
     required this.playerColors,
     required this.playerNames,
     required this.maxRounds,
+    required this.minScore, // 新增
     required this.maxScore,
     required this.size,
   });
@@ -159,7 +183,9 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
               playerScoreHistory: widget.playerScoreHistory,
               playerColors: widget.playerColors,
               maxRounds: widget.maxRounds,
+              minScore: widget.minScore,
               maxScore: widget.maxScore,
+              zeroLineColor: Theme.of(context).colorScheme.primary, // 从主题获取颜色
             ),
           ),
           if (_activePoints.isNotEmpty) // 修改：检查 _activePoints 是否为空
@@ -277,8 +303,10 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
     final double effectiveMaxRounds =
         (widget.maxRounds > 1 ? widget.maxRounds - 1 : 1).toDouble();
     final xStep = (width - _painterMargin * 2) / effectiveMaxRounds;
-    final yScale = (height - _painterMargin * 2) /
-        (widget.maxScore > 0 ? widget.maxScore : 1);
+    // 调整 yScale 以处理 minScore
+    final double scoreRange = (widget.maxScore - widget.minScore).toDouble();
+    final yScale =
+        (height - _painterMargin * 2) / (scoreRange > 0 ? scoreRange : 1);
 
     List<DataPoint> newActivePoints = []; // 修改：用于收集所有符合条件的点
     double minDistance = 20; // 最小检测距离 (半径)
@@ -286,7 +314,9 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
     widget.playerScoreHistory.forEach((playerId, scores) {
       for (var i = 0; i < scores.length; i++) {
         final x = _painterMargin + i * xStep;
-        final y = height - _painterMargin - scores[i] * yScale;
+        // Y轴原点在顶部，需要根据 minScore 调整
+        final y =
+            height - _painterMargin - (scores[i] - widget.minScore) * yScale;
         final distance = (position - Offset(x, y)).distance;
 
         if (distance < minDistance) {
@@ -429,34 +459,61 @@ class ScoreChartBottomSheet extends ConsumerWidget {
     int minScore = 0; // 用于处理负分情况
     int maxScore = 0;
 
+    bool hasScores = false; // 标记是否有任何分数
+    bool firstPlayerWithScores = true; // 用于正确初始化minScore和maxScore
+
     playerScoreHistory.forEach((_, scores) {
-      if (scores.length > maxRounds) maxRounds = scores.length;
       if (scores.isNotEmpty) {
-        // 同时计算min和max，以适应负分
+        hasScores = true; // 发现有分数列表不为空
         final playerMinScore = scores.reduce(math.min);
         final playerMaxScore = scores.reduce(math.max);
-        if (playerMinScore < minScore) minScore = playerMinScore;
-        if (playerMaxScore > maxScore) maxScore = playerMaxScore;
+
+        if (firstPlayerWithScores) {
+          minScore = playerMinScore;
+          maxScore = playerMaxScore;
+          firstPlayerWithScores = false;
+        } else {
+          if (playerMinScore < minScore) minScore = playerMinScore;
+          if (playerMaxScore > maxScore) maxScore = playerMaxScore;
+        }
+        if (scores.length > maxRounds) maxRounds = scores.length;
       }
     });
 
-    // 如果所有分数都是0，maxScore会是0。Painter的yScale处理 (maxScore > 0 ? maxScore : 1)
-    // 如果有负分，minScore会小于0。当前Painter的Y轴从0开始，需要调整以显示负分。
-    // 为简单起见，当前版本我们将Y轴的0点视为最低点，即所有分数都会画在0或以上。
-    // 如果需要显示负分，ScoreLineChartPainter中的yScale和点绘制逻辑需要修改以考虑minScore。
-    // 目前，我们仍使用maxScore作为主要缩放依据，且 Painter 假设最低分为0。
+    int finalMinForPainter = minScore;
+    int finalMaxForPainter = maxScore;
+
+    if (hasScores) {
+      // 确保图表的Y轴范围包含0
+      if (finalMinForPainter > 0) {
+        finalMinForPainter = 0;
+      }
+      if (finalMaxForPainter < 0) {
+        finalMaxForPainter = 0;
+      }
+
+      // 如果调整后，范围为零（例如，所有分数实际上都是0），
+      // 创建一个围绕0的小的默认范围。
+      if (finalMinForPainter == finalMaxForPainter) {
+        // 这意味着共同值是0
+        finalMinForPainter = -1;
+        finalMaxForPainter = 1;
+      }
+    } else {
+      // 如果没有实际分数，但可能maxRounds > 0（例如，模板有轮次但未输入分数）
+      // "暂无足够数据"的检查会处理maxRounds也是0的情况。
+      // 如果我们仍然要绘制一个空的图表（例如，maxRounds > 0但没有分数）:
+      finalMinForPainter = -1;
+      finalMaxForPainter = 1;
+    }
 
     // 确保有数据可绘制
-    // 原始逻辑: if (maxRounds == 0 || maxScore == 0)
-    // 改进：如果maxRounds为0，则没有数据。maxScore为0是允许的（例如所有得分都是0）
-    if (maxRounds == 0 &&
-        playerScoreHistory.values.every((list) => list.isEmpty)) {
+    // 如果 maxRounds 为 0 (意味着没有轮次数据) 并且 没有任何玩家有分数记录，则显示无数据提示
+    if (maxRounds == 0 && !hasScores) {
       return const Center(child: Text('暂无足够数据或轮次信息生成图表'));
     }
 
     // 如果所有分数都是0，maxScore可能是0。我们需要让yScale正常工作。
-    // ScoreLineChartPainter 中的 yScale 已经是 (height - margin * 2) / (maxScore > 0 ? maxScore : 1);
-    // 这是对的，如果maxScore是0，它会用1来避免除零，所有0分点会画在x轴上。
 
     return LayoutBuilder(
       builder: (lbContext, constraints) {
@@ -468,8 +525,10 @@ class ScoreChartBottomSheet extends ConsumerWidget {
           playerColors: playerColors,
           playerNames: playerNames,
           maxRounds: maxRounds,
-          // painter会处理maxRounds=1的情况
-          maxScore: maxScore,
+          minScore: finalMinForPainter,
+          // 使用调整后的minScore
+          maxScore: finalMaxForPainter,
+          // 使用调整后的maxScore
           size: Size(constraints.maxWidth, constraints.maxHeight),
         );
       },

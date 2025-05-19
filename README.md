@@ -4,6 +4,8 @@
 
 个人学习作品。本大量项目使用 ai 辅助编程，代码中注释可能由ai生成，仅供参考。
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/youzhiran/counters)
+
 ## 程序主要功能与截图
 
 Counters 是一款用于桌游计分的 flutter 多平台计分程序，目前程序支持以下游戏的计分。

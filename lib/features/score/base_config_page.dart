@@ -501,8 +501,8 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
       setState(() => _targetScoreError = '必须为数字');
     } else if (int.parse(value) <= 0) {
       setState(() => _targetScoreError = '必须大于0');
-    } else if (int.parse(value) > 100000) {
-      setState(() => _targetScoreError = '最大10万');
+    } else if (int.parse(value) > 1000000) {
+      setState(() => _targetScoreError = '最大100万');
     } else {
       setState(() => _targetScoreError = null);
     }

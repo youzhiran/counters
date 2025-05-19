@@ -5,6 +5,7 @@ import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
+import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/score_chart_bottom_sheet.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
@@ -190,41 +191,57 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     icon: Icon(Icons.more_vert),
                     tooltip: '更多操作',
                     onSelected: (String value) {
-                      if (value == 'Template_set') {
-                        Widget configPage;
-                        if (template is LandlordsTemplate) {
-                          configPage = LandlordsConfigPage(
-                              oriTemplate: template, isReadOnly: true);
-                        } else if (template is Poker50Template) {
-                          configPage = Poker50ConfigPage(
-                              oriTemplate: template, isReadOnly: true);
-                        } else if (template is MahjongTemplate) {
-                          configPage = MahjongConfigPage(
-                              oriTemplate: template, isReadOnly: true);
-                        } else {
-                          AppSnackBar.warn(
-                              '该模板类型暂不支持查看设置: ${template.runtimeType}');
-                          return;
-                        }
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => configPage),
-                        );
-                      } else if (value == 'reset_game') {
-                        showResetConfirmation(context);
-                      } else if (value == 'lan_debug') {
-                        Navigator.push(
+                      switch (value) {
+                        case 'Template_set':
+                          Widget configPage;
+                          if (template is LandlordsTemplate) {
+                            configPage = LandlordsConfigPage(
+                                oriTemplate: template, isReadOnly: true);
+                          } else if (template is Poker50Template) {
+                            configPage = Poker50ConfigPage(
+                                oriTemplate: template, isReadOnly: true);
+                          } else if (template is MahjongTemplate) {
+                            configPage = MahjongConfigPage(
+                                oriTemplate: template, isReadOnly: true);
+                          } else {
+                            AppSnackBar.warn(
+                                '该模板类型暂不支持查看设置: ${template.runtimeType}');
+                            return;
+                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => configPage),
+                          );
+                          break;
+                        case 'reset_game':
+                          showResetConfirmation(context);
+                          break;
+                        case 'lan_debug':
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const LanTestPage()));
+                          break;
+                        case 'lan_conn':
+                          _toggleLanConnection(context, template);
+                          break;
+                        case 'lan_discovery':
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const LanTestPage()));
-                      } else if (value == 'lan_conn') {
-                        _toggleLanConnection(context, template);
-                      } else if (value == 'lan_discovery') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const LanDiscoveryPage()),
-                        );
+                                builder: (context) => const LanDiscoveryPage()),
+                          );
+                          break;
+                        case 'lan_test':
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const LanTestPage()),
+                          );
+                          break;
+                        default:
+                          Log.warn('未知选项: $value');
+                          break;
                       }
                     },
                     itemBuilder: (BuildContext context) =>
@@ -471,6 +488,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   style: TextStyle(color: Colors.green)),
               ...result.winners.map((s) => Text(
                   '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
+              if (result.hasFailures) ...[
+                SizedBox(height: 16),
+                Text('💡 游戏结束，但仍可继续计分，每回合结束将再次检查计分',
+                    style: TextStyle(
+                      color: Colors.blue,
+                    )),
+              ],
             ],
           ),
         ),

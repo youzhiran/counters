@@ -258,6 +258,7 @@ class Score extends _$Score {
     final session = currentState!.currentSession!;
     final round = currentState.currentRound;
 
+    // 遍历所有回合和玩家
     for (int r = 0; r <= round; r++) {
       for (var player in session.scores) {
         if (player.roundScores.length <= r || player.roundScores[r] == null) {
@@ -297,13 +298,13 @@ class Score extends _$Score {
       Map<String, int?> playerScoresMap,
       Map<String, Map<String, dynamic>?> playerExtendedDataMap) async {
     Log.d('ScoreNotifier 更新扩展数据: 第 ${roundIndex + 1} 轮');
-    final currentState = state.valueOrNull;
-    if (currentState?.currentSession == null) {
+    final currentStateBeforeUpdate = state.valueOrNull;
+    if (currentStateBeforeUpdate?.currentSession == null) {
       Log.w('updateRoundData 失败: 无当前会话');
       return;
     }
 
-    final sessionToUpdate = currentState!.currentSession!;
+    final sessionToUpdate = currentStateBeforeUpdate!.currentSession!;
 
     final updatedScores = sessionToUpdate.scores.map((playerScore) {
       final scoreUpdate = playerScoresMap[playerScore.playerId];
@@ -315,7 +316,9 @@ class Score extends _$Score {
         while (newRoundScores.length <= roundIndex) {
           newRoundScores.add(null);
         }
-        newRoundScores[roundIndex] = scoreUpdate;
+        if (playerScoresMap.containsKey(playerScore.playerId)) {
+          newRoundScores[roundIndex] = scoreUpdate;
+        }
 
         final databaseRoundNumber = roundIndex + 1;
         final newRoundExtendedFields = Map<int, Map<String, dynamic>>.from(
@@ -339,10 +342,37 @@ class Score extends _$Score {
 
     final updatedSession = sessionToUpdate.copyWith(scores: updatedScores);
 
-    state = AsyncData(currentState.copyWith(
+    state = AsyncData(currentStateBeforeUpdate.copyWith(
       currentSession: updatedSession,
       currentRound: _calculateCurrentRound(updatedSession),
     ));
+
+    // 检查是否显示游戏结束对话框
+    final currentScoreState = state.value;
+    if (currentScoreState != null && currentScoreState.currentSession != null) {
+      final sessionAfterUpdate = currentScoreState.currentSession!;
+
+      bool roundJustCompleted = sessionAfterUpdate.scores.every((ps) =>
+          ps.roundScores.length > roundIndex &&
+          ps.roundScores[roundIndex] != null);
+
+      if (roundJustCompleted) {
+        final template = ref
+            .read(templatesProvider)
+            .valueOrNull
+            ?.firstWhereOrNull((t) => t.tid == sessionAfterUpdate.templateId);
+
+        if (template != null && template.targetScore > 0) {
+          final gameResult = calculateGameResult(template.targetScore);
+          if (gameResult.hasFailures) {
+            state = AsyncData(currentScoreState.copyWith(
+              showGameEndDialog: true,
+              currentHighlight: null,
+            ));
+          }
+        }
+      }
+    }
 
     final lanState = ref.read(lanProvider);
     if (lanState.isHost && !lanState.isHostAndClientMode) {
