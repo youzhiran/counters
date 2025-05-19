@@ -385,7 +385,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(6)
+                    LengthLimitingTextInputFormatter(8)
                   ],
                   decoration: InputDecoration(
                     labelText: '目标分数',
