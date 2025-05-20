@@ -44,7 +44,6 @@ class _MahjongPageState extends BaseSessionPageState<MahjongPage> {
       ],
     );
   }
-
 }
 
 /// 单个玩家得分列组件（垂直布局）
@@ -449,7 +448,7 @@ class _ScoreCell extends ConsumerWidget {
         alignment: Alignment.center,
         children: [
           Text(
-            score == null ? '--' : (score == 0 ? '0.00' : displayTotal),
+            score == null ? '--' : displayTotal,
             style: const TextStyle(
               fontSize: 18,
             ),

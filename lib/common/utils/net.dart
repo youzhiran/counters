@@ -52,12 +52,12 @@ class UpdateChecker {
         await getLatestVersion(includePrereleases: includePrereleases);
     if (latestVersion == null) return '网络错误';
     var command = _compareVersions(currentVersion, latestVersion);
-     // 处理 Markdown 格式的更新说明
+    // 处理 Markdown 格式的更新说明
     latestReleaseBody = StrUtil.md2Str(latestReleaseBody);
     switch (command) {
       case 1:
         return 'v$latestVersion\n(当前: $currentVersion)\n\n'
-            '更新日志：\n$latestReleaseBody';
+            '$latestReleaseBody';
       case 0:
         return '已是最新版本 \n当前: $currentVersion, 远程: $latestVersion';
       case -1:
@@ -182,6 +182,8 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AlertDialog(
       title: Text('检查更新'),
       content: Column(
@@ -201,15 +203,91 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
                     _checkForUpdates();
                   },
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: isLoading
-                ? CircularProgressIndicator()
-                : Text(
-                    hasUpdate ? '发现新版本：$versionInfo' : versionInfo,
-                    textAlign: TextAlign.center,
-                  ),
-          )
+          if (isLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: CircularProgressIndicator(),
+            )
+          else
+            Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.4,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (hasUpdate) ...[
+                      SizedBox(height: 16),
+                      Text(
+                        '发现新版本',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              versionInfo.split('\n')[0],
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                            Text(
+                              versionInfo.split('\n')[1],
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onPrimaryContainer
+                                    .withAlpha((0.8 * 255).toInt()),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        '更新日志',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          versionInfo.split('\n\n').last,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ] else
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          versionInfo,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
       actions: [

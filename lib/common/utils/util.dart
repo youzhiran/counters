@@ -42,10 +42,10 @@ class StrUtil {
     text = text.replaceAll(RegExp(r'<[^>]+>'), '');
 
     // 处理标题格式
-    text = text.replaceAll(RegExp(r'#{1,6}\s'), '• ');
+    text = text.replaceAll(RegExp(r'#{1,6}\s'), '● ');
 
     // 处理列表格式
-    text = text.replaceAll(RegExp(r'[-*]\s'), '- ');
+    text = text.replaceAll(RegExp(r'[-*]\s'), '  - ');
 
     // 移除多余的空行
     text = text.split('\n').where((line) => line.trim().isNotEmpty).join('\n');

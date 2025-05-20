@@ -101,6 +101,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   onTap: _showColorPickerDialog,
                 ),
                 _buildSectionHeader('通用'),
+                _buildListTile(
+                    icon: Icons.update,
+                    title: '检查更新',
+                    onTap: () => checkUpdate(context, ref)),
                 if (Platform.isWindows) // 只在Windows平台显示
                   _buildListTile(
                     icon: Icons.folder,
@@ -184,10 +188,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 ),
                 _buildListTile(
                     icon: Icons.chat, title: '一起划水', onTap: _handleJoinChatTap),
-                _buildListTile(
-                    icon: Icons.update,
-                    title: '检查更新',
-                    onTap: () => checkUpdate(context, ref)),
                 _buildListTile(
                   icon: Icons.bug_report,
                   title: '问题反馈',
