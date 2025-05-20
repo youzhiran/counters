@@ -21,9 +21,7 @@ PlayerInfo _$PlayerInfoFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$PlayerInfo {
   String get pid => throw _privateConstructorUsedError;
-
   String get name => throw _privateConstructorUsedError;
-
   String get avatar => throw _privateConstructorUsedError;
 
   /// Serializes this PlayerInfo to a JSON map.
@@ -41,7 +39,6 @@ abstract class $PlayerInfoCopyWith<$Res> {
   factory $PlayerInfoCopyWith(
           PlayerInfo value, $Res Function(PlayerInfo) then) =
       _$PlayerInfoCopyWithImpl<$Res, PlayerInfo>;
-
   @useResult
   $Res call({String pid, String name, String avatar});
 }
@@ -53,7 +50,6 @@ class _$PlayerInfoCopyWithImpl<$Res, $Val extends PlayerInfo>
 
   // ignore: unused_field
   final $Val _value;
-
   // ignore: unused_field
   final $Res Function($Val) _then;
 
@@ -89,7 +85,6 @@ abstract class _$$PlayerInfoImplCopyWith<$Res>
   factory _$$PlayerInfoImplCopyWith(
           _$PlayerInfoImpl value, $Res Function(_$PlayerInfoImpl) then) =
       __$$PlayerInfoImplCopyWithImpl<$Res>;
-
   @override
   @useResult
   $Res call({String pid, String name, String avatar});
@@ -186,7 +181,6 @@ abstract class _PlayerInfo extends PlayerInfo {
       {required final String pid,
       required final String name,
       required final String avatar}) = _$PlayerInfoImpl;
-
   const _PlayerInfo._() : super._();
 
   factory _PlayerInfo.fromJson(Map<String, dynamic> json) =
@@ -194,10 +188,8 @@ abstract class _PlayerInfo extends PlayerInfo {
 
   @override
   String get pid;
-
   @override
   String get name;
-
   @override
   String get avatar;
 

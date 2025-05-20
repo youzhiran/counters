@@ -45,7 +45,6 @@ abstract class $PlayerScoreCopyWith<$Res> {
   factory $PlayerScoreCopyWith(
           PlayerScore value, $Res Function(PlayerScore) then) =
       _$PlayerScoreCopyWithImpl<$Res, PlayerScore>;
-
   @useResult
   $Res call(
       {String playerId,
@@ -60,7 +59,6 @@ class _$PlayerScoreCopyWithImpl<$Res, $Val extends PlayerScore>
 
   // ignore: unused_field
   final $Val _value;
-
   // ignore: unused_field
   final $Res Function($Val) _then;
 
@@ -96,7 +94,6 @@ abstract class _$$PlayerScoreImplCopyWith<$Res>
   factory _$$PlayerScoreImplCopyWith(
           _$PlayerScoreImpl value, $Res Function(_$PlayerScoreImpl) then) =
       __$$PlayerScoreImplCopyWithImpl<$Res>;
-
   @override
   @useResult
   $Res call(
@@ -155,12 +152,10 @@ class _$PlayerScoreImpl extends _PlayerScore {
 
   @override
   final String playerId;
-
 // 玩家唯一ID
 // 回合得分列表。List<int?> 可以被 json_serializable 直接处理为 JSON 数组。
 // @Default([]) 表示如果 JSON 中没有这个字段或者为 null，则默认值为 []。
   final List<int?> _roundScores;
-
 // 玩家唯一ID
 // 回合得分列表。List<int?> 可以被 json_serializable 直接处理为 JSON 数组。
 // @Default([]) 表示如果 JSON 中没有这个字段或者为 null，则默认值为 []。
@@ -176,7 +171,6 @@ class _$PlayerScoreImpl extends _PlayerScore {
 // 注意：JSON 的 key 必须是字符串，json_serializable 会自动将 int key 转换为字符串。
 // @Default({}) 表示如果 JSON 中没有这个字段或者为 null，则默认值为 {}。
   final Map<int, Map<String, dynamic>> _roundExtendedFields;
-
 // 按回合存储的扩展字段。Map<int, Map<String, dynamic>> 可以被 json_serializable 处理为 JSON 对象。
 // 注意：JSON 的 key 必须是字符串，json_serializable 会自动将 int key 转换为字符串。
 // @Default({}) 表示如果 JSON 中没有这个字段或者为 null，则默认值为 {}。
@@ -237,7 +231,6 @@ abstract class _PlayerScore extends PlayerScore {
           final List<int?> roundScores,
           final Map<int, Map<String, dynamic>> roundExtendedFields}) =
       _$PlayerScoreImpl;
-
   const _PlayerScore._() : super._();
 
   factory _PlayerScore.fromJson(Map<String, dynamic> json) =
