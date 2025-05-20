@@ -15,6 +15,7 @@ import 'package:counters/features/setting/setting.dart';
 import 'package:counters/features/template/template_page.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -26,6 +27,22 @@ import 'features/setting/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 设置屏幕方向
+  if (Platform.isAndroid || Platform.isIOS) {
+    // 在移动设备上锁定为竖屏
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    // 在桌面端允许所有方向
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
 
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -188,9 +205,35 @@ class MainTabsScreen extends ConsumerStatefulWidget {
   ConsumerState<MainTabsScreen> createState() => _MainTabsScreenState();
 }
 
-class _MainTabsScreenState extends ConsumerState<MainTabsScreen> {
+class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
+    with WidgetsBindingObserver {
   late int _selectedIndex;
-  late PageController _pageController; // 保持late声明
+  late PageController _pageController;
+
+  // 定义导航目标常量
+  static const List<({Icon icon, Icon selectedIcon, String label})>
+      _navigationItems = [
+    (
+      icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home),
+      label: '主页',
+    ),
+    (
+      icon: Icon(Icons.people_outline),
+      selectedIcon: Icon(Icons.people),
+      label: '玩家',
+    ),
+    (
+      icon: Icon(Icons.view_list_outlined),
+      selectedIcon: Icon(Icons.view_list),
+      label: '模板',
+    ),
+    (
+      icon: Icon(Icons.settings_outlined),
+      selectedIcon: Icon(Icons.settings),
+      label: '设置',
+    ),
+  ];
 
   final List<Widget> _screens = [
     const HomePage(),
@@ -199,62 +242,126 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen> {
     const SettingPage(),
   ];
 
-  // 初始化方法
-  @override
+  // 判断是否为桌面模式
+  bool get isDesktopMode {
+    // 在使用 MediaQuery 之前确保 context 可用
+    if (!mounted) return false; // 或者一个默认值，比如 false
+    final width = MediaQuery.of(context).size.width;
+    return width >= 600;
+  }
+
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _selectedIndex);
+
+    // 添加屏幕方向变化监听
+    WidgetsBinding.instance.addObserver(this);
+
+    // 在第一帧构建完成后，同步 _selectedIndex 和 PageController 的实际页面。
+    // 这处理了 PageController 从 PageStorage 恢复页面的情况。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          _pageController.hasClients &&
+          _pageController.page != null) {
+        final currentPageFromController = _pageController.page!.round();
+        if (_selectedIndex != currentPageFromController) {
+          // 如果 PageController 恢复的页面与当前 _selectedIndex 不同，
+          // 更新 _selectedIndex 以保持同步，避免 didChangeMetrics 使用错误的索引。
+          setState(() {
+            _selectedIndex = currentPageFromController;
+          });
+        }
+      }
+    });
   }
 
-  // 销毁方法
   @override
   void dispose() {
     _pageController.dispose();
+    // 移除屏幕方向变化监听
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics(); // 调用父类方法是一个好习惯
+    // 当屏幕指标发生变化时（例如旋转），确保 PageView 位于正确的页面。
+    // _selectedIndex 此时应该由于 initState 中的 postFrameCallback
+    // 或用户通过 _onItemTapped 的交互而保持最新。
+    if (mounted && _pageController.hasClients) {
+      // 检查控制器的页面是否已经是它应该在的位置。
+      // 这可以防止在页面已经正确时进行不必要的跳转。
+      // page 可能是 null 或 double，所以取整进行比较。
+      final controllerPage = _pageController.page?.round();
+      if (controllerPage != _selectedIndex) {
+        // 使用 jumpToPage，因为 animateToPage 在方向更改期间可能会有视觉上的突兀感。
+        _pageController.jumpToPage(_selectedIndex);
+      }
+    }
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      // 如果 PageView 不允许用户滑动，使用 jumpToPage 进行即时更改，无需动画。
       _pageController.jumpToPage(index);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isDesktopMode) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              extended: MediaQuery.of(context).size.width >= 800,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _onItemTapped,
+              minWidth: 72,
+              minExtendedWidth: 130,
+              useIndicator: true,
+              groupAlignment: -0.85,
+              destinations: _navigationItems
+                  .map((item) => NavigationRailDestination(
+                        icon: item.icon,
+                        selectedIcon: item.selectedIcon,
+                        label: Text(item.label),
+                      ))
+                  .toList(),
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(
+              child: PageView(
+                physics: const NeverScrollableScrollPhysics(), // 禁止用户滑动切换
+                controller: _pageController,
+                children: _screens,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       body: PageView(
-        physics: const NeverScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(), // 禁止用户滑动切换
         controller: _pageController,
         children: _screens,
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: '主页',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: '玩家',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.view_list_outlined),
-            selectedIcon: Icon(Icons.view_list),
-            label: '模板',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: '设置',
-          ),
-        ],
+        destinations: _navigationItems
+            .map((item) => NavigationDestination(
+                  icon: item.icon,
+                  selectedIcon: item.selectedIcon,
+                  label: item.label,
+                ))
+            .toList(),
       ),
     );
   }
