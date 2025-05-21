@@ -17,6 +17,7 @@ class GlobalStateData {
   final Color themeColor;
   final String? progressMessage;
   final double progressValue;
+  final bool enableDesktopMode;
 
   const GlobalStateData({
     required this.navigatorKey,
@@ -26,6 +27,7 @@ class GlobalStateData {
     required this.themeColor,
     this.progressMessage,
     this.progressValue = 0,
+    this.enableDesktopMode = false,
   });
 
   GlobalStateData copyWith({
@@ -36,6 +38,7 @@ class GlobalStateData {
     Color? themeColor,
     String? progressMessage,
     double? progressValue,
+    bool? enableDesktopMode,
   }) {
     return GlobalStateData(
       navigatorKey: navigatorKey ?? this.navigatorKey,
@@ -45,6 +48,7 @@ class GlobalStateData {
       themeColor: themeColor ?? this.themeColor,
       progressMessage: progressMessage ?? this.progressMessage,
       progressValue: progressValue ?? this.progressValue,
+      enableDesktopMode: enableDesktopMode ?? this.enableDesktopMode,
     );
   }
 }
@@ -87,12 +91,16 @@ class GlobalState {
     final modeIndex = _prefs.getInt('themeMode') ?? ThemeMode.system.index;
     final colorValue = _prefs.getInt('themeColor') ?? Colors.blue.toARGB32();
 
+    // 加载桌面模式设置
+    final enableDesktopMode = _prefs.getBool('enable_desktop_mode') ?? false;
+
     _state = GlobalStateData(
       navigatorKey: GlobalKey<NavigatorState>(),
       scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
       filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
       themeMode: ThemeMode.values[modeIndex],
       themeColor: Color(colorValue),
+      enableDesktopMode: enableDesktopMode,
     );
   }
 
@@ -177,6 +185,9 @@ class GlobalState {
 
   // 获取当前进度值
   double get progressValue => _state.progressValue;
+
+  // 获取当前桌面模式设置
+  bool get enableDesktopMode => _state.enableDesktopMode;
 
   /// 显示一个带进度更新的异步任务对话框
   ///

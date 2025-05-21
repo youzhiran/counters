@@ -11,7 +11,7 @@ import 'package:counters/features/lan/lan_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
 import 'package:counters/features/score/poker50/poker50_page.dart';
-import 'package:counters/features/setting/setting.dart';
+import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/template/template_page.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
@@ -244,17 +244,27 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
 
   // 判断是否为桌面模式
   bool get isDesktopMode {
-    // 在使用 MediaQuery 之前确保 context 可用
-    if (!mounted) return false; // 或者一个默认值，比如 false
+    if (!mounted) return false;
+
+    final enableDesktopMode = globalState.enableDesktopMode;
+
+    Log.i('enableDesktopMode: $enableDesktopMode');
+
     final width = MediaQuery.of(context).size.width;
-    return width >= 600;
+    var bool = enableDesktopMode && width >= 600; // 只有设置启用且宽度大于等于600时才认为是桌面模式
+    Log.i('桌面模式: $bool');
+    return bool;
   }
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: _selectedIndex);
+    // 尝试从 PageStorage 中恢复保存的页面索引
+    final initialPage = PageStorage.of(context)
+            .readState(context, identifier: 'mainTabsPage') as int? ??
+        _selectedIndex;
+    _pageController = PageController(initialPage: initialPage);
 
     // 添加屏幕方向变化监听
     WidgetsBinding.instance.addObserver(this);
@@ -306,6 +316,9 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      // 保存当前的页面索引到 PageStorage
+      PageStorage.of(context)
+          .writeState(context, index, identifier: 'mainTabsPage');
       // 如果 PageView 不允许用户滑动，使用 jumpToPage 进行即时更改，无需动画。
       _pageController.jumpToPage(index);
     });
@@ -336,6 +349,8 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
             const VerticalDivider(thickness: 1, width: 1),
             Expanded(
               child: PageView(
+                // 添加 PageStorageKey 来保存和恢复页面位置
+                key: const PageStorageKey<String>('mainTabsPageView'),
                 physics: const NeverScrollableScrollPhysics(), // 禁止用户滑动切换
                 controller: _pageController,
                 children: _screens,
@@ -348,6 +363,8 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
 
     return Scaffold(
       body: PageView(
+        // 添加 PageStorageKey 来保存和恢复页面位置
+        key: const PageStorageKey<String>('mainTabsPageView'),
         physics: const NeverScrollableScrollPhysics(), // 禁止用户滑动切换
         controller: _pageController,
         children: _screens,

@@ -31,7 +31,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   static const String _keyDataStoragePath = 'data_storage_path';
   static const String _keyIsCustomPath = 'is_custom_path';
   bool _enableProviderLogger = false;
+  bool _enableDesktopMode = false;
   static const String _keyEnableProviderLogger = 'enable_provider_logger';
+  static const String _keyEnableDesktopMode = 'enable_desktop_mode';
 
   // 添加计数器和显示状态
   int _versionClickCount = 0;
@@ -57,6 +59,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     _loadDevOptions();
     _loadStorageSettings();
     _loadProviderLoggerSetting();
+    _loadDesktopModeSetting();
   }
 
   @override
@@ -166,6 +169,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     subtitle: const Text('重启应用后生效'),
                     value: _enableProviderLogger,
                     onChanged: _saveProviderLoggerSetting,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.desktop_windows_sharp),
+                    title: const Text('启用桌面模式适配'),
+                    subtitle: const Text('测试中功能，启用后重启支持横屏界面'),
+                    value: _enableDesktopMode,
+                    onChanged: _saveDesktopModeSetting,
                   ),
                   _buildListTile(
                     icon: Icons.network_check, // 使用网络相关的图标
@@ -526,6 +536,24 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     await prefs.setBool(_keyEnableProviderLogger, value);
     setState(() {
       _enableProviderLogger = value;
+    });
+    AppSnackBar.show('设置已保存，重启应用后生效');
+  }
+
+  // 加载桌面模式设置
+  Future<void> _loadDesktopModeSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _enableDesktopMode = prefs.getBool(_keyEnableDesktopMode) ?? false;
+    });
+  }
+
+  // 保存桌面模式设置
+  Future<void> _saveDesktopModeSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyEnableDesktopMode, value);
+    setState(() {
+      _enableDesktopMode = value;
     });
     AppSnackBar.show('设置已保存，重启应用后生效');
   }
