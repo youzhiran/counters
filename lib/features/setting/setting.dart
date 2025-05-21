@@ -7,11 +7,10 @@ import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
 import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/theme_provider.dart';
-import 'package:counters/version.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -138,53 +137,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 _buildListTile(
                   icon: Icons.info,
                   title: '关于应用',
-                  onTap: () => globalState.showMessage(
-                    title: '关于',
-                    message: TextSpan(
-                      text: '一个flutter计分板应用，支持多平台运行。\n'
-                          '${Config.urlGithub}\n'
-                          '欢迎访问我的网站：devyi.com\n\n'
-                          '版本 $_versionName($_versionCode)\n'
-                          'Git版本号: $gitCommit\n'
-                          '编译时间: $buildTime\n',
-                      children: [
-                        TextSpan(
-                          text: '\n本应用部分图标来自 iconscout.com\n',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            height: 2,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '《Counters 隐私政策》\n',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.primary,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => globalState.openUrl(
-                                  Config.urlPrivacyPolicy,
-                                  '点击前往查看隐私政策',
-                                ),
-                        ),
-                        TextSpan(
-                          text: '开发者网站',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.primary,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => globalState.openUrl(
-                                  Config.urlDevyi,
-                                  '点击前往访问开发者网站',
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const AboutPage()));
+                  },
                 ),
                 _buildListTile(
                     icon: Icons.chat, title: '一起划水', onTap: _handleJoinChatTap),
