@@ -126,7 +126,7 @@ class _LandlordsConfigPageState
     );
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
-    Navigator.pop(context);
+    globalState.navigatorKey.currentState?.pop();
   }
 
   @override

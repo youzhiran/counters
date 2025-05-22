@@ -288,7 +288,7 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
                           borderRadius: BorderRadius.circular(24),
                           onTap: () {
                             onIconSelected(availablePlayerIcons[iconIndex]);
-                            Navigator.of(context).pop();
+                            globalState.navigatorKey.currentState?.pop();
                           },
                           child: Ink(
                             decoration: BoxDecoration(
@@ -330,13 +330,14 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
                 alignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(), // 取消
+                    onPressed: () =>
+                        globalState.navigatorKey.currentState?.pop(), // 取消
                     child: Text('取消'),
                   ),
                   TextButton(
                     onPressed: () {
                       _selectedIcon = null; // 恢复默认头像
-                      Navigator.of(context).pop();
+                      globalState.navigatorKey.currentState?.pop();
                     },
                     child: Text('恢复默认'),
                   ),

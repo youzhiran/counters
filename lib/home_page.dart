@@ -320,7 +320,8 @@ class HomePage extends ConsumerWidget {
                                         setState(() {});
                                       },
                                       onResume: () {
-                                        Navigator.pop(context);
+                                        globalState.navigatorKey.currentState
+                                            ?.pop(context);
                                         _resumeSession(context, ref, session);
                                       },
                                     ),
@@ -330,7 +331,8 @@ class HomePage extends ConsumerWidget {
                       ),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => globalState.navigatorKey.currentState
+                              ?.pop(context),
                           child: const Text('关闭'),
                         ),
                       ],
@@ -439,20 +441,23 @@ class HomePage extends ConsumerWidget {
     final message =
         hasScores ? '确定要结束当前游戏吗？进度将会保存' : '当前游戏没有任何得分记录，结束后将不会保存到历史记录中';
 
+    final scoreNotifier = ref.read(scoreProvider.notifier);
+    final lanNotifier = ref.read(lanProvider.notifier);
+
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('结束本轮游戏'),
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text('取消'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              ref.read(scoreProvider.notifier).resetGame(hasScores);
-              ref.read(lanProvider.notifier).disposeManager();
+              globalState.navigatorKey.currentState?.pop();
+              scoreNotifier.resetGame(hasScores);
+              lanNotifier.disposeManager();
               AppSnackBar.show('已结束当前游戏计分');
             },
             child: Text('确认结束', style: TextStyle(color: Colors.red)),

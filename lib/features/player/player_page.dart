@@ -2,14 +2,13 @@ import 'dart:math';
 
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/player_info.dart';
+import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/features/player/add_players.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-
 
 class PlayerManagementPage extends ConsumerStatefulWidget {
   const PlayerManagementPage({super.key});
@@ -22,6 +21,7 @@ class PlayerManagementPage extends ConsumerStatefulWidget {
 class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
   bool _isSearching = false;
   final _searchController = TextEditingController();
+  final Map<String, Future<int>> _playerPlayCountFutures = {};
 
   void _startSearch() {
     setState(() {
@@ -40,7 +40,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
   @override
   void initState() {
     super.initState();
-    // 将加载逻辑移到 initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(playerProvider.notifier).loadPlayers();
@@ -51,7 +50,21 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _playerPlayCountFutures.clear();
     super.dispose();
+  }
+
+  Future<int> _getMemoizedPlayerPlayCount(String playerId) {
+    return _playerPlayCountFutures.putIfAbsent(playerId, () {
+      return ref.read(playerProvider.notifier).getPlayerPlayCount(playerId);
+    });
+  }
+
+  void _clearAndRefreshPlayCountFutures() {
+    _playerPlayCountFutures.clear();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -85,7 +98,7 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
             ),
           IconButton(
             icon: const Icon(Icons.delete_sweep),
-            onPressed: () => showCleanPlayersDialog(context, ref),
+            onPressed: showCleanPlayersDialog,
           ),
         ],
       ),
@@ -95,9 +108,9 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
             children: [
               Expanded(
                 child: Consumer(
-                  builder: (context, ref, _) {
-                    final provider = ref.watch(playerProvider);
-                    final players = provider.filteredPlayers;
+                  builder: (context, watchRef, _) {
+                    final providerState = watchRef.watch(playerProvider);
+                    final players = providerState.filteredPlayers;
 
                     if (players == null) {
                       return const Center(child: CircularProgressIndicator());
@@ -110,6 +123,7 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
                     return RefreshIndicator(
                       onRefresh: () async {
                         await ref.read(playerProvider.notifier).loadPlayers();
+                        _clearAndRefreshPlayCountFutures();
                       },
                       child: GridView.builder(
                         key: const PageStorageKey('player_list'),
@@ -125,14 +139,14 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
                           mainAxisSpacing: 0,
                         ),
                         itemCount: players.length,
-                        itemBuilder: (context, index) {
+                        itemBuilder: (gridItemContext, index) {
                           final player = players[index];
                           return Card(
                             elevation: 0,
                             shape: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8.0),
                               borderSide: BorderSide(
-                                color: Theme.of(context)
+                                color: Theme.of(gridItemContext)
                                     .colorScheme
                                     .outline
                                     .withAlpha((0.2 * 255).toInt()),
@@ -140,59 +154,45 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
                             ),
                             key: ValueKey(player.pid),
                             child: Center(
-                              child: ListTile(
-                                leading: PlayerAvatar.build(context, player),
-                                title: Text(
-                                  player.name,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                                subtitle: FutureBuilder<int>(
-                                  future: ref
-                                      .read(playerProvider.notifier)
-                                      .getPlayerPlayCount(player.pid),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Text('游玩次数：加载中...');
-                                    }
-                                    final count = snapshot.data ?? 0;
-                                    return Text('游玩次数：$count');
-                                  },
-                                ),
-                                trailing: PopupMenuButton<String>(
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.edit),
-                                          SizedBox(width: 8),
-                                          Text('编辑'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.delete),
-                                          SizedBox(width: 8),
-                                          Text('删除'),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                  onSelected: (value) {
-                                    switch (value) {
-                                      case 'edit':
-                                        _showEditDialog(context, player, ref);
-                                        break;
-                                      case 'delete':
-                                        _showDeleteDialog(context, player, ref);
-                                        break;
-                                    }
-                                  },
+                              // 使用 GestureDetector 包裹 ListTile 来获取 onTapDown
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque, //确保整个区域都能响应点击
+                                onTapDown: (details) {
+                                  _showPlayerActionsMenu(
+                                      context,
+                                      // 使用父级 context (Page's context) 来显示菜单
+                                      details.globalPosition, // 全局点击位置
+                                      player,
+                                      ref.read(playerProvider.notifier));
+                                },
+                                child: ListTile(
+                                  leading: PlayerAvatar.build(
+                                      gridItemContext, player),
+                                  title: Text(
+                                    player.name,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                  subtitle: FutureBuilder<int>(
+                                    future:
+                                        _getMemoizedPlayerPlayCount(player.pid),
+                                    builder: (futureContext, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Text('游玩次数：加载中...');
+                                      }
+                                      if (snapshot.hasError) {
+                                        Log.i(
+                                            '加载计数时出错${player.pid}: ${snapshot.error}');
+                                        return const Text('游玩次数：错误');
+                                      }
+                                      final count = snapshot.data ?? 0;
+                                      return Text('游玩次数：$count');
+                                    },
+                                  ),
+                                  // 如果希望点击整个 ListTile 触发，trailing 可以是 null
+                                  // 或者你也可以放一个非交互的图标，或者一个有不同功能的 IconButton
+                                  trailing: const Icon(Icons.more_vert),
                                 ),
                               ),
                             ),
@@ -209,9 +209,11 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
             right: 16,
             bottom: 16,
             child: FloatingActionButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => AddPlayersPage()),
-              ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => AddPlayersPage()),
+                );
+              },
               child: const Icon(Icons.person_add),
             ),
           ),
@@ -220,99 +222,149 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
     );
   }
 
-  Future<void> showCleanPlayersDialog(
-      BuildContext context, WidgetRef ref) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => ConfirmationDialog(
+  Future<void> _showPlayerActionsMenu(
+    BuildContext pageContext,
+    Offset globalPosition, // 现在明确是 Offset
+    PlayerInfo player,
+    dynamic playerNotifier,
+  ) async {
+    final RelativeRect menuPosition = RelativeRect.fromLTRB(
+      globalPosition.dx,
+      globalPosition.dy,
+      globalPosition.dx + 1, // 让 showMenu 根据内容自动调整宽度
+      globalPosition.dy + 1, // 让 showMenu 根据内容自动调整高度
+    );
+
+    final String? selectedAction = await showMenu<String>(
+      context: pageContext,
+      position: menuPosition,
+      items: <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'edit',
+          child: Row(
+            children: [
+              Icon(Icons.edit, size: 20),
+              SizedBox(width: 8),
+              Text('编辑'),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete, size: 20),
+              SizedBox(width: 8),
+              Text('删除'),
+            ],
+          ),
+        ),
+      ],
+      elevation: 8.0,
+    );
+
+    if (selectedAction != null) {
+      switch (selectedAction) {
+        case 'edit':
+          _showEditDialog(player, playerNotifier);
+          break;
+        case 'delete':
+          _showDeleteDialog(player, playerNotifier);
+          break;
+      }
+    }
+  }
+
+  Future<void> showCleanPlayersDialog() async {
+    final result = await globalState.showCommonDialog(
+      child: ConfirmationDialog(
         title: '删除未使用玩家',
         content: '确定要删除所有未使用玩家吗？此操作不可恢复。',
         confirmText: '删除',
       ),
     );
-
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (result == true) {
       ref.read(playerProvider.notifier).cleanUnusedPlayers();
+      _clearAndRefreshPlayCountFutures();
     }
   }
 
   Future<void> _showEditDialog(
-      BuildContext context, PlayerInfo player, WidgetRef ref) async {
-    if (!context.mounted) return;
-
+      PlayerInfo player, dynamic playerNotifier) async {
     final playerListItemKey = GlobalKey<PlayerListItemState>();
-
     final result = await globalState.showCommonDialog(
       child: Dialog(
-        child: Container(
-          width: 400,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '编辑玩家',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              PlayerListItem(
-                key: playerListItemKey,
-                initialPlayer: player,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+        child: Builder(
+          builder: (dialogContext) {
+            return Container(
+              width: 400,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('取消'),
+                  Text(
+                    '编辑玩家',
+                    style: Theme.of(dialogContext).textTheme.titleLarge,
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () {
-                      final playerListItem = playerListItemKey.currentState;
-                      if (playerListItem != null &&
-                          playerListItem.hasValidName()) {
-                        final updatedPlayer = playerListItem.getPlayerInfo();
-                        ref
-                            .read(playerProvider.notifier)
-                            .updatePlayer(updatedPlayer);
-                        Navigator.of(context).pop(true);
-                      }
-                    },
-                    child: const Text('保存'),
+                  const SizedBox(height: 16),
+                  PlayerListItem(
+                    key: playerListItemKey,
+                    initialPlayer: player,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          globalState.navigatorKey.currentState?.pop();
+                        },
+                        child: const Text('取消'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () {
+                          final playerListItem = playerListItemKey.currentState;
+                          if (playerListItem != null &&
+                              playerListItem.hasValidName()) {
+                            final updatedPlayer =
+                                playerListItem.getPlayerInfo();
+                            playerNotifier.updatePlayer(updatedPlayer);
+                            globalState.navigatorKey.currentState?.pop();
+                            _playerPlayCountFutures.remove(updatedPlayer.pid);
+                            if (mounted) setState(() {});
+                          }
+                        },
+                        child: const Text('保存'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
-
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (result == true) {
       ref.read(playerProvider.notifier).loadPlayers();
+      _clearAndRefreshPlayCountFutures();
     }
   }
 
   Future<void> _showDeleteDialog(
-      BuildContext context, PlayerInfo player, WidgetRef ref) async {
-    final isUsed =
-        await ref.read(playerProvider.notifier).isPlayerInUse(player.pid);
-
-    if (!context.mounted) return;
-
+      PlayerInfo player, dynamic playerNotifier) async {
+    final isUsed = await playerNotifier.isPlayerInUse(player.pid);
     if (isUsed) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
+      globalState.showCommonDialog(
+        child: AlertDialog(
           title: const Text('无法删除'),
           content: Text('${player.name} 已被使用，不能删除'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => globalState.navigatorKey.currentState?.pop(),
               child: const Text('确定'),
             ),
           ],
@@ -320,19 +372,19 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
       );
       return;
     }
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => ConfirmationDialog(
-        title: '删除玩家',
-        content: '确定要删除玩家 ${player.name} 吗？',
-        confirmText: '删除',
-      ),
+    final result = await globalState.showCommonDialog(
+      child: Builder(builder: (dialogContext) {
+        return ConfirmationDialog(
+          title: '删除玩家',
+          content: '确定要删除玩家 ${player.name} 吗？',
+          confirmText: '删除',
+        );
+      }),
     );
-
-    if (!context.mounted) return;
     if (result == true) {
-      ref.read(playerProvider.notifier).deletePlayer(player.pid);
+      playerNotifier.deletePlayer(player.pid);
+      _playerPlayCountFutures.remove(player.pid);
+      if (mounted) setState(() {});
     }
   }
 }

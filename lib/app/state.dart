@@ -249,9 +249,7 @@ class GlobalState {
                   });
                 }).then((value) {
                   result = value;
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
+                  globalState.navigatorKey.currentState?.pop();
                 });
               }
 
@@ -329,13 +327,13 @@ class GlobalState {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop(false);
+                  globalState.navigatorKey.currentState?.pop(false);
                 },
                 child: const Text('取消'),
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop(true);
+                  globalState.navigatorKey.currentState?.pop(true);
                 },
                 child: Text(confirmText ?? '确认'),
               )

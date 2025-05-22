@@ -394,13 +394,13 @@ class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => globalState.navigatorKey.currentState?.pop(),
           child: Text('取消'),
         ),
         TextButton(
           onPressed: () {
             final value = int.tryParse(_controller.text) ?? 0;
-            Navigator.pop(context);
+            globalState.navigatorKey.currentState?.pop();
             if (!isAllowNegative && value < 0) {
               AppSnackBar.warn('当前模板设置不允许输入负数！');
               return;

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:chinese_font_library/chinese_font_library.dart';
+import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/error_handler.dart';
@@ -12,6 +13,7 @@ import 'package:counters/features/player/player_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
 import 'package:counters/features/score/poker50/poker50_page.dart';
 import 'package:counters/features/setting/setting_page.dart';
+import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/template/template_page.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
@@ -21,9 +23,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'package:window_manager/window_manager.dart';
-
-import 'app/state.dart';
-import 'features/setting/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -163,7 +162,7 @@ class MyApp extends ConsumerWidget {
         actions: [
           TextButton(
             child: const Text('我知道了'),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => globalState.navigatorKey.currentState?.pop,
           ),
         ],
       ),
@@ -196,6 +195,8 @@ class MyApp extends ConsumerWidget {
   }
 }
 
+// MainTabsScreen 是应用程序的主界面，包含主要的 Tab。
+// 它根据屏幕尺寸和用户设置切换使用底部导航栏或侧边导航栏。
 class MainTabsScreen extends ConsumerStatefulWidget {
   final int initialIndex;
 
@@ -205,12 +206,13 @@ class MainTabsScreen extends ConsumerStatefulWidget {
   ConsumerState<MainTabsScreen> createState() => _MainTabsScreenState();
 }
 
+// _MainTabsScreenState 管理 MainTabsScreen 的状态，包括当前选中的 Tab 索引和 PageController。
 class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
     with WidgetsBindingObserver {
   late int _selectedIndex;
   late PageController _pageController;
 
-  // 定义导航目标常量
+  // 定义导航目标常量列表，包含每个 Tab 的图标和标签文本。
   static const List<({Icon icon, Icon selectedIcon, String label})>
       _navigationItems = [
     (
@@ -235,6 +237,7 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
     ),
   ];
 
+  // 定义与导航目标对应的屏幕 Widget 列表。
   final List<Widget> _screens = [
     const HomePage(),
     const PlayerManagementPage(),
@@ -242,15 +245,19 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
     const SettingPage(),
   ];
 
-  // 判断是否为桌面模式
+  // 判断当前是否处于桌面模式。
+  // 桌面模式的条件是：用户在设置中启用了桌面模式 AND 屏幕宽度大于等于 600。
   bool get isDesktopMode {
     if (!mounted) return false;
 
+    // 获取用户设置中是否启用桌面模式。
     final enableDesktopMode = globalState.enableDesktopMode;
 
     Log.i('enableDesktopMode: $enableDesktopMode');
 
+    // 获取当前屏幕宽度。
     final width = MediaQuery.of(context).size.width;
+    // 只有当启用桌面模式且宽度达到阈值时才返回 true。
     var bool = enableDesktopMode && width >= 600; // 只有设置启用且宽度大于等于600时才认为是桌面模式
     Log.i('桌面模式: $bool');
     return bool;
@@ -259,85 +266,77 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.initialIndex;
-    // 尝试从 PageStorage 中恢复保存的页面索引
+    // 尝试从 PageStorage 中恢复保存的页面索引，或者使用初始索引。
     final initialPage = PageStorage.of(context)
             .readState(context, identifier: 'mainTabsPage') as int? ??
-        _selectedIndex;
-    _pageController = PageController(initialPage: initialPage);
+        widget.initialIndex; // 使用 widget.initialIndex 作为默认值
+    _selectedIndex = initialPage; // 初始化 _selectedIndex 为恢复的或初始的页面索引
 
-    // 添加屏幕方向变化监听
+    // 初始化 PageController，使用恢复的或初始的页面索引。
+    _pageController = PageController(initialPage: _selectedIndex);
+
+    // 添加屏幕指标变化的监听器，用于处理屏幕旋转等情况。
     WidgetsBinding.instance.addObserver(this);
-
-    // 在第一帧构建完成后，同步 _selectedIndex 和 PageController 的实际页面。
-    // 这处理了 PageController 从 PageStorage 恢复页面的情况。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted &&
-          _pageController.hasClients &&
-          _pageController.page != null) {
-        final currentPageFromController = _pageController.page!.round();
-        if (_selectedIndex != currentPageFromController) {
-          // 如果 PageController 恢复的页面与当前 _selectedIndex 不同，
-          // 更新 _selectedIndex 以保持同步，避免 didChangeMetrics 使用错误的索引。
-          setState(() {
-            _selectedIndex = currentPageFromController;
-          });
-        }
-      }
-    });
   }
 
   @override
   void dispose() {
+    // 销毁 PageController。
     _pageController.dispose();
-    // 移除屏幕方向变化监听
+    // 移除屏幕指标变化的监听器。
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
+  // 当屏幕指标发生变化时调用（例如屏幕旋转或进入分屏模式）。
   @override
   void didChangeMetrics() {
     super.didChangeMetrics(); // 调用父类方法是一个好习惯
-    // 当屏幕指标发生变化时（例如旋转），确保 PageView 位于正确的页面。
-    // _selectedIndex 此时应该由于 initState 中的 postFrameCallback
-    // 或用户通过 _onItemTapped 的交互而保持最新。
-    if (mounted && _pageController.hasClients) {
-      // 检查控制器的页面是否已经是它应该在的位置。
-      // 这可以防止在页面已经正确时进行不必要的跳转。
-      // page 可能是 null 或 double，所以取整进行比较。
-      final controllerPage = _pageController.page?.round();
-      if (controllerPage != _selectedIndex) {
-        // 使用 jumpToPage，因为 animateToPage 在方向更改期间可能会有视觉上的突兀感。
+    // 当屏幕指标发生变化时（如旋转），确保 PageView 显示当前选中的页面。
+    // 使用 WidgetsBinding.instance.addPostFrameCallback 确保在布局完成后执行跳转。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pageController.hasClients &&
+          _pageController.page?.round() != _selectedIndex) {
         _pageController.jumpToPage(_selectedIndex);
       }
-    }
+    });
   }
 
+  // 处理底部或侧边导航栏项目点击事件。
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-      // 保存当前的页面索引到 PageStorage
-      PageStorage.of(context)
-          .writeState(context, index, identifier: 'mainTabsPage');
-      // 如果 PageView 不允许用户滑动，使用 jumpToPage 进行即时更改，无需动画。
-      _pageController.jumpToPage(index);
-    });
+    // 只有当点击的项目不是当前选中项时才进行更新和跳转。
+    if (_selectedIndex != index) {
+      setState(() {
+        _selectedIndex = index;
+        // 保存当前的页面索引到 PageStorage，以便应用重启后恢复。
+        PageStorage.of(context)
+            .writeState(context, index, identifier: 'mainTabsPage');
+        // 使用 jumpToPage 进行即时更改，无需动画，确保页面立即切换。
+        _pageController.jumpToPage(index);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // 根据是否处于桌面模式来构建不同的布局。
     if (isDesktopMode) {
+      // 桌面模式：使用 Scaffold + Row + NavigationRail + Expanded(PageView)
       return Scaffold(
         body: Row(
           children: [
+            // 侧边导航栏 NavigationRail。
             NavigationRail(
+              // extended 属性根据屏幕宽度决定是否显示文本标签。
               extended: MediaQuery.of(context).size.width >= 800,
               selectedIndex: _selectedIndex,
+              // 使用 _selectedIndex
               onDestinationSelected: _onItemTapped,
               minWidth: 72,
-              minExtendedWidth: 130,
+              minExtendedWidth: 120,
               useIndicator: true,
               groupAlignment: -0.85,
+              // 生成 NavigationRailDestination 列表。
               destinations: _navigationItems
                   .map((item) => NavigationRailDestination(
                         icon: item.icon,
@@ -346,12 +345,15 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
                       ))
                   .toList(),
             ),
+            // 分隔线。
             const VerticalDivider(thickness: 1, width: 1),
+            // PageView 占据剩余空间，显示当前选中的页面。
             Expanded(
               child: PageView(
-                // 添加 PageStorageKey 来保存和恢复页面位置
+                // 添加 PageStorageKey 来保存和恢复页面位置。
                 key: const PageStorageKey<String>('mainTabsPageView'),
-                physics: const NeverScrollableScrollPhysics(), // 禁止用户滑动切换
+                physics:
+                    const NeverScrollableScrollPhysics(), // 禁止用户滑动切换，强制通过导航栏切换。
                 controller: _pageController,
                 children: _screens,
               ),
@@ -359,27 +361,30 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
           ],
         ),
       );
+    } else {
+      // 非桌面模式（移动设备）：使用 Scaffold + PageView + BottomNavigationBar
+      return Scaffold(
+        body: PageView(
+          // 添加 PageStorageKey 来保存和恢复页面位置。
+          key: const PageStorageKey<String>('mainTabsPageView'),
+          physics: const NeverScrollableScrollPhysics(), // 禁止用户滑动切换，强制通过导航栏切换。
+          controller: _pageController,
+          children: _screens,
+        ),
+        // 底部导航栏 NavigationBar。
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _selectedIndex, // 使用 _selectedIndex
+          onDestinationSelected: _onItemTapped,
+          // 生成 NavigationDestination 列表。
+          destinations: _navigationItems
+              .map((item) => NavigationDestination(
+                    icon: item.icon,
+                    selectedIcon: item.selectedIcon,
+                    label: item.label,
+                  ))
+              .toList(),
+        ),
+      );
     }
-
-    return Scaffold(
-      body: PageView(
-        // 添加 PageStorageKey 来保存和恢复页面位置
-        key: const PageStorageKey<String>('mainTabsPageView'),
-        physics: const NeverScrollableScrollPhysics(), // 禁止用户滑动切换
-        controller: _pageController,
-        children: _screens,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
-        destinations: _navigationItems
-            .map((item) => NavigationDestination(
-                  icon: item.icon,
-                  selectedIcon: item.selectedIcon,
-                  label: item.label,
-                ))
-            .toList(),
-      ),
-    );
   }
 }

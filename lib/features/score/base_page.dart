@@ -122,12 +122,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     content: Text('退出当前页面将会断开与主机的连接，确定要退出吗？'),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
+                        onPressed: () =>
+                            globalState.navigatorKey.currentState?.pop(false),
                         child: Text('取消'),
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.of(context).pop(true);
+                          globalState.navigatorKey.currentState?.pop(true);
                         },
                         child: Text('确定'),
                       ),
@@ -139,12 +140,12 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   ref.invalidate(scoreProvider);
                   AppSnackBar.show('已断开连接');
                   if (mounted) {
-                    Navigator.of(context).pop();
+                    globalState.navigatorKey.currentState?.pop();
                   }
                 }
               } else {
                 if (mounted) {
-                  Navigator.of(context).pop();
+                  globalState.navigatorKey.currentState?.pop();
                 }
               }
             },
@@ -401,7 +402,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                 if (currentLanState.isHost || currentLanState.isConnected)
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      globalState.navigatorKey.currentState?.pop();
                       ref.read(lanProvider.notifier).disposeManager();
                       AppSnackBar.show(
                           currentLanState.isHost ? '已停止主机' : '已断开连接');
@@ -414,7 +415,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text('关闭'),
           ),
         ],
@@ -453,7 +454,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           content: Text('未能获取目标分数配置，请检查模板设置'),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context), child: Text('确定'))
+                onPressed: () => globalState.navigatorKey.currentState?.pop(),
+                child: Text('确定'))
           ],
         ),
       );
@@ -516,12 +518,12 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             '当前进度将会自动保存并标记为已完成，并启动一个新的计分。'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text('取消'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              globalState.navigatorKey.currentState?.pop();
               final template = ref
                   .read(templatesProvider.notifier)
                   .getTemplate(widget.templateId);

@@ -1,3 +1,4 @@
+import 'package:counters/app/state.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
@@ -40,7 +41,7 @@ class _AddPlayersPageState extends State<AddPlayersPage> {
     }
 
     if (hasValidPlayers) {
-      Navigator.pop(context);
+      globalState.navigatorKey.currentState?.pop();
     } else {
       AppSnackBar.warn('请至少输入一个有效的玩家名称');
     }

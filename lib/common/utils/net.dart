@@ -2,15 +2,14 @@ import 'dart:convert';
 
 import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
+import 'package:counters/common/utils/error_handler.dart';
+import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import 'error_handler.dart';
-import 'log.dart';
 
 class UpdateChecker {
   static String latestReleaseUrl = '';
@@ -117,7 +116,7 @@ class UpdateChecker {
             : '未检查到新版本\n$versionInfo'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text(hasUpdate ? '稍后' : '确定'),
           ),
           if (hasUpdate)
@@ -293,7 +292,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
       actions: [
         if (!isLoading)
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text(hasUpdate ? '稍后再说' : '关闭'),
           ),
         if (hasUpdate)

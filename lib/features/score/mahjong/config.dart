@@ -18,33 +18,20 @@ class MahjongConfigPage extends BaseConfigPage {
 }
 
 class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
-  final _templateNameController = TextEditingController();
-  final _targetScoreController = TextEditingController();
-  final _playerCountController = TextEditingController();
   late TextEditingController _baseScoreController;
   String? _baseScoreError;
-  bool _checkMultiplier = false;
-  bool _bombMultiplyMode = false; // true: 每次×2, false: 增加倍数
 
   @override
   void initState() {
     super.initState();
     final template = widget.oriTemplate as MahjongTemplate;
-    _templateNameController.text = template.templateName;
-    _targetScoreController.text = template.targetScore.toString();
-    _playerCountController.text = template.playerCount.toString();
     _baseScoreController = TextEditingController(
       text: template.baseScore.toString(),
     );
-    _checkMultiplier = template.checkMultiplier;
-    _bombMultiplyMode = template.bombMultiplyMode;
   }
 
   @override
   void dispose() {
-    _templateNameController.dispose();
-    _targetScoreController.dispose();
-    _playerCountController.dispose();
     _baseScoreController.dispose();
     super.dispose();
   }
@@ -79,14 +66,12 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
 
     final template = widget.oriTemplate as MahjongTemplate;
     final updated = template.copyWith(
-      templateName: _templateNameController.text,
-      playerCount: int.parse(_playerCountController.text),
-      targetScore: int.parse(_targetScoreController.text),
+      templateName: templateNameController.text,
+      playerCount: int.parse(playerCountController.text),
+      targetScore: int.parse(targetScoreController.text),
       players: players,
       otherSet: {
         'baseScore': int.parse(_baseScoreController.text),
-        'checkMultiplier': _checkMultiplier,
-        'bombMultiplyMode': _bombMultiplyMode,
       },
     );
 
@@ -112,19 +97,17 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
     final rootId = getRootBaseTemplateId() ?? widget.oriTemplate.tid;
 
     final newTemplate = MahjongTemplate(
-      templateName: _templateNameController.text,
-      playerCount: int.parse(_playerCountController.text),
-      targetScore: int.parse(_targetScoreController.text),
+      templateName: templateNameController.text,
+      playerCount: playerCount,
+      targetScore: targetScore,
       players: players,
       baseTemplateId: rootId,
       isSystemTemplate: false,
       baseScore: int.parse(_baseScoreController.text),
-      checkMultiplier: _checkMultiplier,
-      bombMultiplyMode: _bombMultiplyMode,
     );
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
-    Navigator.pop(context);
+    globalState.navigatorKey.currentState?.pop();
   }
 
   @override

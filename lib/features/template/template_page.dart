@@ -195,7 +195,7 @@ class _TemplateCard extends ConsumerWidget {
           content: const Text('该模板正在计分，请结束计分后删除。'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => globalState.navigatorKey.currentState?.pop(),
               child: const Text('确认'),
             ),
           ],
@@ -212,7 +212,7 @@ class _TemplateCard extends ConsumerWidget {
           content: const Text('当前模板已有关联计分记录，会同步清除所有关联记录。\n是否继续删除？'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => globalState.navigatorKey.currentState?.pop(),
               child: const Text('取消'),
             ),
             TextButton(
@@ -222,7 +222,7 @@ class _TemplateCard extends ConsumerWidget {
                     .deleteTemplate(template.tid);
                 await scoreNotifier.clearSessionsByTemplate(template.tid);
                 if (!context.mounted) return;
-                Navigator.pop(context);
+                globalState.navigatorKey.currentState?.pop();
               },
               child:
                   const Text('删除并清除关联计分', style: TextStyle(color: Colors.red)),
@@ -238,7 +238,7 @@ class _TemplateCard extends ConsumerWidget {
           content: const Text('确定要永久删除此模板吗？'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => globalState.navigatorKey.currentState?.pop(),
               child: const Text('取消'),
             ),
             TextButton(
@@ -247,7 +247,7 @@ class _TemplateCard extends ConsumerWidget {
                     .read(templatesProvider.notifier)
                     .deleteTemplate(template.tid);
                 if (!context.mounted) return;
-                Navigator.pop(context);
+                globalState.navigatorKey.currentState?.pop();
               },
               child: const Text('删除', style: TextStyle(color: Colors.red)),
             ),
@@ -269,9 +269,8 @@ class _TemplateCard extends ConsumerWidget {
                 title: const Text('另存新模板'),
                 leading: const Icon(Icons.edit),
                 onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
+                  globalState.navigatorKey.currentState?.pop();
+                  globalState.navigatorKey.currentState?.push(
                     MaterialPageRoute(
                       builder: (_) {
                         if (template is Poker50Template) {
@@ -307,9 +306,8 @@ class _TemplateCard extends ConsumerWidget {
                 title: const Text('编辑模板'),
                 leading: const Icon(Icons.edit),
                 onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
+                  globalState.navigatorKey.currentState?.pop();
+                  globalState.navigatorKey.currentState?.push(
                     MaterialPageRoute(
                       builder: (_) {
                         if (template is Poker50Template) {
@@ -337,6 +335,9 @@ class _TemplateCard extends ConsumerWidget {
                   // 获取当前状态，等待scoreProvider加载完成
                   final scoreState = await ref.watch(scoreProvider.future);
 
+                  // 添加 mounted 检查
+                  if (!context.mounted) return;
+
                   if (scoreState.currentSession != null) {
                     globalState.showCommonDialog(
                       child: AlertDialog(
@@ -345,7 +346,9 @@ class _TemplateCard extends ConsumerWidget {
                         actions: [
                           TextButton(
                             child: const Text('确认'),
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () => globalState
+                                .navigatorKey.currentState
+                                ?.pop(context),
                           ),
                         ],
                       ),
@@ -368,7 +371,7 @@ class _TemplateCard extends ConsumerWidget {
                 leading: const Icon(Icons.delete, color: Colors.red),
                 onTap: () async {
                   // 先关闭当前弹窗
-                  Navigator.pop(context);
+                  globalState.navigatorKey.currentState?.pop();
 
                   // 使用globalState.navigatorKey.currentContext来获取当前有效的context
                   if (globalState.navigatorKey.currentContext != null) {

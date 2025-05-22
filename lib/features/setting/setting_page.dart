@@ -399,19 +399,19 @@ class _SettingPageState extends ConsumerState<SettingPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text('取消'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              globalState.navigatorKey.currentState?.pop();
               _resetToDefaultPath();
             },
             child: Text('恢复默认'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              globalState.navigatorKey.currentState?.pop();
               _selectStoragePath();
             },
             child: Text('选择目录'),
@@ -430,12 +430,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
             '此操作不可恢复，是否继续？'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text('取消'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              globalState.navigatorKey.currentState?.pop();
               try {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.clear();
@@ -567,12 +567,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
             '此操作不可恢复，是否继续？'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text('取消'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              globalState.navigatorKey.currentState?.pop();
               try {
                 await DatabaseHelper.instance.resetDatabase();
                 if (mounted) {
@@ -632,6 +632,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     // 获取当前主题模式
     final currentThemeMode = ref.read(themeProvider).themeMode;
 
+    // 在显示菜单前获取 themeProvider.notifier
+    final themeNotifier = ref.read(themeProvider.notifier);
+
     showMenu<ThemeMode>(
       context: context,
       position: position,
@@ -654,13 +657,16 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       }).toList(),
     ).then((value) {
       if (value != null) {
-        // 使用Riverpod提供者更新主题模式
-        ref.read(themeProvider.notifier).setThemeMode(value);
+        // 使用之前获取的 themeNotifier 更新主题模式
+        themeNotifier.setThemeMode(value);
       }
     });
   }
 
   void _showColorPickerDialog() {
+    // 在显示对话框前获取 themeProvider.notifier
+    final themeNotifier = ref.read(themeProvider.notifier);
+
     globalState.showCommonDialog(
       child: Dialog(
         child: ConstrainedBox(
@@ -687,9 +693,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                         ref.read(themeProvider).themeColor;
                     return InkWell(
                       onTap: () {
-                        // 使用Riverpod提供者更新主题颜色
-                        ref.read(themeProvider.notifier).setThemeColor(color);
-                        Navigator.pop(context);
+                        // 使用之前获取的 themeNotifier 更新主题颜色
+                        themeNotifier.setThemeColor(color);
+                        globalState.navigatorKey.currentState?.pop();
                       },
                       child: Container(
                         width: 40,
@@ -710,7 +716,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => globalState.navigatorKey.currentState?.pop(),
                   child: Text('取消'),
                 ),
               ],

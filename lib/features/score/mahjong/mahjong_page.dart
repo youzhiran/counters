@@ -384,7 +384,7 @@ class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => globalState.navigatorKey.currentState?.pop(),
           child: const Text('取消'),
         ),
         TextButton(
@@ -392,7 +392,7 @@ class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
             final inputText = _controller.text.trim();
             if (inputText.isEmpty) {
               widget.onConfirm(0); // 如果为空，则认为是0分
-              Navigator.pop(context);
+              globalState.navigatorKey.currentState?.pop();
               ref.read(scoreProvider.notifier).updateHighlight();
               return;
             }
@@ -403,7 +403,7 @@ class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
             }
             // 将输入的小数分乘以100并四舍五入转为整数存储
             final scoreToSave = (value * 100).round();
-            Navigator.pop(context);
+            globalState.navigatorKey.currentState?.pop();
             widget.onConfirm(scoreToSave);
             ref.read(scoreProvider.notifier).updateHighlight();
           },

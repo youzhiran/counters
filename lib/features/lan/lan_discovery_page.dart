@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:counters/app/state.dart';
 import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/snackbar.dart';
@@ -59,7 +60,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       final lanState = ref.read(lanProvider);
       if (!lanState.isConnected) {
         if (!mounted) return;
-        Navigator.of(context).pop(); // 关闭加载对话框
+        globalState.navigatorKey.currentState?.pop(); // 关闭加载对话框
         AppSnackBar.error('连接失败，请重试');
         return;
       }
@@ -109,7 +110,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       // 5. 检查同步结果
       if (!templateSynced) {
         if (!mounted) return;
-        Navigator.of(context).pop(); // 关闭加载对话框
+        globalState.navigatorKey.currentState?.pop(); // 关闭加载对话框
         AppSnackBar.error('模板同步超时或失败，请重试');
         // 新增：断开连接
         lanNotifier.disposeManager();
@@ -118,7 +119,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
 
       // 模板已同步，关闭加载对话框并导航
       if (!mounted) return;
-      Navigator.of(context).pop();
+      globalState.navigatorKey.currentState?.pop();
 
       Navigator.pushReplacement(
         context,
@@ -130,7 +131,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       // 错误处理
       Log.e('连接或同步时出错. Error: $e\nStackTrace: $s'); // 记录错误和堆栈
       if (mounted) {
-        Navigator.of(context).pop(); // 确保出错时关闭对话框
+        globalState.navigatorKey.currentState?.pop(); // 确保出错时关闭对话框
         AppSnackBar.error('连接或同步时出错: $e');
       }
     }

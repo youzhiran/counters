@@ -1,3 +1,4 @@
+import 'package:counters/app/state.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/features/player/add_players.dart';
 import 'package:counters/features/player/player_provider.dart';
@@ -91,7 +92,7 @@ class _PlayerSelectDialogState extends ConsumerState<PlayerSelectDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => globalState.navigatorKey.currentState?.pop(),
           child: const Text('取消'),
         ),
         TextButton(

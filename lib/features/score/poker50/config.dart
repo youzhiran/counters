@@ -94,7 +94,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
     );
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
-    Navigator.pop(context);
+    globalState.navigatorKey.currentState?.pop();
   }
 
   @override
