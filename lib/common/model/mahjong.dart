@@ -2,6 +2,8 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 
 class MahjongTemplate extends BaseTemplate {
+  static const String templateType = 'mahjong';
+
   MahjongTemplate({
     String? tid,
     required String templateName,
@@ -40,7 +42,7 @@ class MahjongTemplate extends BaseTemplate {
   Map<String, dynamic> toMap() {
     return {
       'tid': tid,
-      'template_type': 'mahjong',
+      'template_type': templateType,
       'template_name': templateName,
       'player_count': playerCount,
       'target_score': targetScore,
@@ -88,7 +90,7 @@ class MahjongTemplate extends BaseTemplate {
     );
   }
 
-  factory MahjongTemplate.fromMap(
+  static MahjongTemplate fromMap(
       Map<String, dynamic> map, List<PlayerInfo> players) {
     final template = MahjongTemplate(
       tid: map['tid'] as String,
@@ -100,9 +102,7 @@ class MahjongTemplate extends BaseTemplate {
       baseTemplateId: map['base_template_id'] as String?,
     );
 
-    if (map['other_set'] != null) {
-      template.otherSetFromJson(map['other_set'] as String);
-    }
+    template.otherSetFromJson(map['other_set']);
 
     return template;
   }

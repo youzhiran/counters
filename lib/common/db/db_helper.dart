@@ -40,6 +40,16 @@ class DatabaseHelper {
       'base_template_id': null,
       'template_type': 'mahjong',
       'other_set': null
+    },
+    {
+      'tid': 'counter',
+      'template_name': '点击计数器',
+      'player_count': 4,
+      'target_score': 50,
+      'is_system_template': 1,
+      'base_template_id': null,
+      'template_type': 'counter',
+      'other_set': null
     }
     // 如果有新的系统模板，在这里添加
   ];

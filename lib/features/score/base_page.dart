@@ -11,6 +11,7 @@ import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/lan_test_page.dart';
+import 'package:counters/features/score/counter/config.dart';
 import 'package:counters/features/score/landlords/config.dart';
 import 'package:counters/features/score/mahjong/config.dart';
 import 'package:counters/features/score/poker50/config.dart';
@@ -18,6 +19,8 @@ import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../common/model/counter.dart';
 
 abstract class BaseSessionPage extends ConsumerStatefulWidget {
   final String templateId;
@@ -203,6 +206,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                                 oriTemplate: template, isReadOnly: true);
                           } else if (template is MahjongTemplate) {
                             configPage = MahjongConfigPage(
+                                oriTemplate: template, isReadOnly: true);
+                          } else if (template is CounterTemplate) {
+                            configPage = CounterConfigPage(
                                 oriTemplate: template, isReadOnly: true);
                           } else {
                             AppSnackBar.warn(

@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
+import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/mahjong.dart';
@@ -13,6 +14,7 @@ import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
+import 'package:counters/features/score/counter/counter_page.dart';
 import 'package:counters/features/score/landlords/landlords_page.dart';
 import 'package:counters/features/score/mahjong/mahjong_page.dart';
 import 'package:counters/features/score/poker50/poker50_page.dart';
@@ -484,6 +486,7 @@ class HomePage extends ConsumerWidget {
 
 class _SessionPageLoader extends ConsumerStatefulWidget {
   final String templateId;
+
   const _SessionPageLoader({required this.templateId});
 
   @override
@@ -531,6 +534,8 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
           return LandlordsSessionPage(templateId: widget.templateId);
         } else if (template is MahjongTemplate) {
           return MahjongPage(templateId: widget.templateId);
+        } else if (template is CounterTemplate) {
+          return CounterSessionPage(templateId: widget.templateId);
         }
         Future.microtask(() => AppSnackBar.error('未知的模板类型'));
         return const HomePage();

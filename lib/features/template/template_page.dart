@@ -1,10 +1,12 @@
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
+import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/util.dart';
+import 'package:counters/features/score/counter/config.dart';
 import 'package:counters/features/score/landlords/config.dart';
 import 'package:counters/features/score/mahjong/config.dart';
 import 'package:counters/features/score/poker50/config.dart';
@@ -257,6 +259,31 @@ class _TemplateCard extends ConsumerWidget {
     }
   }
 
+  // 提取重复的导航逻辑到配置页面的方法
+  void _navigateToConfigPage(
+      BuildContext context, WidgetRef ref, BaseTemplate template) {
+    globalState.navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (_) {
+          // 使用 switch 语句和类型模式匹配来导航
+          switch (template) {
+            case Poker50Template():
+              return Poker50ConfigPage(oriTemplate: template);
+            case LandlordsTemplate():
+              return LandlordsConfigPage(oriTemplate: template);
+            case MahjongTemplate():
+              return MahjongConfigPage(oriTemplate: template);
+            case CounterTemplate():
+              return CounterConfigPage(oriTemplate: template);
+            default:
+              Log.w('不支持的模板类型: ${template.runtimeType}');
+              return const SizedBox.shrink();
+          }
+        },
+      ),
+    );
+  }
+
   void _handleTap(BuildContext context, WidgetRef ref) {
     if (template.isSystemTemplate) {
       globalState.showCommonDialog(
@@ -270,25 +297,8 @@ class _TemplateCard extends ConsumerWidget {
                 leading: const Icon(Icons.edit),
                 onTap: () {
                   globalState.navigatorKey.currentState?.pop();
-                  globalState.navigatorKey.currentState?.push(
-                    MaterialPageRoute(
-                      builder: (_) {
-                        if (template is Poker50Template) {
-                          return Poker50ConfigPage(
-                              oriTemplate: template as Poker50Template);
-                        } else if (template is LandlordsTemplate) {
-                          return LandlordsConfigPage(
-                              oriTemplate: template as LandlordsTemplate);
-                        } else if (template is MahjongTemplate) {
-                          return MahjongConfigPage(
-                              oriTemplate: template as MahjongTemplate);
-                        } else {
-                          Log.w('不支持的模板类型: ${template.runtimeType}');
-                          return const SizedBox.shrink();
-                        }
-                      },
-                    ),
-                  );
+                  // 调用提取出的导航方法
+                  _navigateToConfigPage(context, ref, template);
                 },
               ),
             ],
@@ -307,25 +317,8 @@ class _TemplateCard extends ConsumerWidget {
                 leading: const Icon(Icons.edit),
                 onTap: () {
                   globalState.navigatorKey.currentState?.pop();
-                  globalState.navigatorKey.currentState?.push(
-                    MaterialPageRoute(
-                      builder: (_) {
-                        if (template is Poker50Template) {
-                          return Poker50ConfigPage(
-                              oriTemplate: template as Poker50Template);
-                        } else if (template is LandlordsTemplate) {
-                          return LandlordsConfigPage(
-                              oriTemplate: template as LandlordsTemplate);
-                        } else if (template is MahjongTemplate) {
-                          return MahjongConfigPage(
-                              oriTemplate: template as MahjongTemplate);
-                        } else {
-                          Log.w('不支持的模板类型: ${template.runtimeType}');
-                          return const SizedBox.shrink();
-                        }
-                      },
-                    ),
-                  );
+                  // 调用提取出的导航方法
+                  _navigateToConfigPage(context, ref, template);
                 },
               ),
               ListTile(

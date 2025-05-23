@@ -415,28 +415,25 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
           itemCount: players.length,
-          itemBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-            child: ListTile(
-              contentPadding: const EdgeInsets.only(left: 16, right: 16),
-              leading: PlayerAvatar.build(context, players[index]),
-              title: Text(players[index].name),
-              trailing: widget.isReadOnly
-                  ? null
-                  : IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () {
-                        setState(() {
-                          players.removeAt(index);
-                          nameControllers.removeAt(index);
-                        });
-                      },
-                    ),
-            ),
+          itemBuilder: (context, index) => ListTile(
+            leading: PlayerAvatar.build(context, players[index]),
+            contentPadding: const EdgeInsets.only(left: 16, right: 16),
+            title: Text(players[index].name),
+            trailing: widget.isReadOnly
+                ? null
+                : IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () {
+                      setState(() {
+                        players.removeAt(index);
+                        nameControllers.removeAt(index);
+                      });
+                    },
+                  ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: OutlinedButton.icon(
             onPressed: (players.length <
                     (int.tryParse(playerCountController.text) ?? 0))

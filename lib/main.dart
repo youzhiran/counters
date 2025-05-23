@@ -17,7 +17,6 @@ import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/template/template_page.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -26,22 +25,6 @@ import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 设置屏幕方向
-  if (Platform.isAndroid || Platform.isIOS) {
-    // 在移动设备上锁定为竖屏
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
-  } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    // 在桌面端允许所有方向
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-  }
 
   // 全局异常捕获
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -253,13 +236,13 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
     // 获取用户设置中是否启用桌面模式。
     final enableDesktopMode = globalState.enableDesktopMode;
 
-    Log.i('enableDesktopMode: $enableDesktopMode');
-
     // 获取当前屏幕宽度。
     final width = MediaQuery.of(context).size.width;
     // 只有当启用桌面模式且宽度达到阈值时才返回 true。
     var bool = enableDesktopMode && width >= 600; // 只有设置启用且宽度大于等于600时才认为是桌面模式
-    Log.i('桌面模式: $bool');
+
+    // Log.i('enableDesktopMode: $enableDesktopMode');
+    // Log.i('桌面模式: $bool');
     return bool;
   }
 

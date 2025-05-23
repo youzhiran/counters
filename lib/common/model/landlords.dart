@@ -2,6 +2,8 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 
 class LandlordsTemplate extends BaseTemplate {
+  static const String templateType = 'landlords';
+
   LandlordsTemplate({
     super.tid,
     required super.templateName,
@@ -40,7 +42,7 @@ class LandlordsTemplate extends BaseTemplate {
       'target_score': targetScore,
       'is_system_template': isSystemTemplate ? 1 : 0,
       'base_template_id': baseTemplateId,
-      'template_type': 'landlords',
+      'template_type': templateType,
       'other_set': otherSetToJson(),
       'players': players.map((p) => p.toJson()).toList(),
     };

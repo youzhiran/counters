@@ -1,28 +1,28 @@
 import 'package:counters/app/state.dart';
-import 'package:counters/common/model/poker50.dart';
+import 'package:counters/common/model/counter.dart';
 import 'package:counters/features/score/base_config_page.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Poker50ConfigPage extends BaseConfigPage {
-  const Poker50ConfigPage({
+class CounterConfigPage extends BaseConfigPage {
+  const CounterConfigPage({
     required super.oriTemplate,
     super.isReadOnly,
     super.key,
   });
 
   @override
-  ConsumerState<Poker50ConfigPage> createState() => _Poker50ConfigPageState();
+  ConsumerState<CounterConfigPage> createState() => _CounterConfigPageState();
 }
 
-class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
+class _CounterConfigPageState extends BaseConfigPageState<CounterConfigPage> {
   late bool _allowNegative = false;
 
   @override
   void initState() {
     super.initState();
-    final template = widget.oriTemplate as Poker50Template;
+    final template = widget.oriTemplate as CounterTemplate;
 
     _allowNegative = template.isAllowNegative;
   }
@@ -54,7 +54,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
       return;
     }
 
-    final template = widget.oriTemplate as Poker50Template;
+    final template = widget.oriTemplate as CounterTemplate;
     final updated = template.copyWith(
       templateName: templateNameController.text,
       playerCount: int.parse(playerCountController.text),
@@ -84,7 +84,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
 
     final rootId = getRootBaseTemplateId() ?? widget.oriTemplate.tid;
 
-    final newTemplate = Poker50Template(
+    final newTemplate = CounterTemplate(
       templateName: templateNameController.text,
       playerCount: playerCount,
       targetScore: targetScore,
@@ -98,8 +98,9 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
   }
 
   @override
-  String getTemplateDescription() => '• 适用于：类似达到指定分数后计算胜局的游戏，计分最少的玩家获胜。\n'
-      '• 典型情况：3人打牌记录剩余手牌数量，累计到50张为败，此时计分最少的玩家获胜。';
+  String getTemplateDescription() => '• 适用于：对玩家或其他事物进行点击+1的计数操作。\n'
+      '• 本模板不会记录计分轮次和走势\n'
+      '• 点击单个格子可+1分，长按可设置分数';
 
   Widget _buildOtherList() {
     return Column(
@@ -110,8 +111,9 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
           child: Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
         ),
         SwitchListTile(
+          contentPadding: const EdgeInsets.only(left: 16, right: 16),
           title: const Text('计分允许输入负数'),
-          subtitle: const Text('启用后玩家计分可以输入负数值'),
+          subtitle: const Text('启用后计分可以输入负数值'),
           value: _allowNegative,
           onChanged: (bool value) {
             setState(() {
