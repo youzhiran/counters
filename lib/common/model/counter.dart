@@ -1,10 +1,10 @@
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 
-class Poker50Template extends BaseTemplate {
-  static const String templateType = 'poker50';
+class CounterTemplate extends BaseTemplate {
+  static const String templateType = 'counter';
 
-  Poker50Template({
+  CounterTemplate({
     super.tid,
     required super.templateName,
     required super.playerCount,
@@ -35,9 +35,9 @@ class Poker50Template extends BaseTemplate {
     };
   }
 
-  static Poker50Template fromMap(
+  static CounterTemplate fromMap(
       Map<String, dynamic> map, List<PlayerInfo> players) {
-    final template = Poker50Template(
+    final template = CounterTemplate(
       tid: map['tid'],
       templateName: map['template_name'],
       playerCount: map['player_count'],
@@ -52,7 +52,7 @@ class Poker50Template extends BaseTemplate {
   }
 
   @override
-  Poker50Template copyWith({
+  CounterTemplate copyWith({
     String? tid,
     String? templateName,
     int? playerCount,
@@ -63,7 +63,7 @@ class Poker50Template extends BaseTemplate {
     Map<String, dynamic>? otherSet,
     bool? isAllowNegative,
   }) {
-    final template = Poker50Template(
+    final template = CounterTemplate(
       tid: tid ?? this.tid,
       templateName: templateName ?? this.templateName,
       playerCount: playerCount ?? this.playerCount,
