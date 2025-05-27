@@ -5,24 +5,17 @@ class MahjongTemplate extends BaseTemplate {
   static const String templateType = 'mahjong';
 
   MahjongTemplate({
-    String? tid,
-    required String templateName,
-    required int playerCount,
-    required int targetScore,
-    required List<PlayerInfo> players,
-    required bool isSystemTemplate,
-    String? baseTemplateId,
+    super.tid,
+    required super.templateName,
+    required super.playerCount,
+    required super.targetScore,
+    required super.players,
+    required super.isSystemTemplate,
+    super.baseTemplateId,
     int baseScore = 1,
     bool checkMultiplier = false,
     bool bombMultiplyMode = false,
   }) : super(
-          tid: tid,
-          templateName: templateName,
-          playerCount: playerCount,
-          targetScore: targetScore,
-          players: players,
-          isSystemTemplate: isSystemTemplate,
-          baseTemplateId: baseTemplateId,
           otherSet: {
             'baseScore': baseScore,
             'checkMultiplier': checkMultiplier,

@@ -32,13 +32,27 @@ class GameSessionDao {
         whereArgs: [session.sid],
       );
 
-      // 插入新的得分数据
+      // 确定当前会话的最大回合数。即使某个玩家某个回合没有得分，
+      // 我们也希望在数据库中为所有玩家保存到这个最大回合数。
+      int maxRoundLength = 0;
       for (final playerScore in session.scores) {
-        // 注意 PlayerScore 的 roundScores 列表长度决定了有多少回合有分数
-        // 遍历这个列表来保存每一条得分记录
-        for (int i = 0; i < playerScore.roundScores.length; i++) {
-          final roundNumber = i + 1; // SQFLite 回合号通常从1开始，List索引从0开始
-          final score = playerScore.roundScores[i];
+        if (playerScore.roundScores.length > maxRoundLength) {
+          maxRoundLength = playerScore.roundScores.length;
+        }
+      }
+
+      // 遍历所有玩家
+      for (final playerScore in session.scores) {
+        // 对于每个玩家，遍历从回合 0 到最大回合长度 - 1
+        for (int i = 0; i < maxRoundLength; i++) {
+          final roundNumber = i + 1; // 转换为数据库回合号 (从 1 开始)
+
+          // 获取该回合的得分。如果 roundScores 列表长度不足或该位置为 null，
+          // 则获取到的 score 就是 null。
+          final score = (i < playerScore.roundScores.length)
+              ? playerScore.roundScores[i]
+              : null;
+
           // 使用 PlayerScore 为数据库单行设计的 toSingleScoreDatabaseMap 方法
           final scoreMap = playerScore.toSingleScoreDatabaseMap(
               session.sid, roundNumber, score);

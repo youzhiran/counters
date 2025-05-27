@@ -112,8 +112,8 @@ class _CounterConfigPageState extends BaseConfigPageState<CounterConfigPage> {
         ),
         SwitchListTile(
           contentPadding: const EdgeInsets.only(left: 16, right: 16),
-          title: const Text('计分允许输入负数'),
-          subtitle: const Text('启用后计分可以输入负数值'),
+          title: const Text('待配置选项'),
+          subtitle: const Text('待配置选项说明'),
           value: _allowNegative,
           onChanged: (bool value) {
             setState(() {

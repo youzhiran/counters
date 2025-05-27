@@ -162,6 +162,7 @@ class ScoreChartWithTooltip extends StatefulWidget {
 class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
   List<DataPoint> _activePoints = []; // 修改：从单个DataPoint? 改为 List<DataPoint>
   Timer? _hideTimer;
+  int _columnCount = 1; // 修改：使用列数而不是布尔值
 
   static const double _painterMargin =
       ScoreLineChartPainter.margin; // 与Painter的边距一致
@@ -208,44 +209,7 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
                     ),
                   ],
                 ),
-                child: Column(
-                  // 修改：使用Column显示多个点的信息
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: _activePoints.map((point) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.playerNames[point.playerId] ?? '未知玩家',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            '轮次: ${point.round + 1}',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12),
-                          ),
-                          Text(
-                            '总分: ${point.score}',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12),
-                          ),
-                          if (_activePoints.length > 1 &&
-                              point != _activePoints.last)
-                            const Divider(
-                                color: Colors.white54,
-                                height: 8,
-                                thickness: 0.5)
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
+                child: _buildMultiColumnTooltip(),
               ),
             ),
         ],
@@ -253,9 +217,78 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
     );
   }
 
+  // 新增：构建多列提示框
+  Widget _buildMultiColumnTooltip() {
+    if (_activePoints.isEmpty) return const SizedBox();
+    
+    // 计算每列显示的点数
+    final int pointsPerColumn = (_activePoints.length / _columnCount).ceil();
+    
+    // 将点分组到各列
+    List<List<DataPoint>> columns = [];
+    for (int i = 0; i < _columnCount; i++) {
+      final int startIndex = i * pointsPerColumn;
+      if (startIndex < _activePoints.length) {
+        final int endIndex = math.min((i + 1) * pointsPerColumn, _activePoints.length);
+        columns.add(_activePoints.sublist(startIndex, endIndex));
+      }
+    }
+    
+    // 构建列
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: columns.map((columnPoints) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: columns.indexOf(columnPoints) > 0 ? 16.0 : 0.0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: columnPoints.map(_buildPointInfo).toList(),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // 构建单个点的信息展示
+  Widget _buildPointInfo(DataPoint point) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            widget.playerNames[point.playerId] ?? '未知玩家',
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold),
+          ),
+          Text(
+            '轮次: ${point.round + 1}',
+            style: const TextStyle(
+                color: Colors.white, fontSize: 12),
+          ),
+          Text(
+            '总分: ${point.score}',
+            style: const TextStyle(
+                color: Colors.white, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
   double _calculateTooltipX(double x) {
-    // 假设Tooltip宽度约为100，根据实际内容调整
-    const double tooltipWidth = 100.0;
+    // 根据列数估算提示框宽度
+    final double singleColumnWidth = 100.0;
+    final double columnSpacing = 16.0;
+    final double tooltipWidth = (_columnCount * singleColumnWidth) + 
+                               ((_columnCount - 1) * columnSpacing);
+    
     // 确保Tooltip不会超出右边界
     final maxX = widget.size.width - tooltipWidth - _painterMargin; // 考虑右边距
     // 确保Tooltip不会超出左边界
@@ -265,25 +298,44 @@ class _ScoreChartWithTooltipState extends State<ScoreChartWithTooltip> {
   }
 
   double _calculateTooltipY(double y) {
-    // 估算Tooltip高度，考虑多个条目
-    final double estimatedItemHeight = 55.0; // 估算每个条目的高度 (名称+轮次+分数+内边距)
-    final double verticalPadding = 16.0; // Tooltip容器的上下总padding (8*2)
-    final double dividerHeight = _activePoints.length > 1
-        ? (_activePoints.length - 1) * 1.0
-        : 0; // 估算分隔线总高度
-
-    final estimatedTooltipHeight = _activePoints.isNotEmpty
-        ? (_activePoints.length * estimatedItemHeight) +
-            verticalPadding +
-            dividerHeight
-        : 60.0; // fallback or default height for a single item
-
+    // 重置列数，从单列开始尝试
+    _columnCount = 1;
+    
+    return _calculateTooltipYWithColumns(y, _columnCount);
+  }
+  
+  double _calculateTooltipYWithColumns(double y, int columns) {
+    // 估算每个条目的高度
+    final double estimatedItemHeight = 55.0;
+    final double verticalPadding = 16.0;
+    
+    // 计算当前列数下每列的点数
+    final int pointsPerColumn = (_activePoints.length / columns).ceil();
+    
+    // 计算提示框高度
+    final double estimatedTooltipHeight = _activePoints.isNotEmpty
+        ? (pointsPerColumn * estimatedItemHeight) + verticalPadding
+        : 60.0;
+    
     // 向上偏移一点，避免直接覆盖数据点
-    double targetY = y - estimatedTooltipHeight - 10; // 10是额外的偏移量
+    double targetY = y - estimatedTooltipHeight - 10;
+    
     // 确保Tooltip不会超出上下边界
-    // clamp的下限是 _painterMargin (顶部), 上限是 widget.size.height - estimatedTooltipHeight - _painterMargin (底部)
-    return targetY.clamp(_painterMargin,
-        widget.size.height - estimatedTooltipHeight - _painterMargin);
+    final double minY = _painterMargin;
+    final double maxY = widget.size.height - estimatedTooltipHeight - _painterMargin;
+    
+    // 确保最小值不大于最大值
+    if (minY <= maxY) {
+      return targetY.clamp(minY, maxY);
+    } else {
+      // 如果空间不足，尝试增加列数
+      if (columns < _activePoints.length) {
+        _columnCount = columns + 1;
+        return _calculateTooltipYWithColumns(y, _columnCount);
+      }
+      // 如果已经每个点一列仍然空间不足，返回顶部边距
+      return minY;
+    }
   }
 
   void _scheduleHide() {

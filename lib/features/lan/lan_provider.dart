@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:counters/app/config.dart';
-import 'package:counters/common/model/Counter.dart';
+import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/mahjong.dart';

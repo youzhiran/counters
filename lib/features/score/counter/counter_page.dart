@@ -292,37 +292,43 @@ class _PlayerScoreGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap, // 点击编辑分数
-      onLongPress: onLongPress, // 长按编辑分数
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.transparent, // 确保整个区域都可以点击
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            PlayerAvatar.build(context, player), // 玩家头像
-            const SizedBox(height: 8.0),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: Text(
-                player.name, // 玩家名字
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(height: 1.2),
+    // 根据玩家ID生成固定的随机颜色，与PlayerAvatar中的逻辑一致
+    final colorIndex = player.pid.hashCode % PlayerAvatar.avatarColors.length;
+    final backgroundColor = PlayerAvatar.avatarColors[colorIndex].withAlpha((0.1 * 255).toInt()); // 比头像更浅的底色
+
+    return Material(
+      color: backgroundColor, // 使用与头像颜色相匹配但更浅的底色
+      child: InkWell(
+        onTap: onTap, // 点击编辑分数
+        onLongPress: onLongPress, // 长按编辑分数
+        child: SizedBox(
+          width: double.infinity,
+          height: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PlayerAvatar.build(context, player), // 玩家头像
+              const SizedBox(height: 8.0),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: Text(
+                  player.name, // 玩家名字
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(height: 1.2),
+                ),
               ),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              '$score', // 显示总分数
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+              const SizedBox(height: 8.0),
+              Text(
+                '$score', // 显示总分数
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -376,7 +382,7 @@ class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${widget.player.name}'), // 只显示玩家名字
+          Text(widget.player.name), // 只显示玩家名字
           const SizedBox(height: 16),
           TextField(
             controller: _controller,
