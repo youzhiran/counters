@@ -141,10 +141,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   icon: Icons.info,
                   title: '关于应用',
                   onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const AboutPage()));
+                    // 直接调用AboutPage的显示方法，让它内部判断显示模式
+                    AboutPage.showAsSideSheet(context);
                   },
                 ),
                 _buildListTile(
