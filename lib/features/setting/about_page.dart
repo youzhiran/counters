@@ -8,36 +8,35 @@ import 'package:side_sheet/side_sheet.dart'; // 导入side_sheet包
 class AboutPage extends StatefulWidget {
   // 添加一个参数来控制是否显示AppBar
   final bool showAppBar;
+
   // 添加一个参数来标识是否正在显示为侧边栏
   final bool isShownAsSideSheet;
-  
-  const AboutPage({
-    super.key, 
-    this.showAppBar = true, 
-    this.isShownAsSideSheet = false
-  });
-  
+
+  const AboutPage(
+      {super.key, this.showAppBar = true, this.isShownAsSideSheet = false});
+
   // 添加新的静态方法，使用side_sheet从右侧显示
   static void showAsSideSheet(BuildContext context) {
     // 检查当前是否处于桌面模式
     final width = MediaQuery.of(context).size.width;
     final isDesktopMode = globalState.enableDesktopMode && width >= 600;
-    
+
     if (isDesktopMode) {
       // 桌面模式：使用侧边栏
       SideSheet.right(
         context: context,
-        width: MediaQuery.of(context).size.width * 0.4, // 侧边栏宽度为屏幕宽度的40%
-        body: const AboutPage(showAppBar: false, isShownAsSideSheet: true), // 在侧边栏中不显示AppBar，并标记为侧边栏模式
-        barrierDismissible: true, // 点击外部区域可关闭
+        width: MediaQuery.of(context).size.width * 0.4,
+        // 侧边栏宽度为屏幕宽度的40%
+        body: const AboutPage(showAppBar: false, isShownAsSideSheet: true),
+        // 在侧边栏中不显示AppBar，并标记为侧边栏模式
+        barrierDismissible: true,
+        // 点击外部区域可关闭
         sheetBorderRadius: 0, // 无圆角效果
       );
     } else {
       // 非桌面模式：使用全屏导航
       Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const AboutPage())
-      );
+          context, MaterialPageRoute(builder: (context) => const AboutPage()));
     }
   }
 
@@ -55,7 +54,7 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
     super.initState();
     _loadPackageInfo();
     WidgetsBinding.instance.addObserver(this); // 添加观察者来监听系统变化
-    
+
     // 初始化时检查一次桌面模式状态
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndUpdateMode();
@@ -67,32 +66,30 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this); // 移除观察者
     super.dispose();
   }
-  
+
   // 监听系统变化，包括窗口大小变化
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
     _checkAndUpdateMode();
   }
-  
+
   // 检查并更新显示模式
   void _checkAndUpdateMode() {
     if (!mounted) return;
-    
+
     final width = MediaQuery.of(context).size.width;
     final isDesktopMode = globalState.enableDesktopMode && width >= 600;
-    
+
     // 如果模式发生变化且当前是以侧边栏方式显示
     if (isDesktopMode != _wasDesktopMode && widget.isShownAsSideSheet) {
       _wasDesktopMode = isDesktopMode;
-      
+
       if (!isDesktopMode) {
         // 从桌面模式切换到移动模式：关闭侧边栏，使用全屏显示
         Navigator.pop(context); // 先关闭侧边栏
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const AboutPage())
-        );
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const AboutPage()));
       }
     } else {
       _wasDesktopMode = isDesktopMode;
@@ -168,7 +165,9 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 12),
               Text(
-                '本应用部分图标来自 iconscout.com\n\n'
+                '本应用部分图标来自\n'
+                'iconscout.com\n'
+                'yesicon.app\n\n'
                 '© 2025 counters.devyi.com',
                 style: Theme.of(context).textTheme.bodySmall,
               ),

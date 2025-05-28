@@ -3,14 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:counters/app/config.dart';
-import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/base_template.dart';
-import 'package:counters/common/model/landlords.dart';
-import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
-import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/template_utils.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/network_manager.dart';
@@ -82,7 +79,8 @@ class LanState {
           ? null
           : clientNetworkManager ?? this.clientNetworkManager,
       isHostAndClientMode: isHostAndClientMode ?? this.isHostAndClientMode,
-      isBroadcasting: isBroadcasting ?? this.isBroadcasting, // 新增
+      isBroadcasting: isBroadcasting ?? this.isBroadcasting,
+      // 新增
       connectedClientIps: connectedClientIps ?? this.connectedClientIps, // 新增
     );
   }
@@ -182,17 +180,18 @@ class LanNotifier extends StateNotifier<LanState> {
                 Log.w('修正模板tid为: $requiredTid');
               }
 
-              BaseTemplate? template;
-              if (templateType == 'landlords') {
-                template = LandlordsTemplate.fromMap(templateMap, players);
-              } else if (templateType == 'poker50') {
-                template = Poker50Template.fromMap(templateMap, players);
-              } else if (templateType == 'mahjong') {
-                template = MahjongTemplate.fromMap(templateMap, players);
-              } else if (templateType == 'counter') {
-                template = CounterTemplate.fromMap(templateMap, players);
-              } else {
-                Log.e('未知的模板类型: $templateType');
+              // 使用 TemplateUtils 构建模板实例
+              if (templateType == null) {
+                Log.e('模板数据中缺少 templateType');
+                break; // 或者 continue，取决于你希望如何处理缺少类型的情况
+              }
+
+              BaseTemplate? template = TemplateUtils.buildTemplateFromType(
+                  templateType, templateMap, players);
+
+              if (template == null) {
+                // 如果构建模板失败，记录错误并跳出循环
+                Log.e('使用 TemplateUtils 构建模板失败: $templateType');
                 break;
               }
 

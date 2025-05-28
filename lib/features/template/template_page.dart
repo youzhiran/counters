@@ -155,6 +155,13 @@ class _TemplateCard extends ConsumerWidget {
         color: Theme.of(context).colorScheme.primary,
         opacity: 0.1,
       );
+    } else if (template is CounterTemplate) {
+      return SvgIconUtils.getIcon(
+        SvgIconUtils.counter,
+        size: 100,
+        color: Theme.of(context).colorScheme.primary,
+        opacity: 0.1,
+      );
     }
     return Icon(
       Icons.games,

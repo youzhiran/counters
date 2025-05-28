@@ -44,7 +44,6 @@ dependencies:
   sqflite_common_ffi: ^2.3.4+4
   sqlite3_flutter_libs: ^0.5.31
   path: ^1.9.0
-  chinese_font_library: ^1.2.0
   file_picker: ^10.1.7
   window_manager: ^0.4.3
   json_annotation: ^4.9.0

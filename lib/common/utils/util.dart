@@ -30,6 +30,7 @@ class SvgIconUtils {
   static const String poker_cards = 'poker_cards';
   static const String gardener = 'gardener';
   static const String mahjong = 'mahjong';
+  static const String counter = 'counter';
 }
 
 class StrUtil {

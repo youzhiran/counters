@@ -1,29 +1,17 @@
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/base_template.dart';
-import 'package:counters/common/model/counter.dart';
-import 'package:counters/common/model/landlords.dart';
-import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
-import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/template_utils.dart';
 import 'package:sqflite/sqflite.dart';
 
 class TemplateDao {
   final dbHelper = DatabaseHelper.instance;
 
-  /// 模板类型到转换函数的映射
-  static final Map<String,
-          BaseTemplate Function(Map<String, dynamic>, List<PlayerInfo>)>
-      _templateTypeMap = {
-    Poker50Template.templateType: Poker50Template.fromMap,
-    LandlordsTemplate.templateType: LandlordsTemplate.fromMap,
-    MahjongTemplate.templateType: MahjongTemplate.fromMap,
-    CounterTemplate.templateType: CounterTemplate.fromMap,
-  };
 
-  /// 通用的模板获取方法
-  Future<T?> _getTemplate<T>(String tid,
-      T Function(Map<String, dynamic>, List<PlayerInfo>) fromMap) async {
+  /// 根据模板类型获取对应的模板
+  Future<BaseTemplate?> _getTemplateByType(
+      String tid, String templateType) async {
     final db = await dbHelper.database;
     final maps = await db.query(
       'templates',
@@ -41,18 +29,10 @@ class TemplateDao {
     ''', [tid]);
 
     final players = playerMaps.map((map) => PlayerInfo.fromJson(map)).toList();
-    return fromMap(maps.first, players);
-  }
 
-  /// 根据模板类型获取对应的模板
-  Future<BaseTemplate?> _getTemplateByType(
-      String tid, String templateType) async {
-    final fromMap = _templateTypeMap[templateType];
-    if (fromMap == null) {
-      Log.w('无法识别模板类型 $templateType');
-      return null;
-    }
-    return _getTemplate(tid, fromMap);
+    // 使用 TemplateUtils 构建模板实例
+    return TemplateUtils.buildTemplateFromType(
+        templateType, maps.first, players);
   }
 
   /// 插入模板

@@ -62,6 +62,9 @@ class GlobalState {
   String? _progressDialogMessage;
   double _progressDialogValue = 0;
 
+  // 添加字体字段
+  String? fontFamily;
+
   // 弹窗模糊
   final filter = ImageFilter.blur(
     sigmaX: 5,
@@ -93,6 +96,9 @@ class GlobalState {
 
     // 加载桌面模式设置
     final enableDesktopMode = _prefs.getBool('enable_desktop_mode') ?? false;
+
+    // 在初始化方法中加载字体
+    fontFamily = _prefs.getString('fontFamily');
 
     _state = GlobalStateData(
       navigatorKey: GlobalKey<NavigatorState>(),

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:chinese_font_library/chinese_font_library.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/poker50.dart';
@@ -87,10 +86,12 @@ class MyApp extends ConsumerWidget {
       navigatorKey: globalState.navigatorKey,
       scaffoldMessengerKey: globalState.scaffoldMessengerKey,
       title: '桌游计分器',
-      theme: _buildTheme(themeState.themeColor, Brightness.light)
-          .useSystemChineseFont(Brightness.light),
-      darkTheme: _buildTheme(themeState.themeColor, Brightness.dark)
-          .useSystemChineseFont(Brightness.dark),
+      // theme: _buildTheme(themeState.themeColor, Brightness.light,ref)
+      //     .useSystemChineseFont(Brightness.light),
+      // darkTheme: _buildTheme(themeState.themeColor, Brightness.dark,ref)
+      //     .useSystemChineseFont(Brightness.dark),
+      theme: _buildTheme(themeState.themeColor, Brightness.light, ref),
+      darkTheme: _buildTheme(themeState.themeColor, Brightness.dark, ref),
       themeMode: themeState.themeMode,
       home: Builder(
         builder: (context) {
@@ -152,9 +153,27 @@ class MyApp extends ConsumerWidget {
     );
   }
 
-  ThemeData _buildTheme(Color seedColor, Brightness brightness) {
+  ThemeData _buildTheme(Color seedColor, Brightness brightness, WidgetRef ref) {
+    final themeState = ref.watch(themeProvider);
+    final String? selectedFontFamily = themeState.fontFamily;
+
+    // 定义一个包含常见中文字体的 fallback 列表
+    final List<String> chineseFontFallbacks = [
+      'HarmonyOS Sans SC',
+      'PingFang SC',
+      'Ubuntu',
+      'MiSans',
+      'MiSans VF',
+      'Microsoft YaHei UI',
+      'Microsoft YaHei',
+    ];
+
     return ThemeData(
       useMaterial3: true,
+      // 如果用户选择了特定的字体，则使用该字体，否则（默认字体）使用 fallback 列表
+      fontFamily: selectedFontFamily,
+      fontFamilyFallback:
+          selectedFontFamily == null ? chineseFontFallbacks : null,
       colorScheme: ColorScheme.fromSeed(
         seedColor: seedColor,
         brightness: brightness,

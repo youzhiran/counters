@@ -665,64 +665,230 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     // 在显示对话框前获取 themeProvider.notifier
     final themeNotifier = ref.read(themeProvider.notifier);
 
+    // 预定义一些常用字体作为备选
+    final List<String> _commonFonts = [
+      '默认字体',
+      'Roboto',
+      'Open Sans',
+      'Lato',
+      'Montserrat',
+      'Oswald',
+      'Raleway',
+      'Ubuntu',
+      'Merriweather',
+      'Playfair Display',
+    ];
+
+    // 显示对话框
     globalState.showCommonDialog(
       child: Dialog(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 320),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '选择主题颜色',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  crossAxisCount: 4,
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 18,
-                  crossAxisSpacing: 18,
-                  children: _themeColors.map((color) {
-                    // 获取当前主题颜色
-                    final currentThemeColor =
-                        ref.read(themeProvider).themeColor;
-                    return InkWell(
-                      onTap: () {
-                        // 使用之前获取的 themeNotifier 更新主题颜色
-                        themeNotifier.setThemeColor(color);
-                        globalState.navigatorKey.currentState?.pop();
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: color == currentThemeColor
-                                ? Colors.white
-                                : Colors.grey,
-                            width: 2,
-                          ),
+            child: FutureBuilder<List<String>>(
+              future: _getAvailableFonts(_commonFonts), // 异步获取字体列表
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                final availableFonts = snapshot.data ?? _commonFonts;
+
+                return Consumer(
+                  builder: (context, ref, _) {
+                    // 在Consumer内部获取当前字体值
+                    String currentFont =
+                        ref.watch(themeProvider).fontFamily ?? '默认字体';
+
+                    // 检查当前字体是否在可用字体列表中，如果不在，则设置为默认字体
+                    if (!availableFonts.contains(currentFont)) {
+                      currentFont = '默认字体';
+                      Log.w('当前字体 $currentFont 不在可用字体列表中，设置为默认字体');
+                    }
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '主题设置',
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+
+                        // 字体选择部分
+                        Row(
+                          children: [
+                            Text(
+                              '选择字体：',
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButton<String>(
+                                value: currentFont,
+                                isExpanded: true,
+                                items: availableFonts.map((font) {
+                                  return DropdownMenuItem<String>(
+                                    value: font,
+                                    child: Text(
+                                      font,
+                                      style: TextStyle(
+                                        fontFamily:
+                                            font == '默认字体' ? null : font,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newFont) {
+                                  if (newFont != null) {
+                                    themeNotifier.setFontFamily(
+                                        newFont == '默认字体' ? null : newFont);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Divider(height: 1, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+
+                        // 颜色选择部分
+                        Text(
+                          '选择主题颜色',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        GridView.count(
+                          crossAxisCount: 4,
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          mainAxisSpacing: 18,
+                          crossAxisSpacing: 18,
+                          children: _themeColors.map((color) {
+                            // 获取当前主题颜色
+                            final currentThemeColor =
+                                ref.watch(themeProvider).themeColor;
+                            return InkWell(
+                              onTap: () {
+                                // 使用之前获取的 themeNotifier 更新主题颜色
+                                themeNotifier.setThemeColor(color);
+                              },
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: color == currentThemeColor
+                                        ? Colors.white
+                                        : Colors.grey,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () =>
+                                  globalState.navigatorKey.currentState?.pop(),
+                              child: Text('确定'),
+                            ),
+                          ],
+                        ),
+                      ],
                     );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => globalState.navigatorKey.currentState?.pop(),
-                  child: Text('取消'),
-                ),
-              ],
+                  },
+                );
+              },
             ),
           ),
         ),
       ),
     );
+  }
+
+  // 获取可用字体列表（带缓存）
+  Future<List<String>> _getAvailableFonts(List<String> fallbackFonts) async {
+    try {
+      // 尝试获取系统字体
+      final systemFonts = await _getSystemFonts();
+      return ['默认字体', ...systemFonts];
+    } catch (e) {
+      // 失败时使用备选字体
+      return fallbackFonts;
+    }
+  }
+
+  // 获取系统字体列表
+  Future<List<String>> _getSystemFonts() async {
+    // 由于Flutter没有内置获取系统字体的API，这里使用平台通道
+    // 实际项目中需要实现原生代码来获取系统字体列表
+    try {
+      if (Platform.isAndroid || Platform.isIOS) {
+        // 使用插件或自定义平台通道
+        // 例如: return await SystemFonts.getAvailableFonts();
+        // return await SystemFonts().loadAllFonts();
+        return [
+          // 'Roboto',
+          // 'Open Sans',
+          // 'Lato',
+          // 'Montserrat',
+          // 'Oswald',
+        ];
+      } else if (Platform.isWindows) {
+        // Windows系统字体
+        return [
+          'PingFang SC',
+          'HarmonyOS Sans SC',
+          'MiSans',
+          'MiSans VF',
+          'vivo Sans',
+          'Microsoft YaHei',
+          'Microsoft YaHei UI',
+          '等线',
+          '楷体',
+          '黑体',
+          '隶书',
+          '幼圆',
+          '华文琥珀',
+        ];
+      } else if (Platform.isMacOS) {
+        // macOS系统字体
+        return [
+          'PingFang SC',
+          'San Francisco',
+          'Helvetica Neue',
+          'Avenir',
+          'Menlo',
+          'Chalkboard',
+        ];
+      } else if (Platform.isLinux) {
+        // Linux系统字体
+        return [
+          'Ubuntu',
+          'DejaVu Sans',
+          'FreeSans',
+          'Liberation Sans',
+          'Noto Sans',
+        ];
+      }
+      return [];
+    } catch (e) {
+      // 获取失败时返回空列表
+      return [];
+    }
   }
 
   Widget _buildSectionHeader(String title) {

@@ -3,24 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 // 主题状态类
 class ThemeState {
   final ThemeMode themeMode;
   final Color themeColor;
+  final String? fontFamily; // 添加字体字段
 
   const ThemeState({
     required this.themeMode,
     required this.themeColor,
+    this.fontFamily, // 字体可为空（使用系统默认）
   });
 
   ThemeState copyWith({
     ThemeMode? themeMode,
     Color? themeColor,
+    String? fontFamily, // 添加字体支持
   }) {
     return ThemeState(
       themeMode: themeMode ?? this.themeMode,
       themeColor: themeColor ?? this.themeColor,
+      fontFamily: fontFamily ?? this.fontFamily,
     );
   }
 }
@@ -35,12 +38,16 @@ class ThemeNotifier extends Notifier<ThemeState> {
     // 从SharedPreferences加载保存的主题设置
     final themeModeIndex = _prefs?.getInt('themeMode');
     final themeColorValue = _prefs?.getInt('themeColor');
+    final fontFamily = _prefs?.getString('fontFamily'); // 加载字体设置
 
     if (themeModeIndex != null) {
       state = state.copyWith(themeMode: ThemeMode.values[themeModeIndex]);
     }
     if (themeColorValue != null) {
       state = state.copyWith(themeColor: Color(themeColorValue));
+    }
+    if (fontFamily != null) {
+      state = state.copyWith(fontFamily: fontFamily);
     }
   }
 
@@ -50,6 +57,7 @@ class ThemeNotifier extends Notifier<ThemeState> {
     return ThemeState(
       themeMode: globalState.themeMode,
       themeColor: globalState.themeColor,
+      fontFamily: globalState.fontFamily, // 添加字体支持
     );
   }
 
@@ -71,6 +79,17 @@ class ThemeNotifier extends Notifier<ThemeState> {
     final prefs = await _ensurePrefs();
     await prefs.setInt('themeColor', color.toARGB32());
     state = state.copyWith(themeColor: color);
+  }
+
+  // 设置字体
+  Future<void> setFontFamily(String? fontFamily) async {
+    final prefs = await _ensurePrefs();
+    if (fontFamily == null) {
+      await prefs.remove('fontFamily');
+    } else {
+      await prefs.setString('fontFamily', fontFamily);
+    }
+    state = state.copyWith(fontFamily: fontFamily);
   }
 }
 
