@@ -1,3 +1,4 @@
+// dart format width=80
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
@@ -9,134 +10,29 @@ part of 'sync_messages.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
-
-SyncMessage _$SyncMessageFromJson(Map<String, dynamic> json) {
-  return _SyncMessage.fromJson(json);
-}
 
 /// @nodoc
 mixin _$SyncMessage {
-  String get type => throw _privateConstructorUsedError; // 消息类型，用于区分消息内容
-  dynamic get data => throw _privateConstructorUsedError;
-
-  /// Serializes this SyncMessage to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  String get type; // 消息类型，用于区分消息内容
+  dynamic get data;
 
   /// Create a copy of SyncMessage
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
   $SyncMessageCopyWith<SyncMessage> get copyWith =>
-      throw _privateConstructorUsedError;
-}
+      _$SyncMessageCopyWithImpl<SyncMessage>(this as SyncMessage, _$identity);
 
-/// @nodoc
-abstract class $SyncMessageCopyWith<$Res> {
-  factory $SyncMessageCopyWith(
-          SyncMessage value, $Res Function(SyncMessage) then) =
-      _$SyncMessageCopyWithImpl<$Res, SyncMessage>;
-  @useResult
-  $Res call({String type, dynamic data});
-}
-
-/// @nodoc
-class _$SyncMessageCopyWithImpl<$Res, $Val extends SyncMessage>
-    implements $SyncMessageCopyWith<$Res> {
-  _$SyncMessageCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of SyncMessage
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? type = null,
-    Object? data = freezed,
-  }) {
-    return _then(_value.copyWith(
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
-      data: freezed == data
-          ? _value.data
-          : data // ignore: cast_nullable_to_non_nullable
-              as dynamic,
-    ) as $Val);
-  }
-}
-
-/// @nodoc
-abstract class _$$SyncMessageImplCopyWith<$Res>
-    implements $SyncMessageCopyWith<$Res> {
-  factory _$$SyncMessageImplCopyWith(
-          _$SyncMessageImpl value, $Res Function(_$SyncMessageImpl) then) =
-      __$$SyncMessageImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({String type, dynamic data});
-}
-
-/// @nodoc
-class __$$SyncMessageImplCopyWithImpl<$Res>
-    extends _$SyncMessageCopyWithImpl<$Res, _$SyncMessageImpl>
-    implements _$$SyncMessageImplCopyWith<$Res> {
-  __$$SyncMessageImplCopyWithImpl(
-      _$SyncMessageImpl _value, $Res Function(_$SyncMessageImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of SyncMessage
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? type = null,
-    Object? data = freezed,
-  }) {
-    return _then(_$SyncMessageImpl(
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
-      data: freezed == data
-          ? _value.data
-          : data // ignore: cast_nullable_to_non_nullable
-              as dynamic,
-    ));
-  }
-}
-
-/// @nodoc
-@JsonSerializable()
-class _$SyncMessageImpl implements _SyncMessage {
-  const _$SyncMessageImpl({required this.type, this.data});
-
-  factory _$SyncMessageImpl.fromJson(Map<String, dynamic> json) =>
-      _$$SyncMessageImplFromJson(json);
-
-  @override
-  final String type;
-// 消息类型，用于区分消息内容
-  @override
-  final dynamic data;
-
-  @override
-  String toString() {
-    return 'SyncMessage(type: $type, data: $data)';
-  }
+  /// Serializes this SyncMessage to a JSON map.
+  Map<String, dynamic> toJson();
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$SyncMessageImpl &&
+            other is SyncMessage &&
             (identical(other.type, type) || other.type == type) &&
             const DeepCollectionEquality().equals(other.data, data));
   }
@@ -146,166 +42,156 @@ class _$SyncMessageImpl implements _SyncMessage {
   int get hashCode =>
       Object.hash(runtimeType, type, const DeepCollectionEquality().hash(data));
 
-  /// Create a copy of SyncMessage
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$SyncMessageImplCopyWith<_$SyncMessageImpl> get copyWith =>
-      __$$SyncMessageImplCopyWithImpl<_$SyncMessageImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$SyncMessageImplToJson(
-      this,
-    );
+  String toString() {
+    return 'SyncMessage(type: $type, data: $data)';
   }
 }
 
-abstract class _SyncMessage implements SyncMessage {
-  const factory _SyncMessage({required final String type, final dynamic data}) =
-      _$SyncMessageImpl;
+/// @nodoc
+abstract mixin class $SyncMessageCopyWith<$Res> {
+  factory $SyncMessageCopyWith(
+          SyncMessage value, $Res Function(SyncMessage) _then) =
+      _$SyncMessageCopyWithImpl;
+  @useResult
+  $Res call({String type, dynamic data});
+}
 
-  factory _SyncMessage.fromJson(Map<String, dynamic> json) =
-      _$SyncMessageImpl.fromJson;
+/// @nodoc
+class _$SyncMessageCopyWithImpl<$Res> implements $SyncMessageCopyWith<$Res> {
+  _$SyncMessageCopyWithImpl(this._self, this._then);
 
-  @override
-  String get type; // 消息类型，用于区分消息内容
-  @override
-  dynamic get data;
+  final SyncMessage _self;
+  final $Res Function(SyncMessage) _then;
 
   /// Create a copy of SyncMessage
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$SyncMessageImplCopyWith<_$SyncMessageImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-SyncStatePayload _$SyncStatePayloadFromJson(Map<String, dynamic> json) {
-  return _SyncStatePayload.fromJson(json);
-}
-
-/// @nodoc
-mixin _$SyncStatePayload {
-  GameSession get session => throw _privateConstructorUsedError;
-
-  /// Serializes this SyncStatePayload to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncStatePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $SyncStatePayloadCopyWith<SyncStatePayload> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $SyncStatePayloadCopyWith<$Res> {
-  factory $SyncStatePayloadCopyWith(
-          SyncStatePayload value, $Res Function(SyncStatePayload) then) =
-      _$SyncStatePayloadCopyWithImpl<$Res, SyncStatePayload>;
-  @useResult
-  $Res call({GameSession session});
-
-  $GameSessionCopyWith<$Res> get session;
-}
-
-/// @nodoc
-class _$SyncStatePayloadCopyWithImpl<$Res, $Val extends SyncStatePayload>
-    implements $SyncStatePayloadCopyWith<$Res> {
-  _$SyncStatePayloadCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of SyncStatePayload
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? session = null,
+    Object? type = null,
+    Object? data = freezed,
   }) {
-    return _then(_value.copyWith(
-      session: null == session
-          ? _value.session
-          : session // ignore: cast_nullable_to_non_nullable
-              as GameSession,
-    ) as $Val);
-  }
-
-  /// Create a copy of SyncStatePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $GameSessionCopyWith<$Res> get session {
-    return $GameSessionCopyWith<$Res>(_value.session, (value) {
-      return _then(_value.copyWith(session: value) as $Val);
-    });
-  }
-}
-
-/// @nodoc
-abstract class _$$SyncStatePayloadImplCopyWith<$Res>
-    implements $SyncStatePayloadCopyWith<$Res> {
-  factory _$$SyncStatePayloadImplCopyWith(_$SyncStatePayloadImpl value,
-          $Res Function(_$SyncStatePayloadImpl) then) =
-      __$$SyncStatePayloadImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({GameSession session});
-
-  @override
-  $GameSessionCopyWith<$Res> get session;
-}
-
-/// @nodoc
-class __$$SyncStatePayloadImplCopyWithImpl<$Res>
-    extends _$SyncStatePayloadCopyWithImpl<$Res, _$SyncStatePayloadImpl>
-    implements _$$SyncStatePayloadImplCopyWith<$Res> {
-  __$$SyncStatePayloadImplCopyWithImpl(_$SyncStatePayloadImpl _value,
-      $Res Function(_$SyncStatePayloadImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of SyncStatePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? session = null,
-  }) {
-    return _then(_$SyncStatePayloadImpl(
-      session: null == session
-          ? _value.session
-          : session // ignore: cast_nullable_to_non_nullable
-              as GameSession,
+    return _then(_self.copyWith(
+      type: null == type
+          ? _self.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      data: freezed == data
+          ? _self.data
+          : data // ignore: cast_nullable_to_non_nullable
+              as dynamic,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$SyncStatePayloadImpl extends _SyncStatePayload {
-  const _$SyncStatePayloadImpl({required this.session}) : super._();
-
-  factory _$SyncStatePayloadImpl.fromJson(Map<String, dynamic> json) =>
-      _$$SyncStatePayloadImplFromJson(json);
-
-  @override
-  final GameSession session;
+class _SyncMessage implements SyncMessage {
+  const _SyncMessage({required this.type, this.data});
+  factory _SyncMessage.fromJson(Map<String, dynamic> json) =>
+      _$SyncMessageFromJson(json);
 
   @override
-  String toString() {
-    return 'SyncStatePayload(session: $session)';
+  final String type;
+// 消息类型，用于区分消息内容
+  @override
+  final dynamic data;
+
+  /// Create a copy of SyncMessage
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$SyncMessageCopyWith<_SyncMessage> get copyWith =>
+      __$SyncMessageCopyWithImpl<_SyncMessage>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$SyncMessageToJson(
+      this,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$SyncStatePayloadImpl &&
+            other is _SyncMessage &&
+            (identical(other.type, type) || other.type == type) &&
+            const DeepCollectionEquality().equals(other.data, data));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, type, const DeepCollectionEquality().hash(data));
+
+  @override
+  String toString() {
+    return 'SyncMessage(type: $type, data: $data)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$SyncMessageCopyWith<$Res>
+    implements $SyncMessageCopyWith<$Res> {
+  factory _$SyncMessageCopyWith(
+          _SyncMessage value, $Res Function(_SyncMessage) _then) =
+      __$SyncMessageCopyWithImpl;
+  @override
+  @useResult
+  $Res call({String type, dynamic data});
+}
+
+/// @nodoc
+class __$SyncMessageCopyWithImpl<$Res> implements _$SyncMessageCopyWith<$Res> {
+  __$SyncMessageCopyWithImpl(this._self, this._then);
+
+  final _SyncMessage _self;
+  final $Res Function(_SyncMessage) _then;
+
+  /// Create a copy of SyncMessage
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? type = null,
+    Object? data = freezed,
+  }) {
+    return _then(_SyncMessage(
+      type: null == type
+          ? _self.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      data: freezed == data
+          ? _self.data
+          : data // ignore: cast_nullable_to_non_nullable
+              as dynamic,
+    ));
+  }
+}
+
+/// @nodoc
+mixin _$SyncStatePayload {
+  GameSession get session;
+
+  /// Create a copy of SyncStatePayload
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $SyncStatePayloadCopyWith<SyncStatePayload> get copyWith =>
+      _$SyncStatePayloadCopyWithImpl<SyncStatePayload>(
+          this as SyncStatePayload, _$identity);
+
+  /// Serializes this SyncStatePayload to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is SyncStatePayload &&
             (identical(other.session, session) || other.session == session));
   }
 
@@ -313,182 +199,170 @@ class _$SyncStatePayloadImpl extends _SyncStatePayload {
   @override
   int get hashCode => Object.hash(runtimeType, session);
 
-  /// Create a copy of SyncStatePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$SyncStatePayloadImplCopyWith<_$SyncStatePayloadImpl> get copyWith =>
-      __$$SyncStatePayloadImplCopyWithImpl<_$SyncStatePayloadImpl>(
-          this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$SyncStatePayloadImplToJson(
-      this,
-    );
-  }
-}
-
-abstract class _SyncStatePayload extends SyncStatePayload {
-  const factory _SyncStatePayload({required final GameSession session}) =
-      _$SyncStatePayloadImpl;
-  const _SyncStatePayload._() : super._();
-
-  factory _SyncStatePayload.fromJson(Map<String, dynamic> json) =
-      _$SyncStatePayloadImpl.fromJson;
-
-  @override
-  GameSession get session;
-
-  /// Create a copy of SyncStatePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$SyncStatePayloadImplCopyWith<_$SyncStatePayloadImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-UpdateScorePayload _$UpdateScorePayloadFromJson(Map<String, dynamic> json) {
-  return _UpdateScorePayload.fromJson(json);
-}
-
-/// @nodoc
-mixin _$UpdateScorePayload {
-  String get playerId => throw _privateConstructorUsedError; // 玩家ID
-  int get roundIndex =>
-      throw _privateConstructorUsedError; // 轮次索引 (0-based, 与 PlayerScore.roundScores 列表索引一致)
-  int? get score => throw _privateConstructorUsedError;
-
-  /// Serializes this UpdateScorePayload to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of UpdateScorePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $UpdateScorePayloadCopyWith<UpdateScorePayload> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $UpdateScorePayloadCopyWith<$Res> {
-  factory $UpdateScorePayloadCopyWith(
-          UpdateScorePayload value, $Res Function(UpdateScorePayload) then) =
-      _$UpdateScorePayloadCopyWithImpl<$Res, UpdateScorePayload>;
-  @useResult
-  $Res call({String playerId, int roundIndex, int? score});
-}
-
-/// @nodoc
-class _$UpdateScorePayloadCopyWithImpl<$Res, $Val extends UpdateScorePayload>
-    implements $UpdateScorePayloadCopyWith<$Res> {
-  _$UpdateScorePayloadCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of UpdateScorePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? playerId = null,
-    Object? roundIndex = null,
-    Object? score = freezed,
-  }) {
-    return _then(_value.copyWith(
-      playerId: null == playerId
-          ? _value.playerId
-          : playerId // ignore: cast_nullable_to_non_nullable
-              as String,
-      roundIndex: null == roundIndex
-          ? _value.roundIndex
-          : roundIndex // ignore: cast_nullable_to_non_nullable
-              as int,
-      score: freezed == score
-          ? _value.score
-          : score // ignore: cast_nullable_to_non_nullable
-              as int?,
-    ) as $Val);
+  String toString() {
+    return 'SyncStatePayload(session: $session)';
   }
 }
 
 /// @nodoc
-abstract class _$$UpdateScorePayloadImplCopyWith<$Res>
-    implements $UpdateScorePayloadCopyWith<$Res> {
-  factory _$$UpdateScorePayloadImplCopyWith(_$UpdateScorePayloadImpl value,
-          $Res Function(_$UpdateScorePayloadImpl) then) =
-      __$$UpdateScorePayloadImplCopyWithImpl<$Res>;
-  @override
+abstract mixin class $SyncStatePayloadCopyWith<$Res> {
+  factory $SyncStatePayloadCopyWith(
+          SyncStatePayload value, $Res Function(SyncStatePayload) _then) =
+      _$SyncStatePayloadCopyWithImpl;
   @useResult
-  $Res call({String playerId, int roundIndex, int? score});
+  $Res call({GameSession session});
+
+  $GameSessionCopyWith<$Res> get session;
 }
 
 /// @nodoc
-class __$$UpdateScorePayloadImplCopyWithImpl<$Res>
-    extends _$UpdateScorePayloadCopyWithImpl<$Res, _$UpdateScorePayloadImpl>
-    implements _$$UpdateScorePayloadImplCopyWith<$Res> {
-  __$$UpdateScorePayloadImplCopyWithImpl(_$UpdateScorePayloadImpl _value,
-      $Res Function(_$UpdateScorePayloadImpl) _then)
-      : super(_value, _then);
+class _$SyncStatePayloadCopyWithImpl<$Res>
+    implements $SyncStatePayloadCopyWith<$Res> {
+  _$SyncStatePayloadCopyWithImpl(this._self, this._then);
 
-  /// Create a copy of UpdateScorePayload
+  final SyncStatePayload _self;
+  final $Res Function(SyncStatePayload) _then;
+
+  /// Create a copy of SyncStatePayload
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? playerId = null,
-    Object? roundIndex = null,
-    Object? score = freezed,
+    Object? session = null,
   }) {
-    return _then(_$UpdateScorePayloadImpl(
-      playerId: null == playerId
-          ? _value.playerId
-          : playerId // ignore: cast_nullable_to_non_nullable
-              as String,
-      roundIndex: null == roundIndex
-          ? _value.roundIndex
-          : roundIndex // ignore: cast_nullable_to_non_nullable
-              as int,
-      score: freezed == score
-          ? _value.score
-          : score // ignore: cast_nullable_to_non_nullable
-              as int?,
+    return _then(_self.copyWith(
+      session: null == session
+          ? _self.session
+          : session // ignore: cast_nullable_to_non_nullable
+              as GameSession,
     ));
+  }
+
+  /// Create a copy of SyncStatePayload
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $GameSessionCopyWith<$Res> get session {
+    return $GameSessionCopyWith<$Res>(_self.session, (value) {
+      return _then(_self.copyWith(session: value));
+    });
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$UpdateScorePayloadImpl extends _UpdateScorePayload {
-  const _$UpdateScorePayloadImpl(
-      {required this.playerId, required this.roundIndex, required this.score})
-      : super._();
-
-  factory _$UpdateScorePayloadImpl.fromJson(Map<String, dynamic> json) =>
-      _$$UpdateScorePayloadImplFromJson(json);
+class _SyncStatePayload extends SyncStatePayload {
+  const _SyncStatePayload({required this.session}) : super._();
+  factory _SyncStatePayload.fromJson(Map<String, dynamic> json) =>
+      _$SyncStatePayloadFromJson(json);
 
   @override
-  final String playerId;
-// 玩家ID
+  final GameSession session;
+
+  /// Create a copy of SyncStatePayload
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  final int roundIndex;
-// 轮次索引 (0-based, 与 PlayerScore.roundScores 列表索引一致)
-  @override
-  final int? score;
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$SyncStatePayloadCopyWith<_SyncStatePayload> get copyWith =>
+      __$SyncStatePayloadCopyWithImpl<_SyncStatePayload>(this, _$identity);
 
   @override
-  String toString() {
-    return 'UpdateScorePayload(playerId: $playerId, roundIndex: $roundIndex, score: $score)';
+  Map<String, dynamic> toJson() {
+    return _$SyncStatePayloadToJson(
+      this,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$UpdateScorePayloadImpl &&
+            other is _SyncStatePayload &&
+            (identical(other.session, session) || other.session == session));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, session);
+
+  @override
+  String toString() {
+    return 'SyncStatePayload(session: $session)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$SyncStatePayloadCopyWith<$Res>
+    implements $SyncStatePayloadCopyWith<$Res> {
+  factory _$SyncStatePayloadCopyWith(
+          _SyncStatePayload value, $Res Function(_SyncStatePayload) _then) =
+      __$SyncStatePayloadCopyWithImpl;
+  @override
+  @useResult
+  $Res call({GameSession session});
+
+  @override
+  $GameSessionCopyWith<$Res> get session;
+}
+
+/// @nodoc
+class __$SyncStatePayloadCopyWithImpl<$Res>
+    implements _$SyncStatePayloadCopyWith<$Res> {
+  __$SyncStatePayloadCopyWithImpl(this._self, this._then);
+
+  final _SyncStatePayload _self;
+  final $Res Function(_SyncStatePayload) _then;
+
+  /// Create a copy of SyncStatePayload
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? session = null,
+  }) {
+    return _then(_SyncStatePayload(
+      session: null == session
+          ? _self.session
+          : session // ignore: cast_nullable_to_non_nullable
+              as GameSession,
+    ));
+  }
+
+  /// Create a copy of SyncStatePayload
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $GameSessionCopyWith<$Res> get session {
+    return $GameSessionCopyWith<$Res>(_self.session, (value) {
+      return _then(_self.copyWith(session: value));
+    });
+  }
+}
+
+/// @nodoc
+mixin _$UpdateScorePayload {
+  String get playerId; // 玩家ID
+  int get roundIndex; // 轮次索引 (0-based, 与 PlayerScore.roundScores 列表索引一致)
+  int? get score;
+
+  /// Create a copy of UpdateScorePayload
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $UpdateScorePayloadCopyWith<UpdateScorePayload> get copyWith =>
+      _$UpdateScorePayloadCopyWithImpl<UpdateScorePayload>(
+          this as UpdateScorePayload, _$identity);
+
+  /// Serializes this UpdateScorePayload to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is UpdateScorePayload &&
             (identical(other.playerId, playerId) ||
                 other.playerId == playerId) &&
             (identical(other.roundIndex, roundIndex) ||
@@ -500,161 +374,177 @@ class _$UpdateScorePayloadImpl extends _UpdateScorePayload {
   @override
   int get hashCode => Object.hash(runtimeType, playerId, roundIndex, score);
 
-  /// Create a copy of UpdateScorePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$UpdateScorePayloadImplCopyWith<_$UpdateScorePayloadImpl> get copyWith =>
-      __$$UpdateScorePayloadImplCopyWithImpl<_$UpdateScorePayloadImpl>(
-          this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$UpdateScorePayloadImplToJson(
-      this,
-    );
-  }
-}
-
-abstract class _UpdateScorePayload extends UpdateScorePayload {
-  const factory _UpdateScorePayload(
-      {required final String playerId,
-      required final int roundIndex,
-      required final int? score}) = _$UpdateScorePayloadImpl;
-  const _UpdateScorePayload._() : super._();
-
-  factory _UpdateScorePayload.fromJson(Map<String, dynamic> json) =
-      _$UpdateScorePayloadImpl.fromJson;
-
-  @override
-  String get playerId; // 玩家ID
-  @override
-  int get roundIndex; // 轮次索引 (0-based, 与 PlayerScore.roundScores 列表索引一致)
-  @override
-  int? get score;
-
-  /// Create a copy of UpdateScorePayload
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$UpdateScorePayloadImplCopyWith<_$UpdateScorePayloadImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-NewRoundPayload _$NewRoundPayloadFromJson(Map<String, dynamic> json) {
-  return _NewRoundPayload.fromJson(json);
-}
-
-/// @nodoc
-mixin _$NewRoundPayload {
-// 可以包含新回合的起始信息，例如新的回合索引 (0-based)
-// roundIndex 是指添加新回合后，总的回合数-1，即新回合的索引
-  int get newRoundIndex => throw _privateConstructorUsedError;
-
-  /// Serializes this NewRoundPayload to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of NewRoundPayload
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $NewRoundPayloadCopyWith<NewRoundPayload> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $NewRoundPayloadCopyWith<$Res> {
-  factory $NewRoundPayloadCopyWith(
-          NewRoundPayload value, $Res Function(NewRoundPayload) then) =
-      _$NewRoundPayloadCopyWithImpl<$Res, NewRoundPayload>;
-  @useResult
-  $Res call({int newRoundIndex});
-}
-
-/// @nodoc
-class _$NewRoundPayloadCopyWithImpl<$Res, $Val extends NewRoundPayload>
-    implements $NewRoundPayloadCopyWith<$Res> {
-  _$NewRoundPayloadCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of NewRoundPayload
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? newRoundIndex = null,
-  }) {
-    return _then(_value.copyWith(
-      newRoundIndex: null == newRoundIndex
-          ? _value.newRoundIndex
-          : newRoundIndex // ignore: cast_nullable_to_non_nullable
-              as int,
-    ) as $Val);
+  String toString() {
+    return 'UpdateScorePayload(playerId: $playerId, roundIndex: $roundIndex, score: $score)';
   }
 }
 
 /// @nodoc
-abstract class _$$NewRoundPayloadImplCopyWith<$Res>
-    implements $NewRoundPayloadCopyWith<$Res> {
-  factory _$$NewRoundPayloadImplCopyWith(_$NewRoundPayloadImpl value,
-          $Res Function(_$NewRoundPayloadImpl) then) =
-      __$$NewRoundPayloadImplCopyWithImpl<$Res>;
-  @override
+abstract mixin class $UpdateScorePayloadCopyWith<$Res> {
+  factory $UpdateScorePayloadCopyWith(
+          UpdateScorePayload value, $Res Function(UpdateScorePayload) _then) =
+      _$UpdateScorePayloadCopyWithImpl;
   @useResult
-  $Res call({int newRoundIndex});
+  $Res call({String playerId, int roundIndex, int? score});
 }
 
 /// @nodoc
-class __$$NewRoundPayloadImplCopyWithImpl<$Res>
-    extends _$NewRoundPayloadCopyWithImpl<$Res, _$NewRoundPayloadImpl>
-    implements _$$NewRoundPayloadImplCopyWith<$Res> {
-  __$$NewRoundPayloadImplCopyWithImpl(
-      _$NewRoundPayloadImpl _value, $Res Function(_$NewRoundPayloadImpl) _then)
-      : super(_value, _then);
+class _$UpdateScorePayloadCopyWithImpl<$Res>
+    implements $UpdateScorePayloadCopyWith<$Res> {
+  _$UpdateScorePayloadCopyWithImpl(this._self, this._then);
 
-  /// Create a copy of NewRoundPayload
+  final UpdateScorePayload _self;
+  final $Res Function(UpdateScorePayload) _then;
+
+  /// Create a copy of UpdateScorePayload
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? newRoundIndex = null,
+    Object? playerId = null,
+    Object? roundIndex = null,
+    Object? score = freezed,
   }) {
-    return _then(_$NewRoundPayloadImpl(
-      newRoundIndex: null == newRoundIndex
-          ? _value.newRoundIndex
-          : newRoundIndex // ignore: cast_nullable_to_non_nullable
+    return _then(_self.copyWith(
+      playerId: null == playerId
+          ? _self.playerId
+          : playerId // ignore: cast_nullable_to_non_nullable
+              as String,
+      roundIndex: null == roundIndex
+          ? _self.roundIndex
+          : roundIndex // ignore: cast_nullable_to_non_nullable
               as int,
+      score: freezed == score
+          ? _self.score
+          : score // ignore: cast_nullable_to_non_nullable
+              as int?,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$NewRoundPayloadImpl extends _NewRoundPayload {
-  const _$NewRoundPayloadImpl({required this.newRoundIndex}) : super._();
-
-  factory _$NewRoundPayloadImpl.fromJson(Map<String, dynamic> json) =>
-      _$$NewRoundPayloadImplFromJson(json);
-
-// 可以包含新回合的起始信息，例如新的回合索引 (0-based)
-// roundIndex 是指添加新回合后，总的回合数-1，即新回合的索引
-  @override
-  final int newRoundIndex;
+class _UpdateScorePayload extends UpdateScorePayload {
+  const _UpdateScorePayload(
+      {required this.playerId, required this.roundIndex, required this.score})
+      : super._();
+  factory _UpdateScorePayload.fromJson(Map<String, dynamic> json) =>
+      _$UpdateScorePayloadFromJson(json);
 
   @override
-  String toString() {
-    return 'NewRoundPayload(newRoundIndex: $newRoundIndex)';
+  final String playerId;
+// 玩家ID
+  @override
+  final int roundIndex;
+// 轮次索引 (0-based, 与 PlayerScore.roundScores 列表索引一致)
+  @override
+  final int? score;
+
+  /// Create a copy of UpdateScorePayload
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$UpdateScorePayloadCopyWith<_UpdateScorePayload> get copyWith =>
+      __$UpdateScorePayloadCopyWithImpl<_UpdateScorePayload>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$UpdateScorePayloadToJson(
+      this,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$NewRoundPayloadImpl &&
+            other is _UpdateScorePayload &&
+            (identical(other.playerId, playerId) ||
+                other.playerId == playerId) &&
+            (identical(other.roundIndex, roundIndex) ||
+                other.roundIndex == roundIndex) &&
+            (identical(other.score, score) || other.score == score));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, playerId, roundIndex, score);
+
+  @override
+  String toString() {
+    return 'UpdateScorePayload(playerId: $playerId, roundIndex: $roundIndex, score: $score)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$UpdateScorePayloadCopyWith<$Res>
+    implements $UpdateScorePayloadCopyWith<$Res> {
+  factory _$UpdateScorePayloadCopyWith(
+          _UpdateScorePayload value, $Res Function(_UpdateScorePayload) _then) =
+      __$UpdateScorePayloadCopyWithImpl;
+  @override
+  @useResult
+  $Res call({String playerId, int roundIndex, int? score});
+}
+
+/// @nodoc
+class __$UpdateScorePayloadCopyWithImpl<$Res>
+    implements _$UpdateScorePayloadCopyWith<$Res> {
+  __$UpdateScorePayloadCopyWithImpl(this._self, this._then);
+
+  final _UpdateScorePayload _self;
+  final $Res Function(_UpdateScorePayload) _then;
+
+  /// Create a copy of UpdateScorePayload
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? playerId = null,
+    Object? roundIndex = null,
+    Object? score = freezed,
+  }) {
+    return _then(_UpdateScorePayload(
+      playerId: null == playerId
+          ? _self.playerId
+          : playerId // ignore: cast_nullable_to_non_nullable
+              as String,
+      roundIndex: null == roundIndex
+          ? _self.roundIndex
+          : roundIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+      score: freezed == score
+          ? _self.score
+          : score // ignore: cast_nullable_to_non_nullable
+              as int?,
+    ));
+  }
+}
+
+/// @nodoc
+mixin _$NewRoundPayload {
+// 可以包含新回合的起始信息，例如新的回合索引 (0-based)
+// roundIndex 是指添加新回合后，总的回合数-1，即新回合的索引
+  int get newRoundIndex;
+
+  /// Create a copy of NewRoundPayload
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $NewRoundPayloadCopyWith<NewRoundPayload> get copyWith =>
+      _$NewRoundPayloadCopyWithImpl<NewRoundPayload>(
+          this as NewRoundPayload, _$identity);
+
+  /// Serializes this NewRoundPayload to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is NewRoundPayload &&
             (identical(other.newRoundIndex, newRoundIndex) ||
                 other.newRoundIndex == newRoundIndex));
   }
@@ -663,111 +553,171 @@ class _$NewRoundPayloadImpl extends _NewRoundPayload {
   @override
   int get hashCode => Object.hash(runtimeType, newRoundIndex);
 
-  /// Create a copy of NewRoundPayload
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$NewRoundPayloadImplCopyWith<_$NewRoundPayloadImpl> get copyWith =>
-      __$$NewRoundPayloadImplCopyWithImpl<_$NewRoundPayloadImpl>(
-          this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$NewRoundPayloadImplToJson(
-      this,
-    );
+  String toString() {
+    return 'NewRoundPayload(newRoundIndex: $newRoundIndex)';
   }
 }
 
-abstract class _NewRoundPayload extends NewRoundPayload {
-  const factory _NewRoundPayload({required final int newRoundIndex}) =
-      _$NewRoundPayloadImpl;
-  const _NewRoundPayload._() : super._();
+/// @nodoc
+abstract mixin class $NewRoundPayloadCopyWith<$Res> {
+  factory $NewRoundPayloadCopyWith(
+          NewRoundPayload value, $Res Function(NewRoundPayload) _then) =
+      _$NewRoundPayloadCopyWithImpl;
+  @useResult
+  $Res call({int newRoundIndex});
+}
 
-  factory _NewRoundPayload.fromJson(Map<String, dynamic> json) =
-      _$NewRoundPayloadImpl.fromJson;
+/// @nodoc
+class _$NewRoundPayloadCopyWithImpl<$Res>
+    implements $NewRoundPayloadCopyWith<$Res> {
+  _$NewRoundPayloadCopyWithImpl(this._self, this._then);
+
+  final NewRoundPayload _self;
+  final $Res Function(NewRoundPayload) _then;
+
+  /// Create a copy of NewRoundPayload
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? newRoundIndex = null,
+  }) {
+    return _then(_self.copyWith(
+      newRoundIndex: null == newRoundIndex
+          ? _self.newRoundIndex
+          : newRoundIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _NewRoundPayload extends NewRoundPayload {
+  const _NewRoundPayload({required this.newRoundIndex}) : super._();
+  factory _NewRoundPayload.fromJson(Map<String, dynamic> json) =>
+      _$NewRoundPayloadFromJson(json);
 
 // 可以包含新回合的起始信息，例如新的回合索引 (0-based)
 // roundIndex 是指添加新回合后，总的回合数-1，即新回合的索引
   @override
-  int get newRoundIndex;
+  final int newRoundIndex;
 
   /// Create a copy of NewRoundPayload
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$NewRoundPayloadImplCopyWith<_$NewRoundPayloadImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  @pragma('vm:prefer-inline')
+  _$NewRoundPayloadCopyWith<_NewRoundPayload> get copyWith =>
+      __$NewRoundPayloadCopyWithImpl<_NewRoundPayload>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$NewRoundPayloadToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _NewRoundPayload &&
+            (identical(other.newRoundIndex, newRoundIndex) ||
+                other.newRoundIndex == newRoundIndex));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, newRoundIndex);
+
+  @override
+  String toString() {
+    return 'NewRoundPayload(newRoundIndex: $newRoundIndex)';
+  }
 }
 
-ResetGamePayload _$ResetGamePayloadFromJson(Map<String, dynamic> json) {
-  return _ResetGamePayload.fromJson(json);
+/// @nodoc
+abstract mixin class _$NewRoundPayloadCopyWith<$Res>
+    implements $NewRoundPayloadCopyWith<$Res> {
+  factory _$NewRoundPayloadCopyWith(
+          _NewRoundPayload value, $Res Function(_NewRoundPayload) _then) =
+      __$NewRoundPayloadCopyWithImpl;
+  @override
+  @useResult
+  $Res call({int newRoundIndex});
+}
+
+/// @nodoc
+class __$NewRoundPayloadCopyWithImpl<$Res>
+    implements _$NewRoundPayloadCopyWith<$Res> {
+  __$NewRoundPayloadCopyWithImpl(this._self, this._then);
+
+  final _NewRoundPayload _self;
+  final $Res Function(_NewRoundPayload) _then;
+
+  /// Create a copy of NewRoundPayload
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? newRoundIndex = null,
+  }) {
+    return _then(_NewRoundPayload(
+      newRoundIndex: null == newRoundIndex
+          ? _self.newRoundIndex
+          : newRoundIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
 }
 
 /// @nodoc
 mixin _$ResetGamePayload {
   /// Serializes this ResetGamePayload to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-}
+  Map<String, dynamic> toJson();
 
-/// @nodoc
-abstract class $ResetGamePayloadCopyWith<$Res> {
-  factory $ResetGamePayloadCopyWith(
-          ResetGamePayload value, $Res Function(ResetGamePayload) then) =
-      _$ResetGamePayloadCopyWithImpl<$Res, ResetGamePayload>;
-}
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is ResetGamePayload);
+  }
 
-/// @nodoc
-class _$ResetGamePayloadCopyWithImpl<$Res, $Val extends ResetGamePayload>
-    implements $ResetGamePayloadCopyWith<$Res> {
-  _$ResetGamePayloadCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of ResetGamePayload
-  /// with the given fields replaced by the non-null parameter values.
-}
-
-/// @nodoc
-abstract class _$$ResetGamePayloadImplCopyWith<$Res> {
-  factory _$$ResetGamePayloadImplCopyWith(_$ResetGamePayloadImpl value,
-          $Res Function(_$ResetGamePayloadImpl) then) =
-      __$$ResetGamePayloadImplCopyWithImpl<$Res>;
-}
-
-/// @nodoc
-class __$$ResetGamePayloadImplCopyWithImpl<$Res>
-    extends _$ResetGamePayloadCopyWithImpl<$Res, _$ResetGamePayloadImpl>
-    implements _$$ResetGamePayloadImplCopyWith<$Res> {
-  __$$ResetGamePayloadImplCopyWithImpl(_$ResetGamePayloadImpl _value,
-      $Res Function(_$ResetGamePayloadImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of ResetGamePayload
-  /// with the given fields replaced by the non-null parameter values.
-}
-
-/// @nodoc
-@JsonSerializable()
-class _$ResetGamePayloadImpl extends _ResetGamePayload {
-  const _$ResetGamePayloadImpl() : super._();
-
-  factory _$ResetGamePayloadImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ResetGamePayloadImplFromJson(json);
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => runtimeType.hashCode;
 
   @override
   String toString() {
     return 'ResetGamePayload()';
   }
+}
+
+/// @nodoc
+class $ResetGamePayloadCopyWith<$Res> {
+  $ResetGamePayloadCopyWith(
+      ResetGamePayload _, $Res Function(ResetGamePayload) __);
+}
+
+/// @nodoc
+@JsonSerializable()
+class _ResetGamePayload extends ResetGamePayload {
+  const _ResetGamePayload() : super._();
+  factory _ResetGamePayload.fromJson(Map<String, dynamic> json) =>
+      _$ResetGamePayloadFromJson(json);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$ResetGamePayloadToJson(
+      this,
+    );
+  }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$ResetGamePayloadImpl);
+        (other.runtimeType == runtimeType && other is _ResetGamePayload);
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -775,88 +725,20 @@ class _$ResetGamePayloadImpl extends _ResetGamePayload {
   int get hashCode => runtimeType.hashCode;
 
   @override
-  Map<String, dynamic> toJson() {
-    return _$$ResetGamePayloadImplToJson(
-      this,
-    );
+  String toString() {
+    return 'ResetGamePayload()';
   }
-}
-
-abstract class _ResetGamePayload extends ResetGamePayload {
-  const factory _ResetGamePayload() = _$ResetGamePayloadImpl;
-  const _ResetGamePayload._() : super._();
-
-  factory _ResetGamePayload.fromJson(Map<String, dynamic> json) =
-      _$ResetGamePayloadImpl.fromJson;
-}
-
-GameEndPayload _$GameEndPayloadFromJson(Map<String, dynamic> json) {
-  return _GameEndPayload.fromJson(json);
 }
 
 /// @nodoc
 mixin _$GameEndPayload {
   /// Serializes this GameEndPayload to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $GameEndPayloadCopyWith<$Res> {
-  factory $GameEndPayloadCopyWith(
-          GameEndPayload value, $Res Function(GameEndPayload) then) =
-      _$GameEndPayloadCopyWithImpl<$Res, GameEndPayload>;
-}
-
-/// @nodoc
-class _$GameEndPayloadCopyWithImpl<$Res, $Val extends GameEndPayload>
-    implements $GameEndPayloadCopyWith<$Res> {
-  _$GameEndPayloadCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of GameEndPayload
-  /// with the given fields replaced by the non-null parameter values.
-}
-
-/// @nodoc
-abstract class _$$GameEndPayloadImplCopyWith<$Res> {
-  factory _$$GameEndPayloadImplCopyWith(_$GameEndPayloadImpl value,
-          $Res Function(_$GameEndPayloadImpl) then) =
-      __$$GameEndPayloadImplCopyWithImpl<$Res>;
-}
-
-/// @nodoc
-class __$$GameEndPayloadImplCopyWithImpl<$Res>
-    extends _$GameEndPayloadCopyWithImpl<$Res, _$GameEndPayloadImpl>
-    implements _$$GameEndPayloadImplCopyWith<$Res> {
-  __$$GameEndPayloadImplCopyWithImpl(
-      _$GameEndPayloadImpl _value, $Res Function(_$GameEndPayloadImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of GameEndPayload
-  /// with the given fields replaced by the non-null parameter values.
-}
-
-/// @nodoc
-@JsonSerializable()
-class _$GameEndPayloadImpl extends _GameEndPayload {
-  const _$GameEndPayloadImpl() : super._();
-
-  factory _$GameEndPayloadImpl.fromJson(Map<String, dynamic> json) =>
-      _$$GameEndPayloadImplFromJson(json);
-
-  @override
-  String toString() {
-    return 'GameEndPayload()';
-  }
+  Map<String, dynamic> toJson();
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$GameEndPayloadImpl);
+        (other.runtimeType == runtimeType && other is GameEndPayload);
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -864,17 +746,44 @@ class _$GameEndPayloadImpl extends _GameEndPayload {
   int get hashCode => runtimeType.hashCode;
 
   @override
-  Map<String, dynamic> toJson() {
-    return _$$GameEndPayloadImplToJson(
-      this,
-    );
+  String toString() {
+    return 'GameEndPayload()';
   }
 }
 
-abstract class _GameEndPayload extends GameEndPayload {
-  const factory _GameEndPayload() = _$GameEndPayloadImpl;
-  const _GameEndPayload._() : super._();
-
-  factory _GameEndPayload.fromJson(Map<String, dynamic> json) =
-      _$GameEndPayloadImpl.fromJson;
+/// @nodoc
+class $GameEndPayloadCopyWith<$Res> {
+  $GameEndPayloadCopyWith(GameEndPayload _, $Res Function(GameEndPayload) __);
 }
+
+/// @nodoc
+@JsonSerializable()
+class _GameEndPayload extends GameEndPayload {
+  const _GameEndPayload() : super._();
+  factory _GameEndPayload.fromJson(Map<String, dynamic> json) =>
+      _$GameEndPayloadFromJson(json);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$GameEndPayloadToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _GameEndPayload);
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  String toString() {
+    return 'GameEndPayload()';
+  }
+}
+
+// dart format on

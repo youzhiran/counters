@@ -45,11 +45,11 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.31
   path: ^1.9.0
   file_picker: ^10.1.7
-  window_manager: ^0.4.3
+  window_manager: ^0.5.0
   json_annotation: ^4.9.0
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.0.0
   flutter_svg: ^2.1.0
   umeng_common_sdk: ^1.2.9
   web_socket_channel: ^3.0.3
@@ -65,10 +65,10 @@ dev_dependencies:
   test: ^1.25.15
   riverpod_generator: ^2.6.4
   build_runner: ^2.4.15
-  custom_lint: ^0.7.0
+  custom_lint: ^0.7.3
   riverpod_lint: ^2.5.3
   json_serializable: ^6.9.5
-  freezed: ^2.5.2
+  freezed: ^3.0.6
 
 flutter_launcher_icons: # 新增图标配置段
   android: true

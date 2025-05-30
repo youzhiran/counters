@@ -11,7 +11,7 @@ part 'game_session.g.dart'; // json_serializable 生成的文件
 /// 游戏会话模型，用于在内存中表示一个完整的计分游戏会话。
 /// 使用 freezed 进行不可变性、值比较、copy方法，并结合 json_serializable 进行JSON序列化。
 @freezed
-class GameSession with _$GameSession {
+sealed class GameSession with _$GameSession {
   // 添加私有的命名构造函数。
   // 虽然当前 GameSession 没有自定义 getter/methods 直接写在类体内，
   // 但养成习惯添加这个，以防将来需要添加。

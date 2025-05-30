@@ -9,7 +9,7 @@ part 'player_score.g.dart'; // json_serializable 生成的文件
 /// 玩家在一次游戏会话中的得分模型。
 /// 使用 freezed 进行不可变性、值比较、copy方法，并结合 json_serializable 进行JSON序列化。
 @freezed
-class PlayerScore with _$PlayerScore {
+sealed class PlayerScore with _$PlayerScore {
   // === 必须的私有命名构造函数 ===
   // 当你添加了自定义的 getter 或方法时，freezed 需要这个构造函数来混合生成的代码。
   const PlayerScore._();

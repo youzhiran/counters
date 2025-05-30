@@ -6,69 +6,59 @@ part of 'sync_messages.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$SyncMessageImpl _$$SyncMessageImplFromJson(Map<String, dynamic> json) =>
-    _$SyncMessageImpl(
+_SyncMessage _$SyncMessageFromJson(Map<String, dynamic> json) => _SyncMessage(
       type: json['type'] as String,
       data: json['data'],
     );
 
-Map<String, dynamic> _$$SyncMessageImplToJson(_$SyncMessageImpl instance) =>
+Map<String, dynamic> _$SyncMessageToJson(_SyncMessage instance) =>
     <String, dynamic>{
       'type': instance.type,
       'data': instance.data,
     };
 
-_$SyncStatePayloadImpl _$$SyncStatePayloadImplFromJson(
-        Map<String, dynamic> json) =>
-    _$SyncStatePayloadImpl(
+_SyncStatePayload _$SyncStatePayloadFromJson(Map<String, dynamic> json) =>
+    _SyncStatePayload(
       session: GameSession.fromJson(json['session'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$$SyncStatePayloadImplToJson(
-        _$SyncStatePayloadImpl instance) =>
+Map<String, dynamic> _$SyncStatePayloadToJson(_SyncStatePayload instance) =>
     <String, dynamic>{
       'session': instance.session,
     };
 
-_$UpdateScorePayloadImpl _$$UpdateScorePayloadImplFromJson(
-        Map<String, dynamic> json) =>
-    _$UpdateScorePayloadImpl(
+_UpdateScorePayload _$UpdateScorePayloadFromJson(Map<String, dynamic> json) =>
+    _UpdateScorePayload(
       playerId: json['playerId'] as String,
       roundIndex: (json['roundIndex'] as num).toInt(),
       score: (json['score'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$$UpdateScorePayloadImplToJson(
-        _$UpdateScorePayloadImpl instance) =>
+Map<String, dynamic> _$UpdateScorePayloadToJson(_UpdateScorePayload instance) =>
     <String, dynamic>{
       'playerId': instance.playerId,
       'roundIndex': instance.roundIndex,
       'score': instance.score,
     };
 
-_$NewRoundPayloadImpl _$$NewRoundPayloadImplFromJson(
-        Map<String, dynamic> json) =>
-    _$NewRoundPayloadImpl(
+_NewRoundPayload _$NewRoundPayloadFromJson(Map<String, dynamic> json) =>
+    _NewRoundPayload(
       newRoundIndex: (json['newRoundIndex'] as num).toInt(),
     );
 
-Map<String, dynamic> _$$NewRoundPayloadImplToJson(
-        _$NewRoundPayloadImpl instance) =>
+Map<String, dynamic> _$NewRoundPayloadToJson(_NewRoundPayload instance) =>
     <String, dynamic>{
       'newRoundIndex': instance.newRoundIndex,
     };
 
-_$ResetGamePayloadImpl _$$ResetGamePayloadImplFromJson(
-        Map<String, dynamic> json) =>
-    _$ResetGamePayloadImpl();
+_ResetGamePayload _$ResetGamePayloadFromJson(Map<String, dynamic> json) =>
+    _ResetGamePayload();
 
-Map<String, dynamic> _$$ResetGamePayloadImplToJson(
-        _$ResetGamePayloadImpl instance) =>
+Map<String, dynamic> _$ResetGamePayloadToJson(_ResetGamePayload instance) =>
     <String, dynamic>{};
 
-_$GameEndPayloadImpl _$$GameEndPayloadImplFromJson(Map<String, dynamic> json) =>
-    _$GameEndPayloadImpl();
+_GameEndPayload _$GameEndPayloadFromJson(Map<String, dynamic> json) =>
+    _GameEndPayload();
 
-Map<String, dynamic> _$$GameEndPayloadImplToJson(
-        _$GameEndPayloadImpl instance) =>
+Map<String, dynamic> _$GameEndPayloadToJson(_GameEndPayload instance) =>
     <String, dynamic>{};

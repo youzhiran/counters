@@ -9,7 +9,7 @@ part 'sync_messages.g.dart';
 /// 所有通过 WebSocket 传输的消息都应遵循此格式
 /// { "type": "消息类型字符串", "data": "消息负载" }
 @freezed
-class SyncMessage with _$SyncMessage {
+sealed class SyncMessage with _$SyncMessage {
   // 不需要私有构造函数，因为这个类没有自定义方法或 getter
   // const SyncMessage._();
 
@@ -38,7 +38,7 @@ class SyncMessage with _$SyncMessage {
 /// "sync_state" 消息的负载
 /// 包含一个完整的 GameSession 对象，用于全量同步状态
 @freezed
-class SyncStatePayload with _$SyncStatePayload {
+sealed class SyncStatePayload with _$SyncStatePayload {
   const SyncStatePayload._(); // 需要私有构造函数，因为我们可能添加方法/getter
 
   const factory SyncStatePayload({
@@ -52,7 +52,7 @@ class SyncStatePayload with _$SyncStatePayload {
 /// "update_score" 消息的负载
 /// 用于单点分数更新 (某个玩家在某个轮次的得分)
 @freezed
-class UpdateScorePayload with _$UpdateScorePayload {
+sealed class UpdateScorePayload with _$UpdateScorePayload {
   const UpdateScorePayload._(); // 需要私有构造函数
 
   const factory UpdateScorePayload({
@@ -70,7 +70,7 @@ class UpdateScorePayload with _$UpdateScorePayload {
 /// "new_round" 消息的负载
 /// 通知新回合开始
 @freezed
-class NewRoundPayload with _$NewRoundPayload {
+sealed class NewRoundPayload with _$NewRoundPayload {
   const NewRoundPayload._(); // 需要私有构造函数
 
   const factory NewRoundPayload({
@@ -86,7 +86,7 @@ class NewRoundPayload with _$NewRoundPayload {
 /// "reset_game" 消息的负载
 /// 通知游戏重置。负载可以是空的。
 @freezed
-class ResetGamePayload with _$ResetGamePayload {
+sealed class ResetGamePayload with _$ResetGamePayload {
   const ResetGamePayload._();
 
   const factory ResetGamePayload() = _ResetGamePayload;
@@ -98,7 +98,7 @@ class ResetGamePayload with _$ResetGamePayload {
 /// "game_end" 消息的负载
 /// 通知游戏结束。负载可以包含游戏结果信息。
 @freezed
-class GameEndPayload with _$GameEndPayload {
+sealed class GameEndPayload with _$GameEndPayload {
   const GameEndPayload._();
 
   const factory GameEndPayload() = _GameEndPayload;
