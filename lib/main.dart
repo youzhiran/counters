@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/poker50.dart';
@@ -157,23 +158,11 @@ class MyApp extends ConsumerWidget {
     final themeState = ref.watch(themeProvider);
     final String? selectedFontFamily = themeState.fontFamily;
 
-    // 定义一个包含常见中文字体的 fallback 列表
-    final List<String> chineseFontFallbacks = [
-      'HarmonyOS Sans SC',
-      'PingFang SC',
-      'Ubuntu',
-      'MiSans',
-      'MiSans VF',
-      'Microsoft YaHei UI',
-      'Microsoft YaHei',
-    ];
-
     return ThemeData(
       useMaterial3: true,
-      // 如果用户选择了特定的字体，则使用该字体，否则（默认字体）使用 fallback 列表
+      // 如果用户选择了特定的字体，则使用该字体，否则（系统推荐）使用 fallback 列表
       fontFamily: selectedFontFamily,
-      fontFamilyFallback:
-          selectedFontFamily == null ? chineseFontFallbacks : null,
+      fontFamilyFallback: Config.chineseFontFallbacks,
       colorScheme: ColorScheme.fromSeed(
         seedColor: seedColor,
         brightness: brightness,

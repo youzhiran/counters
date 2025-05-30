@@ -88,7 +88,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 ),
                 _buildListTile(
                   icon: Icons.palette,
-                  title: '主题色彩',
+                  title: '主题设置',
                   trailing: Container(
                     width: 24,
                     height: 24,
@@ -666,19 +666,17 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     // 在显示对话框前获取 themeProvider.notifier
     final themeNotifier = ref.read(themeProvider.notifier);
 
-    // 预定义一些常用字体作为备选
-    final List<String> _commonFonts = [
-      '默认字体',
-      'Roboto',
-      'Open Sans',
-      'Lato',
-      'Montserrat',
-      'Oswald',
-      'Raleway',
-      'Ubuntu',
-      'Merriweather',
-      'Playfair Display',
-    ];
+    // 获取可用字体列表（带缓存）
+    Future<List<String>> getAvailableFonts(List<String> fallbackFonts) async {
+      try {
+        // 尝试获取系统字体
+        final systemFonts = await _getSystemFonts();
+        return ['系统推荐', ...systemFonts];
+      } catch (e) {
+        // 失败时使用Config中的预设字体
+        return ['系统推荐', ...Config.chineseFontFallbacks];
+      }
+    }
 
     // 显示对话框
     globalState.showCommonDialog(
@@ -688,24 +686,24 @@ class _SettingPageState extends ConsumerState<SettingPage> {
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: FutureBuilder<List<String>>(
-              future: _getAvailableFonts(_commonFonts), // 异步获取字体列表
+              future: getAvailableFonts([]), // 异步获取字体列表
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 }
 
-                final availableFonts = snapshot.data ?? _commonFonts;
+                final availableFonts = snapshot.data ?? [];
 
+                // 使用 Consumer 获取当前主题状态
                 return Consumer(
                   builder: (context, ref, _) {
-                    // 在Consumer内部获取当前字体值
-                    String currentFont =
-                        ref.watch(themeProvider).fontFamily ?? '默认字体';
+                    // 获取当前字体值
+                    final themeState = ref.watch(themeProvider);
+                    String currentFont = themeState.fontFamily ?? '系统推荐';
 
-                    // 检查当前字体是否在可用字体列表中，如果不在，则设置为默认字体
+                    // 检查当前字体是否在可用字体列表中
                     if (!availableFonts.contains(currentFont)) {
-                      currentFont = '默认字体';
-                      Log.w('当前字体 $currentFont 不在可用字体列表中，设置为默认字体');
+                      currentFont = '系统推荐';
                     }
 
                     return Column(
@@ -727,6 +725,14 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                               '选择字体：',
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
+                            Tooltip(
+                              message: '选择"系统推荐"将自动在程序推荐的字体列表中选择字体。',
+                              child: Icon(
+                                Icons.info_outline,
+                                size: 22,
+                                color: Colors.grey[600],
+                              ),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: DropdownButton<String>(
@@ -739,15 +745,18 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                                       font,
                                       style: TextStyle(
                                         fontFamily:
-                                            font == '默认字体' ? null : font,
+                                            font == '系统推荐' ? null : font,
                                       ),
                                     ),
                                   );
                                 }).toList(),
                                 onChanged: (String? newFont) {
+                                  // 这里有两个if是为了立即在ui上显示出选择了 系统推荐
                                   if (newFont != null) {
-                                    themeNotifier.setFontFamily(
-                                        newFont == '默认字体' ? null : newFont);
+                                    themeNotifier.setFontFamily(newFont);
+                                  }
+                                  if (newFont == '系统推荐') {
+                                    themeNotifier.setFontFamily(null);
                                   }
                                 },
                               ),
@@ -772,11 +781,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                           crossAxisSpacing: 18,
                           children: _themeColors.map((color) {
                             // 获取当前主题颜色
-                            final currentThemeColor =
-                                ref.watch(themeProvider).themeColor;
+                            final currentThemeColor = themeState.themeColor;
                             return InkWell(
                               onTap: () {
-                                // 使用之前获取的 themeNotifier 更新主题颜色
+                                // 更新主题颜色
                                 themeNotifier.setThemeColor(color);
                               },
                               child: Container(
@@ -818,18 +826,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
         ),
       ),
     );
-  }
-
-  // 获取可用字体列表（带缓存）
-  Future<List<String>> _getAvailableFonts(List<String> fallbackFonts) async {
-    try {
-      // 尝试获取系统字体
-      final systemFonts = await _getSystemFonts();
-      return ['默认字体', ...systemFonts];
-    } catch (e) {
-      // 失败时使用备选字体
-      return fallbackFonts;
-    }
   }
 
   // 获取系统字体列表
@@ -878,11 +874,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       } else if (Platform.isLinux) {
         // Linux系统字体
         return [
+          'WenQuanYi Micro Hei',
           'Ubuntu',
           'DejaVu Sans',
+          'Noto Sans CJK SC',
           'FreeSans',
           'Liberation Sans',
-          'Noto Sans',
         ];
       }
       return [];

@@ -247,6 +247,7 @@ class _ScoreBoardGrid extends ConsumerWidget {
     final scoreNotifier = ref.read(scoreProvider.notifier);
     // 更新玩家的总分数，这里仍然使用更新第一个回合分数的临时方案
     scoreNotifier.updateScore(player.pid, 0, currentScore + 1);
+    HapticFeedback.mediumImpact();
   }
 
   // 显示分数编辑对话框
