@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 class SettingPage extends ConsumerStatefulWidget {
   const SettingPage({super.key});
 
@@ -78,6 +79,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 _buildListTile(
                   icon: Icons.dark_mode,
                   title: '深色模式',
+                  subtitle: '也可设置为自动',
                   trailing: Text(
                     _getThemeModeText(ref.watch(themeProvider).themeMode),
                     style: TextStyle(
@@ -89,6 +91,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 _buildListTile(
                   icon: Icons.palette,
                   title: '主题设置',
+                  subtitle: '设置程序主题颜色和字体',
                   trailing: Container(
                     width: 24,
                     height: 24,
@@ -104,13 +107,15 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 ),
                 _buildSectionHeader('通用'),
                 _buildListTile(
-                    icon: Icons.update,
+                    icon: Icons.rocket_launch,
                     title: '检查更新',
+                    subtitle: '获取新版本或是测试版本',
                     onTap: () => checkUpdate(context, ref)),
-                if (Platform.isWindows) // 只在Windows平台显示
+                if (Platform.isWindows)
                   _buildListTile(
                     icon: Icons.folder,
                     title: '数据存储位置',
+                    subtitle: '设置 Counters 数据库存储位置，目前仅支持 Windows',
                     trailing: Text(
                       _isCustomPath ? '自定义' : '默认',
                       style: TextStyle(
@@ -122,12 +127,29 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 _buildListTile(
                   icon: Icons.settings_backup_restore,
                   title: '重置设置',
+                  subtitle: '恢复 Counters 默认设置',
                   onTap: _resetSettings,
                 ),
                 _buildListTile(
                   icon: Icons.delete_forever,
                   title: '重置数据库',
+                  subtitle: '重置 Counters 数据库',
                   onTap: _resetDatabase,
+                ),
+                _buildListTile(
+                  icon: Icons.network_check_outlined, // 使用网络相关的图标
+                  title: '通信测试&日志',
+                  subtitle: '提供局域网联机测试和程序日志查看',
+                  onTap: () {
+                    Navigator.pushNamed(context, '/lan_test');
+                  },
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.desktop_windows),
+                  title: const Text('启用桌面模式适配'),
+                  subtitle: const Text('测试中功能，启用并重启后程序支持横屏界面'),
+                  value: _enableDesktopMode,
+                  onChanged: _saveDesktopModeSetting,
                 ),
                 // SwitchListTile(
                 //   secondary: const Icon(Icons.local_fire_department),
@@ -140,16 +162,21 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 _buildListTile(
                   icon: Icons.info,
                   title: '关于应用',
+                  subtitle: '了解本应用',
                   onTap: () {
                     // 直接调用AboutPage的显示方法，让它内部判断显示模式
                     AboutPage.showAsSideSheet(context);
                   },
                 ),
                 _buildListTile(
-                    icon: Icons.chat, title: '一起划水', onTap: _handleJoinChatTap),
+                    icon: Icons.chat,
+                    title: '一起划水',
+                    subtitle: '朋友快来玩呀',
+                    onTap: _handleJoinChatTap),
                 _buildListTile(
                   icon: Icons.bug_report,
                   title: '问题反馈',
+                  subtitle: '反馈bug与建议',
                   onTap: () => globalState.openUrl(
                     Config.urlGithub,
                   ),
@@ -159,6 +186,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   _buildListTile(
                     icon: Icons.visibility_off,
                     title: '隐藏开发者选项',
+                    subtitle: '多次点击下方版本信息可再次开启',
                     onTap: _hideDevOptions,
                   ),
                   SwitchListTile(
@@ -167,20 +195,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     subtitle: const Text('重启应用后生效'),
                     value: _enableProviderLogger,
                     onChanged: _saveProviderLoggerSetting,
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.desktop_windows_sharp),
-                    title: const Text('启用桌面模式适配'),
-                    subtitle: const Text('测试中功能，启用后重启支持横屏界面'),
-                    value: _enableDesktopMode,
-                    onChanged: _saveDesktopModeSetting,
-                  ),
-                  _buildListTile(
-                    icon: Icons.network_check, // 使用网络相关的图标
-                    title: '通信测试&日志',
-                    onTap: () {
-                      Navigator.pushNamed(context, '/lan_test');
-                    },
                   ),
                 ],
               ],
@@ -913,38 +927,33 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          child: Row(
-            children: [
-              Icon(icon, size: 24),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color:
-                                  Theme.of(context).textTheme.bodySmall?.color,
-                            ),
+        child: ListTile(
+          // 使用默认的 contentPadding，确保与 SwitchListTile 一致
+          leading: Icon(icon, size: 24), // 图标颜色将由 ListTile 的默认主题处理
+          title: Text(
+            title,
+            style: Theme.of(context).textTheme.bodyLarge, // 保持现有文本样式
+          ),
+          subtitle: subtitle != null
+              ? Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.color, // 保持现有副标题样式
                       ),
-                    ],
-                  ],
-                ),
-              ),
+                )
+              : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min, // 确保 Row 不占用全部宽度
+            children: [
               if (trailing != null) ...[
                 trailing,
                 const SizedBox(width: 8),
               ],
               const Icon(Icons.chevron_right, size: 24),
+              // 箭头图标颜色将由 ListTile 的默认主题处理
             ],
           ),
         ),
