@@ -1,5 +1,6 @@
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
+import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/mahjong.dart';
@@ -20,7 +21,6 @@ import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../common/model/counter.dart';
 
 abstract class BaseSessionPage extends ConsumerStatefulWidget {
   final String templateId;

@@ -671,6 +671,9 @@ class Score extends _$Score {
           ),
     );
     updateHighlight();
+
+    // 客户端收到同步状态后，保存会话到本地 DAO，以便后续启动或重建时能加载
+    _saveSession();
   }
 
   /// 应用接收到的单点分数更新 (例如 Poker50)

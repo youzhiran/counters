@@ -11,6 +11,7 @@ import 'package:counters/common/utils/template_utils.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/network_manager.dart';
+
 // 引入 Score Provider 和 消息 Payload 类
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -152,6 +153,16 @@ class LanNotifier extends StateNotifier<LanState> {
 
       if (!state.isHost || state.isHostAndClientMode) {
         switch (type) {
+          case "sync_state":
+            if (data is Map<String, dynamic>) {
+              final payload = SyncStatePayload.fromJson(data);
+              Log.i('收到全量同步状态');
+              _ref.read(scoreProvider.notifier).applySyncState(payload.session);
+            } else {
+              Log.w('收到无效的 sync_state 消息负载类型: ${data.runtimeType}');
+            }
+            break;
+
           case "template_info":
             try {
               final templateMap = data as Map<String, dynamic>;
@@ -199,22 +210,9 @@ class LanNotifier extends StateNotifier<LanState> {
               final templatesNotifier = _ref.read(templatesProvider.notifier);
               await templatesNotifier.saveOrUpdateNetworkTemplate(template);
               Log.i("同步网络模板到本地：${template.tid}");
-
-              // 等待模板同步完成 (可以适当缩短或移除?)
-              await Future.delayed(const Duration(milliseconds: 200));
             } catch (e, stack) {
               Log.e("解析 template_info 失败: $e");
               Log.e("Stack: $stack");
-            }
-            break;
-
-          case "sync_state":
-            if (data is Map<String, dynamic>) {
-              final payload = SyncStatePayload.fromJson(data);
-              Log.i('收到全量同步状态');
-              _ref.read(scoreProvider.notifier).applySyncState(payload.session);
-            } else {
-              Log.w('收到无效的 sync_state 消息负载类型: ${data.runtimeType}');
             }
             break;
 
@@ -496,7 +494,6 @@ class LanNotifier extends StateNotifier<LanState> {
             clientNetworkManager: null,
             receivedMessages: []);
       }
-
       // TODO: Client 连接成功后，通知 ScoreNotifier
       // _ref.read(scoreProvider.notifier).setHostMode(false);
       // _ref.read(scoreProvider.notifier).setLanNotifier(this);
