@@ -42,27 +42,32 @@ class HistorySessionItem extends ConsumerWidget {
             );
           },
           onDismissed: (_) => onDelete(),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            title: Text(
-              template?.templateName ?? "未知模板",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: _buildSessionSubtitle(),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () async {
-                final confirm = await globalState.showCommonDialog(
-                  child: ConfirmationDialog(
-                    title: '确认删除',
-                    content: '确定要删除这条记录吗？',
-                    confirmText: '删除',
-                  ),
-                );
-                if (confirm == true) onDelete();
-              },
-            ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8.0),
             onTap: onResume,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              title: Text(
+                template?.templateName ?? "未知模板",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: _buildSessionSubtitle(),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                onPressed: () async {
+                  final confirm = await globalState.showCommonDialog(
+                    child: ConfirmationDialog(
+                      title: '确认删除',
+                      content: '确定要删除这条记录吗？',
+                      confirmText: '删除',
+                    ),
+                  );
+                  if (confirm == true) onDelete();
+                },
+              ),
+            ),
           ),
         );
       },
@@ -92,9 +97,9 @@ class HistorySessionItem extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(DateFormatter.format(session.startTime)),
+        Text('开始：${DateFormatter.format(session.startTime)}'),
         if (session.endTime != null)
-          Text(DateFormatter.format(session.endTime!)),
+          Text('结束：${DateFormatter.format(session.endTime!)}'),
         Text(
           "状态：${session.isCompleted ? '已完成' : '进行中'}",
           style: TextStyle(

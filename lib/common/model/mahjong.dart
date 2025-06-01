@@ -63,8 +63,9 @@ class MahjongTemplate extends BaseTemplate {
     if (playerCount != null) newOtherSet['playerCount'] = playerCount;
     if (targetScore != null) newOtherSet['targetScore'] = targetScore;
     if (players != null) newOtherSet['players'] = players;
-    if (isSystemTemplate != null)
+    if (isSystemTemplate != null) {
       newOtherSet['isSystemTemplate'] = isSystemTemplate;
+    }
     if (baseTemplateId != null) newOtherSet['baseTemplateId'] = baseTemplateId;
 
     return MahjongTemplate(

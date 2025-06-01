@@ -23,7 +23,7 @@ class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
   final List<int> _commonNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
   // 面板状态控制
-  bool _isPanelExpanded = true;
+  final bool _isPanelExpanded = true;
 
   // 添加面板高度控制
   double _panelHeight = 140.0; // 默认高度
