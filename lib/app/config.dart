@@ -14,6 +14,7 @@ class Config {
   // 常量字符串 - LAN
   static const int discoveryPort = 8099; // 用于服务发现的 UDP 端口 (不同于 WebSocket 端口)
   static const String discoveryMsgPrefix = 'CountersGameHost:'; // 广播消息标识
+  static const String appName = 'Counters'; // 程序名称
 
   // 常量字符串列表 - 回退字体
   static const List<String> chineseFontFallbacks = [

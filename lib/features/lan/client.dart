@@ -5,10 +5,12 @@ import 'package:counters/common/utils/log.dart';
 import 'package:counters/features/lan/network_manager.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-/// 获取本地 WIFI IP 地址，优先选择含有WLAN/wifi的接口IP
-Future<String?> getWlanIp() async {
+/// 获取本地 WIFI IP 地址和接口名称，优先选择含有WLAN/wifi的接口
+/// 返回一个包含 'ip' 和 'name' 的 Map，如果未找到则返回 null
+Future<Map<String, String>?> getWlanIp() async {
   try {
-    String? firstIpFound; // 用于记录找到的第一个 IP，作为备选
+    String? firstIpFound;
+    String? firstInterfaceNameFound;
 
     // 遍历所有网络接口
     for (var interface in await NetworkInterface.list(
@@ -19,27 +21,31 @@ Future<String?> getWlanIp() async {
         final interfaceName = interface.name.toLowerCase(); // 转为小写以便比较
         Log.d('找到 IP 地址: $ip 来自接口: ${interface.name}');
 
-        // 记录找到的第一个 IP 地址，以防找不到 WLAN 接口
-        firstIpFound ??= ip;
+        // 记录找到的第一个 IP 地址和名称，作为备选
+        if (firstIpFound == null) {
+          firstIpFound = ip;
+          firstInterfaceNameFound = interface.name;
+        }
 
-        // 检查接口名称是否包含 "wlan"或“wifi”
+        // 检查接口名称是否包含 "wlan"或"wifi"
         if (interfaceName.contains('wlan') || interfaceName.contains('wifi')) {
           Log.i('优先选择 WLAN 接口: ${interface.name}，IP: $ip');
-          return ip; // 找到 WLAN 接口，立即返回其 IP
+          return {'ip': ip, 'name': interface.name}; // 找到 WLAN 接口，立即返回
         }
       }
     }
 
     // 如果循环结束仍未找到 WLAN 接口，返回找到的第一个 IP (如果有)
     if (firstIpFound != null) {
-      Log.w('未找到名称含 "wlan/wifi" 的接口，返回第一个找到的 IP: $firstIpFound');
-      return firstIpFound;
+      Log.w(
+          '未找到名称含 "wlan/wifi" 的接口，返回第一个找到的 IP: $firstIpFound (${firstInterfaceNameFound ?? '未知接口'})');
+      return {'ip': firstIpFound, 'name': firstInterfaceNameFound ?? '未知接口'};
     }
   } catch (e) {
     Log.e('获取本地 IP 失败: $e');
   }
 
-  Log.w('未能找到合适的本地 IP 地址');
+  Log.w('未能找到合适的本地 IP 地址和接口');
   return null; // 如果没有找到任何合适的 IP，返回 null
 }
 

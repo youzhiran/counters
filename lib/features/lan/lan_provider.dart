@@ -11,7 +11,6 @@ import 'package:counters/common/utils/template_utils.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/network_manager.dart';
-
 // 引入 Score Provider 和 消息 Payload 类
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -37,6 +36,7 @@ class LanState {
   final bool isHostAndClientMode;
   final bool isBroadcasting; // 新增：是否正在广播
   final List<String> connectedClientIps; // 新增：存储已连接客户端 IP
+  final String interfaceName; // 新增：本机网络接口名称
 
   const LanState({
     this.isLoading = false,
@@ -50,6 +50,7 @@ class LanState {
     this.isHostAndClientMode = false,
     this.isBroadcasting = false, // 新增：默认不广播
     this.connectedClientIps = const [], // 新增：默认空列表
+    this.interfaceName = '', // 新增：默认空字符串
   });
 
   LanState copyWith({
@@ -66,6 +67,7 @@ class LanState {
     List<String>? connectedClientIps, // 新增
     bool clearNetworkManager = false,
     bool clearClientNetworkManager = false,
+    String? interfaceName, // 新增
   }) {
     return LanState(
       isLoading: isLoading ?? this.isLoading,
@@ -83,6 +85,7 @@ class LanState {
       isBroadcasting: isBroadcasting ?? this.isBroadcasting,
       // 新增
       connectedClientIps: connectedClientIps ?? this.connectedClientIps, // 新增
+      interfaceName: interfaceName ?? this.interfaceName, // 新增
     );
   }
 }
@@ -113,16 +116,19 @@ class LanNotifier extends StateNotifier<LanState> {
 
   Future<void> _fetchLocalIp() async {
     if (!mounted) return;
-    state = state.copyWith(localIp: '获取中...');
+    state = state.copyWith(localIp: '获取中...', interfaceName: ''); // 获取中时清空接口名
     try {
-      final ip = await getWlanIp();
+      final ipData = await getWlanIp(); // 获取包含IP和接口名称的Map
       if (mounted) {
-        state = state.copyWith(localIp: ip ?? '获取失败');
+        state = state.copyWith(
+          localIp: ipData?['ip'] ?? '获取失败',
+          interfaceName: ipData?['name'] ?? '',
+        );
       }
     } catch (e) {
       Log.e('获取本地 IP 失败: $e');
       if (mounted) {
-        state = state.copyWith(localIp: '获取失败');
+        state = state.copyWith(localIp: '获取失败', interfaceName: '');
       }
     }
   }

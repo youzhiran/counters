@@ -4,7 +4,6 @@ import 'package:counters/common/utils/log.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class DataManager {
   static bool _isMigrating = false; // 添加迁移状态锁
 

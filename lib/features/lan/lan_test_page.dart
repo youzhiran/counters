@@ -1,8 +1,8 @@
 import 'package:counters/common/log_provider.dart';
+import 'package:counters/common/widgets/ip_display_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // UI Widget
@@ -75,31 +75,11 @@ class LanTestPage extends ConsumerWidget {
             if (!lanState.isConnected &&
                 !lanState.isHost &&
                 !lanState.isHostAndClientMode) ...[
-              Text('你的IP地址: ${lanState.localIp}',
-                  style: Theme.of(context).textTheme.titleMedium),
-              if (lanState.localIp != '获取中...' && lanState.localIp != '获取失败')
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton.icon(
-                      icon: const Icon(Icons.copy, size: 16),
-                      label: const Text('复制IP'),
-                      onPressed: () {
-                        Clipboard.setData(
-                            ClipboardData(text: lanState.localIp));
-                        AppSnackBar.show('IP地址已复制');
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton.icon(
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: const Text('刷新IP'),
-                      onPressed: () {
-                        lanNotifier.refreshLocalIp();
-                      },
-                    ),
-                  ],
-                ),
+              IpDisplayWidget(
+                localIp: lanState.localIp,
+                interfaceName: lanState.interfaceName,
+                onRefreshIp: () => lanNotifier.refreshLocalIp(),
+              ),
               Row(
                 // 将成为主机和成为主机&客户端按钮分开，避免重复
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,

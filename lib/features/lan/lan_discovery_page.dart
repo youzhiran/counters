@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/ip_display_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/lan_provider.dart';
@@ -141,6 +142,8 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
   Widget build(BuildContext context) {
     final discoveryState = ref.watch(lanDiscoveryProvider);
     final discoveryNotifier = ref.read(lanDiscoveryProvider.notifier);
+    final lanState = ref.watch(lanProvider);
+    final lanNotifier = ref.read(lanProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
@@ -167,7 +170,13 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
-
+          // 新增：显示本机IP地址和操作按钮
+          IpDisplayWidget(
+            localIp: lanState.localIp,
+            interfaceName: lanState.interfaceName,
+            onRefreshIp: () => lanNotifier.refreshLocalIp(),
+          ),
+          // 结束新增
           // 显示扫描状态或无主机提示
           if (discoveryState.isScanning && discoveryState.hosts.isEmpty)
             const Expanded(
