@@ -1,4 +1,3 @@
-import 'package:counters/app/state.dart';
 import 'package:counters/common/fragments/input_panel.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
@@ -6,12 +5,9 @@ import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/player_score.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/widgets/player_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/score/base_page.dart';
 import 'package:counters/features/score/score_provider.dart';
-import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 3人扑克50分
@@ -84,7 +80,16 @@ class _ScoreColumn extends ConsumerWidget {
             return Expanded(
               // 新增 Expanded
               child: GestureDetector(
-                onTap: () => _showEditDialog(ref, context, index),
+                onTap: () {
+                  final baseState =
+                      context.findAncestorStateOfType<BaseSessionPageState>();
+                  baseState?.showRoundScoreEditDialog(
+                    player: player,
+                    roundIndex: index,
+                    scores: scores,
+                    supportDecimal: false, // Poker50 不支持小数
+                  );
+                },
                 behavior: HitTestBehavior.opaque,
                 child: Container(
                   key: isHighlight ? cellKey : null, // 仅高亮单元格设置 key
@@ -102,53 +107,6 @@ class _ScoreColumn extends ConsumerWidget {
             );
           }),
         ],
-      ),
-    );
-  }
-
-  void _showEditDialog(WidgetRef ref, BuildContext context, int roundIndex) {
-    final scoreNotifier = ref.read(scoreProvider.notifier);
-    final scoreState = ref.read(scoreProvider);
-
-    final currentRound = scoreState.value?.currentRound ?? 0;
-    final currentSession = scoreState.value?.currentSession;
-
-    if (roundIndex < 0 || roundIndex > scores.length) return;
-
-    if (roundIndex == scores.length) {
-      // 添加currentRound有效性检查
-      final canAddNewRound = currentRound == 0 ||
-          currentSession!.scores.every((s) {
-            // 调整索引访问逻辑
-            final lastRoundIndex = currentRound - 1;
-            return s.roundScores.length > lastRoundIndex &&
-                s.roundScores[lastRoundIndex] != null;
-          });
-
-      if (canAddNewRound) {
-        scoreNotifier.addNewRound();
-      } else {
-        // 添加提示逻辑
-        AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
-        return;
-      }
-    }
-
-    final currentScore = roundIndex < scores.length ? scores[roundIndex] : null;
-
-    globalState.showCommonDialog(
-      child: _ScoreEditDialog(
-        templateId: templateId,
-        player: player,
-        round: roundIndex + 1,
-        initialValue: currentScore ?? 0,
-        onConfirm: (newValue) {
-          scoreNotifier.updateScore(
-            player.pid,
-            roundIndex,
-            newValue,
-          );
-        },
       ),
     );
   }
@@ -322,95 +280,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
           }),
         ],
       ),
-    );
-  }
-}
-
-/// 分数编辑对话框组件
-/// 参数说明：
-/// [player]: 关联的玩家信息
-/// [round]: 编辑的回合数
-/// [initialValue]: 初始分数值
-/// [onConfirm]: 确认修改回调
-class _ScoreEditDialog extends ConsumerStatefulWidget {
-  final String templateId;
-  final PlayerInfo player;
-  final int round;
-  final int initialValue;
-  final ValueChanged<int> onConfirm;
-
-  const _ScoreEditDialog({
-    required this.templateId,
-    required this.player,
-    required this.round,
-    required this.initialValue,
-    required this.onConfirm,
-  });
-
-  @override
-  _ScoreEditDialogState createState() => _ScoreEditDialogState();
-}
-
-class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    final initialText =
-        widget.initialValue != 0 ? widget.initialValue.toString() : '';
-    _controller = TextEditingController(text: initialText);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final template = ref
-        .read(templatesProvider.notifier)
-        .getTemplate(widget.templateId) as Poker50Template;
-    final isAllowNegative = template.isAllowNegative;
-
-    return AlertDialog(
-      title: Text('修改分数'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('${widget.player.name} - 第${widget.round}轮'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _controller,
-            keyboardType:
-                TextInputType.numberWithOptions(signed: true, decimal: false),
-            autofocus: true,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
-            ],
-            decoration: InputDecoration(
-              labelText: '输入新分数',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => globalState.navigatorKey.currentState?.pop(),
-          child: Text('取消'),
-        ),
-        TextButton(
-          onPressed: () {
-            final value = int.tryParse(_controller.text) ?? 0;
-            globalState.navigatorKey.currentState?.pop();
-            if (!isAllowNegative && value < 0) {
-              AppSnackBar.warn('当前模板设置不允许输入负数！');
-              return;
-            }
-            widget.onConfirm(value);
-            ref.read(scoreProvider.notifier).updateHighlight();
-          },
-          child: Text('确认'),
-        ),
-      ],
     );
   }
 }

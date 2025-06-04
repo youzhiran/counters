@@ -30,4 +30,7 @@ class Config {
     'Noto Sans SC',
     'Arial',
   ];
+
+  static const int roundScoreMax = 1000000; // 每轮最大分数
+  static const int gameScoreMax = 2100000000; // 每局累计最大分数，暂未使用
 }

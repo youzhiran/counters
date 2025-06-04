@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
+import 'package:counters/app/state.dart';
 import 'package:counters/common/dao/game_session_dao.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
@@ -15,8 +16,11 @@ import 'package:counters/common/widgets/snackbar.dart';
 // 引入 LAN Provider 和 消息 Payload 类
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/score/game_session_dao_provider.dart';
+import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart'; // 确保导入 PlayerInfo 用于 applySyncState
 
@@ -285,6 +289,17 @@ class Score extends _$Score {
     if (currentState?.currentSession == null) {
       Log.w('updateScore 失败: 无当前会话');
       return;
+    }
+
+    // 检查分数是否超出整数范围
+    if (newScore > 2147483647) {
+      Log.w('分数过大，已限制为最大值: $playerId');
+      newScore = 2147483647; // 限制为 int 的最大值
+      AppSnackBar.warn('分数过大，已限制为最大值');
+    } else if (newScore < -2147483648) {
+      Log.w('分数过小，已限制为最小值: $playerId');
+      newScore = -2147483648; // 限制为 int 的最小值
+      AppSnackBar.warn('分数过小，已限制为最小值');
     }
 
     final playerScoresMap = {playerId: newScore};
@@ -844,5 +859,128 @@ class Score extends _$Score {
     final jsonString = jsonEncode(message.toJson());
     lanNotifier.sendJsonMessage(jsonString);
     Log.i('ScoreNotifier 广播模板信息');
+  }
+}
+
+/// 分数编辑服务的 Provider
+final scoreEditServiceProvider = Provider<ScoreEditService>((ref) {
+  return ScoreEditService(ref);
+});
+
+/// 分数编辑服务类
+class ScoreEditService {
+  final Ref ref;
+
+  ScoreEditService(this.ref);
+
+  /// 显示轮次分数编辑弹窗（适用于麻将、Poker50等基于轮次的游戏）
+  void showRoundScoreEditDialog({
+    required String templateId,
+    required PlayerInfo player,
+    required int roundIndex,
+    required List<int?> scores,
+    bool supportDecimal = false,
+    int decimalMultiplier = 100,
+  }) {
+    final scoreNotifier = ref.read(scoreProvider.notifier);
+    final scoreState = ref.read(scoreProvider);
+
+    final currentRound = scoreState.value?.currentRound ?? 0;
+    final currentSession = scoreState.value?.currentSession;
+
+    if (roundIndex < 0 || roundIndex > scores.length) return;
+
+    // 检查是否需要添加新轮次
+    if (roundIndex == scores.length) {
+      final canAddNewRound = currentRound == 0 ||
+          currentSession!.scores.every((s) {
+            final lastRoundIndex = currentRound - 1;
+            return s.roundScores.length > lastRoundIndex &&
+                s.roundScores[lastRoundIndex] != null;
+          });
+
+      if (canAddNewRound) {
+        scoreNotifier.addNewRound();
+      } else {
+        AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
+        return;
+      }
+    }
+
+    final currentScore = roundIndex < scores.length ? scores[roundIndex] : null;
+
+    _showScoreEditDialog(
+      templateId: templateId,
+      player: player,
+      initialValue: currentScore ?? 0,
+      round: roundIndex + 1,
+      supportDecimal: supportDecimal,
+      decimalMultiplier: decimalMultiplier,
+      onConfirm: (newValue) {
+        scoreNotifier.updateScore(
+          player.pid,
+          roundIndex,
+          newValue,
+        );
+        ref.read(scoreProvider.notifier).updateHighlight();
+      },
+    );
+  }
+
+  /// 显示总分编辑弹窗（适用于Counter等累计分数的游戏）
+  void showTotalScoreEditDialog({
+    required String templateId,
+    required PlayerInfo player,
+    required int currentScore,
+    String? title,
+    String? inputLabel,
+  }) {
+    final scoreNotifier = ref.read(scoreProvider.notifier);
+
+    _showScoreEditDialog(
+      templateId: templateId,
+      player: player,
+      initialValue: currentScore,
+      title: title ?? '修改总分数',
+      inputLabel: inputLabel ?? '输入总分数',
+      supportDecimal: false,
+      onConfirm: (newValue) {
+        // 更新玩家的总分数
+        // 临时方案：模拟更新第一个回合的分数，以影响总分
+        scoreNotifier.updateScore(player.pid, 0, newValue);
+        ref.read(scoreProvider.notifier).updateHighlight();
+      },
+    );
+  }
+
+  /// 内部方法：显示通用的分数编辑弹窗
+  void _showScoreEditDialog({
+    required String templateId,
+    required PlayerInfo player,
+    required int initialValue,
+    required ValueChanged<int> onConfirm,
+    String? title,
+    String? subtitle,
+    String? inputLabel,
+    int? round,
+    bool supportDecimal = false,
+    int decimalMultiplier = 100,
+    bool? allowNegative,
+  }) {
+    globalState.showCommonDialog(
+      child: BaseScoreEditDialog(
+        templateId: templateId,
+        player: player,
+        initialValue: initialValue,
+        onConfirm: onConfirm,
+        title: title,
+        subtitle: subtitle,
+        inputLabel: inputLabel,
+        round: round,
+        supportDecimal: supportDecimal,
+        decimalMultiplier: decimalMultiplier,
+        allowNegative: allowNegative,
+      ),
+    );
   }
 }

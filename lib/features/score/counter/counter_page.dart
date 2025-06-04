@@ -1,14 +1,11 @@
-import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/player_score.dart';
 import 'package:counters/common/widgets/player_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/score/base_page.dart';
 import 'package:counters/features/score/score_provider.dart';
-import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -230,8 +227,15 @@ class _ScoreBoardGrid extends ConsumerWidget {
                     player: player,
                     score: totalScore,
                     onTap: () => _incrementScore(ref, player, totalScore),
-                    onLongPress: () =>
-                        _showEditDialog(ref, context, player, totalScore),
+                    onLongPress: () {
+                      ref
+                          .read(scoreEditServiceProvider)
+                          .showTotalScoreEditDialog(
+                            templateId: template.tid,
+                            player: player,
+                            currentScore: totalScore,
+                          );
+                    },
                   ),
                 ),
               );
@@ -248,30 +252,6 @@ class _ScoreBoardGrid extends ConsumerWidget {
     // 更新玩家的总分数，这里仍然使用更新第一个回合分数的临时方案
     scoreNotifier.updateScore(player.pid, 0, currentScore + 1);
     HapticFeedback.mediumImpact();
-  }
-
-  // 显示分数编辑对话框
-  void _showEditDialog(WidgetRef ref, BuildContext context, PlayerInfo player,
-      int currentScore) {
-    final scoreNotifier = ref.read(scoreProvider.notifier);
-
-    globalState.showCommonDialog(
-      child: _ScoreEditDialog(
-        templateId: template.tid,
-        player: player,
-        initialValue: currentScore, // 传递当前总分数
-        onConfirm: (newValue) {
-          // 更新玩家的总分数
-          // 注意：这里需要根据 ScoreProvider 的实际API来调用
-          // 如果 ScoreProvider 没有直接更新总分的API，可能需要先获取当前session，修改对应的PlayerScore，然后更新session
-          // 假设 ScoreProvider 有一个 updatePlayerTotalScore 方法
-          // scoreNotifier.updatePlayerTotalScore(player.pid, newValue);
-          // 临时方案：模拟更新第一个回合的分数，以影响总分
-          scoreNotifier.updateScore(player.pid, 0, newValue); // 假设编辑的是第一个回合的分数
-          ref.read(scoreProvider.notifier).updateHighlight(); // 更新高亮状态（如果需要）
-        },
-      ),
-    );
   }
 }
 
@@ -332,92 +312,6 @@ class _PlayerScoreGridItem extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// 分数编辑对话框组件
-/// 参数说明：
-/// [player]: 关联的玩家信息
-/// [initialValue]: 初始分数值 (这里指总分数)
-/// [onConfirm]: 确认修改回调 (传递新的总分数)
-class _ScoreEditDialog extends ConsumerStatefulWidget {
-  final String templateId;
-  final PlayerInfo player;
-  final int initialValue;
-  final ValueChanged<int> onConfirm;
-
-  const _ScoreEditDialog({
-    required this.templateId,
-    required this.player,
-    required this.initialValue,
-    required this.onConfirm,
-  });
-
-  @override
-  _ScoreEditDialogState createState() => _ScoreEditDialogState();
-}
-
-class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    final initialText = widget.initialValue != 0
-        ? widget.initialValue.toString()
-        : widget.initialValue.toString(); // 初始值显示0而不是空
-    _controller = TextEditingController(text: initialText);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final template = ref
-        .read(templatesProvider.notifier)
-        .getTemplate(widget.templateId) as CounterTemplate;
-    final isAllowNegative = template.isAllowNegative;
-
-    return AlertDialog(
-      title: Text('修改总分数'), // 修改标题
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(widget.player.name), // 只显示玩家名字
-          const SizedBox(height: 16),
-          TextField(
-            controller: _controller,
-            keyboardType:
-                TextInputType.numberWithOptions(signed: true, decimal: false),
-            autofocus: true,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
-            ],
-            decoration: InputDecoration(
-              labelText: '输入总分数', // 修改标签
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => globalState.navigatorKey.currentState?.pop(),
-          child: Text('取消'),
-        ),
-        TextButton(
-          onPressed: () {
-            final value = int.tryParse(_controller.text) ?? 0;
-            globalState.navigatorKey.currentState?.pop();
-            if (!isAllowNegative && value < 0) {
-              AppSnackBar.warn('当前模板设置不允许输入负数！');
-              return;
-            }
-            widget.onConfirm(value); // 调用回调传递新的总分数
-          },
-          child: Text('确认'),
-        ),
-      ],
     );
   }
 }

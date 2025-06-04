@@ -1,15 +1,12 @@
-import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/player_score.dart';
 import 'package:counters/common/widgets/player_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/score/base_page.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class MahjongPage extends BaseSessionPage {
@@ -86,7 +83,18 @@ class _ScoreColumn extends ConsumerWidget {
 
             return Expanded(
               child: GestureDetector(
-                onTap: () => _showEditDialog(ref, context, index),
+                onTap: () {
+                  final baseState =
+                      context.findAncestorStateOfType<BaseSessionPageState>();
+                  baseState?.showRoundScoreEditDialog(
+                    player: player,
+                    roundIndex: index,
+                    scores: scores,
+                    supportDecimal: true,
+                    // 麻将支持小数
+                    decimalMultiplier: 100,
+                  );
+                },
                 behavior: HitTestBehavior.opaque,
                 child: Container(
                   key: isHighlight ? cellKey : null,
@@ -104,51 +112,6 @@ class _ScoreColumn extends ConsumerWidget {
             );
           }),
         ],
-      ),
-    );
-  }
-
-  void _showEditDialog(WidgetRef ref, BuildContext context, int roundIndex) {
-    final scoreNotifier = ref.read(scoreProvider.notifier);
-    final scoreState = ref.read(scoreProvider);
-
-    final currentRound = scoreState.value?.currentRound ?? 0;
-    final currentSession = scoreState.value?.currentSession;
-
-    if (roundIndex < 0 || roundIndex > scores.length) return;
-
-    // 麻将逻辑：每轮必须所有人都输入分数才能开始下一轮
-    if (roundIndex == scores.length) {
-      final canAddNewRound = currentRound == 0 ||
-          currentSession!.scores.every((s) {
-            final lastRoundIndex = currentRound - 1;
-            return s.roundScores.length > lastRoundIndex &&
-                s.roundScores[lastRoundIndex] != null;
-          });
-
-      if (canAddNewRound) {
-        scoreNotifier.addNewRound();
-      } else {
-        AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
-        return;
-      }
-    }
-
-    final currentScore = roundIndex < scores.length ? scores[roundIndex] : null;
-
-    globalState.showCommonDialog(
-      child: _ScoreEditDialog(
-        templateId: templateId,
-        player: player,
-        round: roundIndex + 1,
-        initialValue: currentScore ?? 0,
-        onConfirm: (newValue) {
-          scoreNotifier.updateScore(
-            player.pid,
-            roundIndex,
-            newValue,
-          );
-        },
       ),
     );
   }
@@ -319,97 +282,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
           }),
         ],
       ),
-    );
-  }
-}
-
-class _ScoreEditDialog extends ConsumerStatefulWidget {
-  final String templateId;
-  final PlayerInfo player;
-  final int round;
-  final int initialValue;
-  final ValueChanged<int> onConfirm;
-
-  const _ScoreEditDialog({
-    required this.templateId,
-    required this.player,
-    required this.round,
-    required this.initialValue,
-    required this.onConfirm,
-  });
-
-  @override
-  _ScoreEditDialogState createState() => _ScoreEditDialogState();
-}
-
-class _ScoreEditDialogState extends ConsumerState<_ScoreEditDialog> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    // 将传入的整数分转换为带两位小数的字符串进行显示
-    final initialDisplayScore =
-        (widget.initialValue / 100.0).toStringAsFixed(2);
-    _controller = TextEditingController(
-        text: initialDisplayScore == '0.00' ? '' : initialDisplayScore);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('修改分数'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('${widget.player.name} - 第${widget.round}轮'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _controller,
-            // 支持小数输入
-            keyboardType: const TextInputType.numberWithOptions(
-                signed: true, decimal: true),
-            autofocus: true,
-            inputFormatters: [
-              // 允许输入数字、小数点和负号，并限制小数位数
-              FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d{0,2}')),
-            ],
-            decoration: const InputDecoration(
-              labelText: '输入新分数',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => globalState.navigatorKey.currentState?.pop(),
-          child: const Text('取消'),
-        ),
-        TextButton(
-          onPressed: () {
-            final inputText = _controller.text.trim();
-            if (inputText.isEmpty) {
-              widget.onConfirm(0); // 如果为空，则认为是0分
-              globalState.navigatorKey.currentState?.pop();
-              ref.read(scoreProvider.notifier).updateHighlight();
-              return;
-            }
-            final value = double.tryParse(inputText);
-            if (value == null) {
-              AppSnackBar.show('请输入有效的数字');
-              return;
-            }
-            // 将输入的小数分乘以100并四舍五入转为整数存储
-            final scoreToSave = (value * 100).round();
-            globalState.navigatorKey.currentState?.pop();
-            widget.onConfirm(scoreToSave);
-            ref.read(scoreProvider.notifier).updateHighlight();
-          },
-          child: const Text('确认'),
-        ),
-      ],
     );
   }
 }
