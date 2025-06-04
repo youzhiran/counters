@@ -9,6 +9,7 @@ import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/template_card.dart';
 import 'package:counters/features/history/history_page.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
@@ -58,11 +59,18 @@ class _TemplateSelector extends ConsumerWidget {
                   ],
                 ),
               )
-            : ListView.builder(
+            : GridView.builder(
+                padding: const EdgeInsets.all(12),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 200,
+                  mainAxisExtent: 150,
+                  crossAxisSpacing: 6,
+                  mainAxisSpacing: 6,
+                ),
                 itemCount: userTemplates.length,
-                itemBuilder: (context, index) => ListTile(
-                  title: Text(userTemplates[index].templateName),
-                  subtitle: Text('玩家数: ${userTemplates[index].playerCount}'),
+                itemBuilder: (context, index) => TemplateCard(
+                  template: userTemplates[index],
+                  mode: TemplateCardMode.selection,
                   onTap: () =>
                       _handleTemplateSelect(context, ref, userTemplates[index]),
                 ),

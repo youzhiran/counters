@@ -22,42 +22,24 @@ class _BaseSettingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = switchWidget != null
-        ? SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            secondary: Icon(icon, size: 24),
-            title: Text(
-              title,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            subtitle: subtitle != null
-                ? Text(
-                    subtitle!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                        ),
-                  )
-                : null,
-            value: (switchWidget as Switch).value,
-            onChanged: (switchWidget as Switch).onChanged,
-          )
-        : ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(icon, size: 24),
-            title: Text(
-              title,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            subtitle: subtitle != null
-                ? Text(
-                    subtitle!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                        ),
-                  )
-                : null,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+    final content = ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, size: 24),
+      title: Text(
+        title,
+        style: Theme.of(context).textTheme.bodyLarge,
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
+            )
+          : null,
+      trailing: switchWidget ??
+          Row(
+            mainAxisSize: MainAxisSize.min,
               children: [
                 if (trailing != null) ...[
                   trailing!,
@@ -66,7 +48,7 @@ class _BaseSettingTile extends StatelessWidget {
                 const Icon(Icons.chevron_right, size: 24),
               ],
             ),
-          );
+    );
 
     return Material(
       color: Colors.transparent,
@@ -140,6 +122,7 @@ class SettingSwitchListTile extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       padding: padding,
+      onTap: onChanged != null ? () => onChanged!(!value) : null,
       switchWidget: Switch(
         value: value,
         onChanged: onChanged,
