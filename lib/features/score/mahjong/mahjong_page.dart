@@ -1,3 +1,4 @@
+import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/mahjong.dart';
@@ -6,6 +7,7 @@ import 'package:counters/common/model/player_score.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/features/score/base_page.dart';
 import 'package:counters/features/score/score_provider.dart';
+import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -82,30 +84,40 @@ class _ScoreColumn extends ConsumerWidget {
             final cellKey = cellKeys.putIfAbsent(key, () => GlobalKey());
 
             return Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  final baseState =
-                      context.findAncestorStateOfType<BaseSessionPageState>();
-                  baseState?.showRoundScoreEditDialog(
-                    player: player,
-                    roundIndex: index,
-                    scores: scores,
-                    supportDecimal: true,
-                    // 麻将支持小数
-                    decimalMultiplier: 100,
-                  );
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  key: isHighlight ? cellKey : null,
-                  height: 48,
-                  alignment: Alignment.center,
-                  child: _ScoreCell(
-                    isHighlighted: isHighlight,
-                    score: score,
-                    total: scores
-                        .take(index + 1)
-                        .fold(0, (sum, item) => sum + (item ?? 0)),
+              child: RepaintBoundary(
+                child: GestureDetector(
+                  onTap: () {
+                    final currentScore =
+                        index < scores.length ? scores[index] ?? 0 : 0;
+
+                    globalState.showCommonDialog(
+                      child: BaseScoreEditDialog(
+                        templateId: templateId,
+                        player: player,
+                        initialValue: currentScore,
+                        supportDecimal: true,
+                        decimalMultiplier: 100,
+                        round: index,
+                        onConfirm: (newValue) {
+                          ref
+                              .read(scoreProvider.notifier)
+                              .updateScore(player.pid, index, newValue);
+                        },
+                      ),
+                    );
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    key: isHighlight ? cellKey : null,
+                    height: 48,
+                    alignment: Alignment.center,
+                    child: _ScoreCell(
+                      isHighlighted: isHighlight,
+                      score: score,
+                      total: scores
+                          .take(index + 1)
+                          .fold(0, (sum, item) => sum + (item ?? 0)),
+                    ),
                   ),
                 ),
               ),

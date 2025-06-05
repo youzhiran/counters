@@ -57,8 +57,14 @@ class PlayerNotifier extends Notifier<PlayerState> {
     final List<Map<String, dynamic>> maps = await db.query('players');
     final players = maps.map((map) => PlayerInfo.fromJson(map)).toList();
 
-    // 一次性加载所有玩家的游玩次数
-    final playCountCache = await _getAllPlayersPlayCount();
+    // 优化：只在缓存为空或玩家数量变化时重新加载游玩次数
+    Map<String, int> playCountCache = state.playCountCache;
+    if (playCountCache.isEmpty ||
+        players.length != playCountCache.length ||
+        !players.every((p) => playCountCache.containsKey(p.pid))) {
+      Log.i('重新加载玩家游玩次数缓存');
+      playCountCache = await _getAllPlayersPlayCount();
+    }
 
     state = state.copyWith(
       players: players,
@@ -83,7 +89,20 @@ class PlayerNotifier extends Notifier<PlayerState> {
   Future<void> addPlayer(PlayerInfo player) async {
     final db = await _dbHelper.database;
     await db.insert('players', player.toJson());
-    await loadPlayers();
+
+    // 优化：增量更新而不是重新加载所有数据
+    if (state.players != null) {
+      final newPlayers = List<PlayerInfo>.from(state.players!)..add(player);
+      final newCache = Map<String, int>.from(state.playCountCache);
+      newCache[player.pid] = 0; // 新玩家游玩次数为0
+
+      state = state.copyWith(
+        players: newPlayers,
+        playCountCache: newCache,
+      );
+    } else {
+      await loadPlayers();
+    }
   }
 
   Future<void> updatePlayer(PlayerInfo player) async {
@@ -95,15 +114,13 @@ class PlayerNotifier extends Notifier<PlayerState> {
       whereArgs: [player.pid],
     );
 
-    final newCache = Map<String, int>.from(state.playCountCache);
-    newCache.remove(player.pid);
-
+    // 优化：保留游玩次数缓存，只更新玩家信息
     if (state.players != null) {
       final index = state.players!.indexWhere((p) => p.pid == player.pid);
       if (index != -1) {
         final newPlayers = List<PlayerInfo>.from(state.players!);
         newPlayers[index] = player;
-        state = state.copyWith(players: newPlayers, playCountCache: newCache);
+        state = state.copyWith(players: newPlayers);
       }
     }
   }
@@ -115,10 +132,20 @@ class PlayerNotifier extends Notifier<PlayerState> {
       where: 'pid = ?',
       whereArgs: [pid],
     );
-    final newCache = Map<String, int>.from(state.playCountCache);
-    newCache.remove(pid);
-    state = state.copyWith(playCountCache: newCache);
-    await loadPlayers();
+
+    // 优化：增量更新而不是重新加载
+    if (state.players != null) {
+      final newPlayers = state.players!.where((p) => p.pid != pid).toList();
+      final newCache = Map<String, int>.from(state.playCountCache);
+      newCache.remove(pid);
+
+      state = state.copyWith(
+        players: newPlayers,
+        playCountCache: newCache,
+      );
+    } else {
+      await loadPlayers();
+    }
   }
 
   Future<int> getPlayerPlayCount(String playerId) async {
@@ -162,24 +189,55 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   Future<void> cleanUnusedPlayers() async {
     final db = await _dbHelper.database;
-    await db.rawDelete('''
-      DELETE FROM players 
+
+    // 先获取要删除的玩家ID列表
+    final toDeleteResult = await db.rawQuery('''
+      SELECT pid FROM players
       WHERE pid NOT IN (
         SELECT DISTINCT player_id FROM player_scores
         UNION
         SELECT DISTINCT player_id FROM template_players
       )
     ''');
-    // 清除所有缓存
-    state = state.copyWith(playCountCache: {});
-    await loadPlayers();
+
+    final toDeleteIds =
+        toDeleteResult.map((row) => row['pid'] as String).toSet();
+
+    if (toDeleteIds.isNotEmpty) {
+      // 执行删除操作
+      await db.rawDelete('''
+        DELETE FROM players
+        WHERE pid NOT IN (
+          SELECT DISTINCT player_id FROM player_scores
+          UNION
+          SELECT DISTINCT player_id FROM template_players
+        )
+      ''');
+
+      // 优化：只清除被删除玩家的缓存
+      if (state.players != null) {
+        final newPlayers =
+            state.players!.where((p) => !toDeleteIds.contains(p.pid)).toList();
+        final newCache = Map<String, int>.from(state.playCountCache);
+        for (final id in toDeleteIds) {
+          newCache.remove(id);
+        }
+
+        state = state.copyWith(
+          players: newPlayers,
+          playCountCache: newCache,
+        );
+      } else {
+        await loadPlayers();
+      }
+    }
   }
 
   Future<Map<String, int>> _getAllPlayersPlayCount() async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery('''
-      SELECT player_id, COUNT(DISTINCT session_id) as play_count 
-      FROM player_scores 
+      SELECT player_id, COUNT(DISTINCT session_id) as play_count
+      FROM player_scores
       GROUP BY player_id
     ''');
 
@@ -189,6 +247,79 @@ class PlayerNotifier extends Notifier<PlayerState> {
             row['play_count'] as int,
           )),
     );
+  }
+
+  /// 增量更新特定玩家的游玩次数
+  /// 当游戏会话保存后调用此方法更新相关玩家的缓存
+  Future<void> updatePlayerPlayCounts(List<String> playerIds) async {
+    if (playerIds.isEmpty) return;
+
+    final db = await _dbHelper.database;
+    final newCache = Map<String, int>.from(state.playCountCache);
+
+    for (final playerId in playerIds) {
+      final result = await db.rawQuery('''
+        SELECT COUNT(DISTINCT session_id) as play_count
+        FROM player_scores
+        WHERE player_id = ?
+      ''', [playerId]);
+
+      final count = Sqflite.firstIntValue(result) ?? 0;
+      newCache[playerId] = count;
+    }
+
+    state = state.copyWith(playCountCache: newCache);
+    Log.i('已更新 ${playerIds.length} 个玩家的游玩次数缓存');
+  }
+
+  /// 批量获取多个玩家的游玩次数（优化版本）
+  Future<Map<String, int>> getMultiplePlayerPlayCounts(
+      List<String> playerIds) async {
+    if (playerIds.isEmpty) return {};
+
+    final result = <String, int>{};
+    final uncachedIds = <String>[];
+
+    // 先从缓存中获取
+    for (final playerId in playerIds) {
+      if (state.playCountCache.containsKey(playerId)) {
+        result[playerId] = state.playCountCache[playerId]!;
+      } else {
+        uncachedIds.add(playerId);
+      }
+    }
+
+    // 批量查询未缓存的玩家
+    if (uncachedIds.isNotEmpty) {
+      final db = await _dbHelper.database;
+      final placeholders = uncachedIds.map((_) => '?').join(',');
+      final dbResult = await db.rawQuery('''
+        SELECT player_id, COUNT(DISTINCT session_id) as play_count
+        FROM player_scores
+        WHERE player_id IN ($placeholders)
+        GROUP BY player_id
+      ''', uncachedIds);
+
+      final newCache = Map<String, int>.from(state.playCountCache);
+      for (final row in dbResult) {
+        final playerId = row['player_id'] as String;
+        final count = row['play_count'] as int;
+        result[playerId] = count;
+        newCache[playerId] = count;
+      }
+
+      // 为未找到记录的玩家设置0
+      for (final playerId in uncachedIds) {
+        if (!result.containsKey(playerId)) {
+          result[playerId] = 0;
+          newCache[playerId] = 0;
+        }
+      }
+
+      state = state.copyWith(playCountCache: newCache);
+    }
+
+    return result;
   }
 }
 

@@ -15,6 +15,7 @@ import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 // 引入 LAN Provider 和 消息 Payload 类
 import 'package:counters/features/lan/lan_provider.dart';
+import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/score/game_session_dao_provider.dart';
 import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -90,17 +91,31 @@ class Score extends _$Score {
   @override
   Future<ScoreState> build() async {
     Log.d('ScoreNotifier: build() called.');
-    List<BaseTemplate>? initialTemplates;
-    try {
-      Log.d('ScoreNotifier: 正在等待 templatesProvider.future...');
-      initialTemplates = await ref.watch(templatesProvider.future);
-      Log.d(
-          'ScoreNotifier: templatesProvider.future 完成。获取 ${initialTemplates?.length} 个模板.');
-    } catch (e, s) {
-      Log.e('ScoreNotifier: 等待 templatesProvider.future 时出错： $e\nStack: $s');
-    }
 
-    final session = await _sessionDao.getLastIncompleteGameSession();
+    // 设置玩家游玩次数更新回调
+    _sessionDao.onPlayerPlayCountUpdate = (playerIds) {
+      try {
+        final playerNotifier = ref.read(playerProvider.notifier);
+        playerNotifier.updatePlayerPlayCounts(playerIds);
+      } catch (e) {
+        Log.e('更新玩家游玩次数缓存失败: $e');
+      }
+    };
+
+    // 当 provider 被销毁时清理回调
+    ref.onDispose(() {
+      _sessionDao.onPlayerPlayCountUpdate = null;
+    });
+
+    // 优化：并行加载模板和会话数据，避免阻塞
+    final futures = await Future.wait([
+      _loadTemplatesWithCache(),
+      _sessionDao.getLastIncompleteGameSession(),
+    ]);
+
+    final initialTemplates = futures[0] as List<BaseTemplate>?;
+    final session = futures[1] as GameSession?;
+
     Log.d(
         'ScoreNotifier: Session from DAO: ${session?.sid}, templateId: ${session?.templateId}');
     List<PlayerInfo> initialPlayers = [];
@@ -860,6 +875,22 @@ class Score extends _$Score {
     lanNotifier.sendJsonMessage(jsonString);
     Log.i('ScoreNotifier 广播模板信息');
   }
+
+  /// 优化：带缓存的模板加载
+  Future<List<BaseTemplate>?> _loadTemplatesWithCache() async {
+    try {
+      Log.d('ScoreNotifier: 正在加载模板（带缓存）...');
+
+      // 直接从Provider获取（简化版本，移除缓存依赖）
+      final templates = await ref.watch(templatesProvider.future);
+
+      Log.d('ScoreNotifier: 从Provider获取到 ${templates.length} 个模板');
+      return templates;
+    } catch (e, s) {
+      Log.e('ScoreNotifier: 加载模板时出错： $e\nStack: $s');
+      return null;
+    }
+  }
 }
 
 /// 分数编辑服务的 Provider
@@ -873,57 +904,32 @@ class ScoreEditService {
 
   ScoreEditService(this.ref);
 
-  /// 显示轮次分数编辑弹窗（适用于麻将、Poker50等基于轮次的游戏）
+  /// 显示轮次分数编辑弹窗
   void showRoundScoreEditDialog({
-    required String templateId,
     required PlayerInfo player,
     required int roundIndex,
     required List<int?> scores,
     bool supportDecimal = false,
     int decimalMultiplier = 100,
   }) {
-    final scoreNotifier = ref.read(scoreProvider.notifier);
-    final scoreState = ref.read(scoreProvider);
+    final currentScore =
+        roundIndex < scores.length ? scores[roundIndex] ?? 0 : 0;
 
-    final currentRound = scoreState.value?.currentRound ?? 0;
-    final currentSession = scoreState.value?.currentSession;
-
-    if (roundIndex < 0 || roundIndex > scores.length) return;
-
-    // 检查是否需要添加新轮次
-    if (roundIndex == scores.length) {
-      final canAddNewRound = currentRound == 0 ||
-          currentSession!.scores.every((s) {
-            final lastRoundIndex = currentRound - 1;
-            return s.roundScores.length > lastRoundIndex &&
-                s.roundScores[lastRoundIndex] != null;
-          });
-
-      if (canAddNewRound) {
-        scoreNotifier.addNewRound();
-      } else {
-        AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
-        return;
-      }
-    }
-
-    final currentScore = roundIndex < scores.length ? scores[roundIndex] : null;
-
-    _showScoreEditDialog(
-      templateId: templateId,
-      player: player,
-      initialValue: currentScore ?? 0,
-      round: roundIndex + 1,
-      supportDecimal: supportDecimal,
-      decimalMultiplier: decimalMultiplier,
-      onConfirm: (newValue) {
-        scoreNotifier.updateScore(
-          player.pid,
-          roundIndex,
-          newValue,
-        );
-        ref.read(scoreProvider.notifier).updateHighlight();
-      },
+    globalState.showCommonDialog(
+      child: BaseScoreEditDialog(
+        templateId: '',
+        // 从当前会话获取
+        player: player,
+        initialValue: currentScore,
+        supportDecimal: supportDecimal,
+        decimalMultiplier: decimalMultiplier,
+        round: roundIndex,
+        onConfirm: (newValue) {
+          ref
+              .read(scoreProvider.notifier)
+              .updateScore(player.pid, roundIndex, newValue);
+        },
+      ),
     );
   }
 

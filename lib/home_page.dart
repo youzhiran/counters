@@ -7,6 +7,7 @@ import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/optimized_list.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
@@ -36,31 +37,33 @@ class _TemplateSelector extends ConsumerWidget {
             templates.where((template) => !template.isSystemTemplate).toList();
 
         return userTemplates.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '暂无可使用的模板\n请先在模板管理中创建',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        '/templates',
-                        (route) => false,
+            ? RepaintBoundary(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '暂无可使用的模板\n请先在模板管理中创建',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey[600]),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(200, 48),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/templates',
+                          (route) => false,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: Size(200, 48),
+                        ),
+                        child: Text('前往模板管理'),
                       ),
-                      child: Text('前往模板管理'),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               )
-            : GridView.builder(
+            : OptimizedGridView.builder(
                 padding: const EdgeInsets.all(12),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 200,
@@ -69,11 +72,14 @@ class _TemplateSelector extends ConsumerWidget {
                   mainAxisSpacing: 6,
                 ),
                 itemCount: userTemplates.length,
-                itemBuilder: (context, index) => TemplateCard(
-                  template: userTemplates[index],
-                  mode: TemplateCardMode.selection,
-                  onTap: () =>
-                      _handleTemplateSelect(context, ref, userTemplates[index]),
+                itemBuilder: (context, index) => SmartListItem(
+                  debugLabel: 'TemplateCard_$index',
+                  child: TemplateCard(
+                    template: userTemplates[index],
+                    mode: TemplateCardMode.selection,
+                    onTap: () => _handleTemplateSelect(
+                        context, ref, userTemplates[index]),
+                  ),
                 ),
               );
       },
@@ -167,7 +173,7 @@ class HomePage extends ConsumerWidget {
           appBar: AppBar(title: Text('选择模板')),
           body: _TemplateSelector(),
         ),
-        direction: SlideDirection.fromBottom,
+        direction: SlideDirection.fromRight,
         duration: const Duration(milliseconds: 300),
       ),
       child: Text('选择计分模板'),
@@ -226,7 +232,7 @@ class HomePage extends ConsumerWidget {
         return Column(
           children: [
             Expanded(
-              child: ListView.builder(
+              child: OptimizedListView.builder(
                 itemCount: session.scores.length,
                 itemBuilder: (context, index) {
                   final score = session.scores[index];
@@ -241,16 +247,19 @@ class HomePage extends ConsumerWidget {
                       );
                     },
                   );
-                  return ListTile(
-                    leading: PlayerAvatar.build(context, player),
-                    title: Text(player.name),
-                    subtitle: Text('总得分: ${score.totalScore}'),
-                    trailing: () {
-                      final lastScore = score.roundScores.lastOrNull;
-                      final displayScore = lastScore ?? 0;
-                      final prefix = displayScore >= 0 ? '+' : '';
-                      return Text('$prefix$displayScore');
-                    }(),
+                  return SmartListItem(
+                    debugLabel: 'PlayerScore_$index',
+                    child: ListTile(
+                      leading: PlayerAvatar.build(context, player),
+                      title: Text(player.name),
+                      subtitle: Text('总得分: ${score.totalScore}'),
+                      trailing: () {
+                        final lastScore = score.roundScores.lastOrNull;
+                        final displayScore = lastScore ?? 0;
+                        final prefix = displayScore >= 0 ? '+' : '';
+                        return Text('$prefix$displayScore');
+                      }(),
+                    ),
                   );
                 },
               ),

@@ -2,16 +2,33 @@ import 'package:flutter/material.dart';
 
 /// 自定义页面转换动画集合
 class CustomPageTransitions {
-  /// 滑动转换动画 - 从右到左
+  /// 获取优化的动画时长（基于设备性能）
+  static Duration _getOptimizedDuration(Duration baseDuration) {
+    // 简化的性能检测
+    final devicePixelRatio =
+        WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    final isLowEndDevice = devicePixelRatio < 2.0;
+
+    if (isLowEndDevice) {
+      return Duration(
+          milliseconds: (baseDuration.inMilliseconds * 0.7).round());
+    }
+    return baseDuration;
+  }
+
+  /// 滑动转换动画 - 从右到左（性能优化版）
   static Route<T> slideFromRight<T extends Object?>(
     Widget page, {
-    Duration duration = const Duration(milliseconds: 300),
+    Duration duration = const Duration(milliseconds: 250), // 减少默认时长
     Curve curve = Curves.easeInOut,
   }) {
+    final optimizedDuration = _getOptimizedDuration(duration);
+
     return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionDuration: duration,
-      reverseTransitionDuration: duration,
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          RepaintBoundary(child: page),
+      transitionDuration: optimizedDuration,
+      reverseTransitionDuration: optimizedDuration,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
@@ -20,24 +37,29 @@ class CustomPageTransitions {
           CurveTween(curve: curve),
         ));
 
-        return SlideTransition(
-          position: offsetAnimation,
-          child: child,
+        return RepaintBoundary(
+          child: SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          ),
         );
       },
     );
   }
 
-  /// 滑动转换动画 - 从左到右
+  /// 滑动转换动画 - 从左到右（性能优化版）
   static Route<T> slideFromLeft<T extends Object?>(
     Widget page, {
-    Duration duration = const Duration(milliseconds: 300),
+    Duration duration = const Duration(milliseconds: 250),
     Curve curve = Curves.easeInOut,
   }) {
+    final optimizedDuration = _getOptimizedDuration(duration);
+
     return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionDuration: duration,
-      reverseTransitionDuration: duration,
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          RepaintBoundary(child: page),
+      transitionDuration: optimizedDuration,
+      reverseTransitionDuration: optimizedDuration,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         const begin = Offset(-1.0, 0.0);
         const end = Offset.zero;
@@ -46,9 +68,11 @@ class CustomPageTransitions {
           CurveTween(curve: curve),
         ));
 
-        return SlideTransition(
-          position: offsetAnimation,
-          child: child,
+        return RepaintBoundary(
+          child: SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          ),
         );
       },
     );

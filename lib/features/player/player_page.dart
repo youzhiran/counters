@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/player_info.dart';
-import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/features/player/add_players.dart';
@@ -21,7 +20,6 @@ class PlayerManagementPage extends ConsumerStatefulWidget {
 class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
   bool _isSearching = false;
   final _searchController = TextEditingController();
-  final Map<String, Future<int>> _playerPlayCountFutures = {};
 
   void _startSearch() {
     setState(() {
@@ -50,21 +48,7 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
   @override
   void dispose() {
     _searchController.dispose();
-    _playerPlayCountFutures.clear();
     super.dispose();
-  }
-
-  Future<int> _getMemoizedPlayerPlayCount(String playerId) {
-    return _playerPlayCountFutures.putIfAbsent(playerId, () {
-      return ref.read(playerProvider.notifier).getPlayerPlayCount(playerId);
-    });
-  }
-
-  void _clearAndRefreshPlayCountFutures() {
-    _playerPlayCountFutures.clear();
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   @override
@@ -123,7 +107,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
                     return RefreshIndicator(
                       onRefresh: () async {
                         await ref.read(playerProvider.notifier).loadPlayers();
-                        _clearAndRefreshPlayCountFutures();
                       },
                       child: GridView.builder(
                         key: const PageStorageKey('player_list'),
@@ -173,20 +156,13 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
                                   ),
-                                  subtitle: FutureBuilder<int>(
-                                    future:
-                                        _getMemoizedPlayerPlayCount(player.pid),
-                                    builder: (futureContext, snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return const Text('游玩次数：加载中...');
-                                      }
-                                      if (snapshot.hasError) {
-                                        Log.i(
-                                            '加载计数时出错${player.pid}: ${snapshot.error}');
-                                        return const Text('游玩次数：错误');
-                                      }
-                                      final count = snapshot.data ?? 0;
+                                  subtitle: Consumer(
+                                    builder: (context, ref, child) {
+                                      final playerState =
+                                          ref.watch(playerProvider);
+                                      final count = playerState
+                                              .playCountCache[player.pid] ??
+                                          0;
                                       return Text('游玩次数：$count');
                                     },
                                   ),
@@ -286,7 +262,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
     if (!mounted) return;
     if (result == true) {
       ref.read(playerProvider.notifier).cleanUnusedPlayers();
-      _clearAndRefreshPlayCountFutures();
     }
   }
 
@@ -332,8 +307,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
                                 playerListItem.getPlayerInfo();
                             playerNotifier.updatePlayer(updatedPlayer);
                             globalState.navigatorKey.currentState?.pop();
-                            _playerPlayCountFutures.remove(updatedPlayer.pid);
-                            if (mounted) setState(() {});
                           }
                         },
                         child: const Text('保存'),
@@ -350,7 +323,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
     if (!mounted) return;
     if (result == true) {
       ref.read(playerProvider.notifier).loadPlayers();
-      _clearAndRefreshPlayCountFutures();
     }
   }
 
@@ -383,8 +355,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
     );
     if (result == true) {
       playerNotifier.deletePlayer(player.pid);
-      _playerPlayCountFutures.remove(player.pid);
-      if (mounted) setState(() {});
     }
   }
 }

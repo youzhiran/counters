@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
+import 'package:counters/common/performance/performance_demo.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
@@ -113,7 +114,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   icon: Icons.rocket_launch,
                   title: '检查更新',
                   subtitle: '获取新版本或是测试版本',
-                  onTap: () => checkUpdate(context, ref),
+                  onTap: () => checkUpdate(),
                 ),
                 if (Platform.isWindows)
                   SettingListTile(
@@ -193,6 +194,16 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     subtitle: '查看各种页面切换动画效果',
                     onTap: () => Navigator.of(context).pushWithSlide(
                       const AnimationDemoPage(),
+                      direction: SlideDirection.fromRight,
+                      duration: const Duration(milliseconds: 300),
+                    ),
+                  ),
+                  SettingListTile(
+                    icon: Icons.speed,
+                    title: '性能测试',
+                    subtitle: '性能测试',
+                    onTap: () => Navigator.of(context).pushWithSlide(
+                      const PerformanceDemoPage(),
                       direction: SlideDirection.fromRight,
                       duration: const Duration(milliseconds: 300),
                     ),

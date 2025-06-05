@@ -10,12 +10,19 @@ import 'package:sqflite/sqflite.dart';
 class GameSessionDao {
   final DatabaseHelper dbHelper; // 通过构造函数接收 DatabaseHelper
 
+  // 回调函数，用于通知玩家游玩次数更新
+  Function(List<String>)? onPlayerPlayCountUpdate;
+
   // 构造函数
-  GameSessionDao({required this.dbHelper});
+  GameSessionDao({required this.dbHelper, this.onPlayerPlayCountUpdate});
 
   /// 保存完整的 GameSession 对象到数据库
   Future<void> saveGameSession(GameSession session) async {
     final db = await dbHelper.database;
+
+    // 提取参与的玩家ID列表
+    final playerIds = session.scores.map((score) => score.playerId).toList();
+
     await db.transaction((txn) async {
       // 使用你的 toDatabaseMap 方法
       final sessionMap = session.toDatabaseMap();
@@ -66,7 +73,13 @@ class GameSessionDao {
         // roundExtendedFields 已经在 toSingleScoreDatabaseMap 中处理，无需额外保存
       }
     });
+
     Log.d('游戏会话 ${session.sid} 已保存到数据库');
+
+    // 通知玩家游玩次数更新
+    if (onPlayerPlayCountUpdate != null && playerIds.isNotEmpty) {
+      onPlayerPlayCountUpdate!(playerIds);
+    }
   }
 
   /// 从数据库加载完整的 GameSession 对象

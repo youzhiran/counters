@@ -16,6 +16,7 @@ import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/template/template_page.dart';
 import 'package:counters/home_page.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -135,7 +136,7 @@ class MyApp extends ConsumerWidget {
   }
 
   /// 显示开发阶段提示对话框
-  Future<void> showDevAlert(BuildContext context, WidgetRef ref) async {
+  Future<void> showDevAlert() async {
     await globalState.showCommonDialog(
       child: AlertDialog(
         title: const Text('提示'),
@@ -147,7 +148,7 @@ class MyApp extends ConsumerWidget {
         actions: [
           TextButton(
             child: const Text('我知道了'),
-            onPressed: () => globalState.navigatorKey.currentState?.pop,
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
           ),
         ],
       ),

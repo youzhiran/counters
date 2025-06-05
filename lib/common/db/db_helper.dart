@@ -173,10 +173,14 @@ class DatabaseHelper {
         PRIMARY KEY (session_id, player_id, round_number)
       )
     ''');
+
+    // 创建性能优化索引
+    await _createPerformanceIndexes(db);
   }
 
   Future<void> _onOpen(Database db) async {
     await _checkAndAddSystemTemplates(db);
+    await _ensurePerformanceIndexes(db);
   }
 
   Future<void> _checkAndAddSystemTemplates(Database db) async {
@@ -193,5 +197,54 @@ class DatabaseHelper {
         await db.insert('templates', templateData);
       }
     }
+  }
+
+  /// 创建性能优化索引
+  Future<void> _createPerformanceIndexes(Database db) async {
+    Log.i('创建性能优化索引');
+
+    // 为 player_scores 表创建索引，优化游玩次数查询
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_player_scores_player_id
+      ON player_scores(player_id)
+    ''');
+
+    // 为 player_scores 表创建复合索引，优化会话相关查询
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_player_scores_session_player
+      ON player_scores(session_id, player_id)
+    ''');
+
+    // 为 template_players 表创建索引，优化玩家使用状态查询
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_template_players_player_id
+      ON template_players(player_id)
+    ''');
+
+    Log.i('性能优化索引创建完成');
+  }
+
+  /// 确保性能索引存在（用于数据库升级）
+  Future<void> _ensurePerformanceIndexes(Database db) async {
+    try {
+      // 检查索引是否存在，如果不存在则创建
+      final indexExists =
+          await _checkIndexExists(db, 'idx_player_scores_player_id');
+      if (!indexExists) {
+        Log.i('检测到缺失的性能索引，正在创建...');
+        await _createPerformanceIndexes(db);
+      }
+    } catch (e) {
+      Log.e('检查或创建性能索引时出错: $e');
+    }
+  }
+
+  /// 检查索引是否存在
+  Future<bool> _checkIndexExists(Database db, String indexName) async {
+    final result = await db.rawQuery('''
+      SELECT name FROM sqlite_master
+      WHERE type='index' AND name=?
+    ''', [indexName]);
+    return result.isNotEmpty;
   }
 }

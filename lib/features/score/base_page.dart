@@ -433,7 +433,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   Widget buildGameBody(
       BuildContext context, BaseTemplate template, GameSession session);
 
-  String _getPlayerName(String playerId, BuildContext context) {
+  String _getPlayerName(String playerId) {
     return ref
             .read(templatesProvider.notifier)
             .getTemplate(widget.templateId)
@@ -489,14 +489,12 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     style: TextStyle(
                         color:
                             result.hasFailures ? Colors.red : Colors.orange)),
-                ...result.losers.map((s) => Text(
-                    '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
+                ...result.losers.map((s) => Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
                 SizedBox(height: 16),
               ],
               Text('${result.hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
                   style: TextStyle(color: Colors.green)),
-              ...result.winners.map((s) => Text(
-                  '${_getPlayerName(s.playerId, context)}（${s.totalScore}分）')),
+              ...result.winners.map((s) => Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
               if (result.hasFailures) ...[
                 SizedBox(height: 16),
                 Text('💡 游戏结束，但仍可继续计分，每回合结束将再次检查计分',
@@ -548,7 +546,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     );
   }
 
-  String getPlayerName(String playerId, BuildContext context) {
+  String getPlayerName(String playerId) {
     return ref
             .read(templatesProvider.notifier)
             .getTemplate(widget.templateId)

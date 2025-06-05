@@ -6,7 +6,6 @@ import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/util.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -106,8 +105,7 @@ class UpdateChecker {
     return result;
   }
 
-  static void showUpdateResultDialog(
-      BuildContext context, WidgetRef ref, String versionInfo, bool hasUpdate) {
+  static void showUpdateResultDialog(String versionInfo, bool hasUpdate) {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text(hasUpdate ? '发现新版本' : '未发现新版本'),
@@ -122,14 +120,11 @@ class UpdateChecker {
           if (hasUpdate)
             TextButton(
               onPressed: () async {
-                final navigatorState = Navigator.of(context);
                 if (await canLaunchUrl(
                     Uri.parse(UpdateChecker.latestReleaseUrl))) {
                   await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
                 }
-                if (navigatorState.mounted) {
-                  navigatorState.pop();
-                }
+                globalState.navigatorKey.currentState?.pop();
               },
               child: Text('立即更新'),
             ),
@@ -139,10 +134,7 @@ class UpdateChecker {
   }
 }
 
-void checkUpdate(
-  BuildContext context,
-  WidgetRef ref,
-) {
+void checkUpdate() {
   globalState.showCommonDialog(
     child: UpdateCheckerDialog(),
   );
