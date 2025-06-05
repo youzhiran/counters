@@ -302,8 +302,12 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
         // 保存当前的页面索引到 PageStorage，以便应用重启后恢复。
         PageStorage.of(context)
             .writeState(context, index, identifier: 'mainTabsPage');
-        // 使用 jumpToPage 进行即时更改，无需动画，确保页面立即切换。
-        _pageController.jumpToPage(index);
+        // 使用 animateToPage 添加滑动动画效果
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
       });
     }
   }
@@ -343,9 +347,17 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
               child: PageView(
                 // 添加 PageStorageKey 来保存和恢复页面位置。
                 key: const PageStorageKey<String>('mainTabsPageView'),
-                physics:
-                    const NeverScrollableScrollPhysics(), // 禁止用户滑动切换，强制通过导航栏切换。
+                physics: const ClampingScrollPhysics(),
+                // 启用滑动切换，添加滑动动画
                 controller: _pageController,
+                onPageChanged: (index) {
+                  // 当用户滑动切换页面时，同步更新导航栏状态
+                  setState(() {
+                    _selectedIndex = index;
+                    PageStorage.of(context)
+                        .writeState(context, index, identifier: 'mainTabsPage');
+                  });
+                },
                 children: _screens,
               ),
             ),
@@ -358,8 +370,17 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
         body: PageView(
           // 添加 PageStorageKey 来保存和恢复页面位置。
           key: const PageStorageKey<String>('mainTabsPageView'),
-          physics: const NeverScrollableScrollPhysics(), // 禁止用户滑动切换，强制通过导航栏切换。
+          physics: const ClampingScrollPhysics(),
+          // 启用滑动切换，添加滑动动画
           controller: _pageController,
+          onPageChanged: (index) {
+            // 当用户滑动切换页面时，同步更新导航栏状态
+            setState(() {
+              _selectedIndex = index;
+              PageStorage.of(context)
+                  .writeState(context, index, identifier: 'mainTabsPage');
+            });
+          },
           children: _screens,
         ),
         // 底部导航栏 NavigationBar。

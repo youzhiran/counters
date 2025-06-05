@@ -7,6 +7,7 @@ import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/common/widgets/template_card.dart';
@@ -82,10 +83,11 @@ class _TemplateSelector extends ConsumerWidget {
   void _handleTemplateSelect(
       BuildContext context, WidgetRef ref, BaseTemplate template) {
     ref.read(scoreProvider.notifier).startNewGame(template);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HomePage.buildSessionPage(template, template.tid),
+    Navigator.of(context).pushReplacement(
+      CustomPageTransitions.slideFromRight(
+        HomePage.buildSessionPage(template, template.tid),
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
       ),
     );
   }
@@ -160,14 +162,13 @@ class HomePage extends ConsumerWidget {
       style: ElevatedButton.styleFrom(
         minimumSize: Size(200, 48),
       ),
-      onPressed: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => Scaffold(
-            appBar: AppBar(title: Text('选择模板')),
-            body: _TemplateSelector(),
-          ),
+      onPressed: () => Navigator.of(context).pushWithSlide(
+        Scaffold(
+          appBar: AppBar(title: Text('选择模板')),
+          body: _TemplateSelector(),
         ),
+        direction: SlideDirection.fromBottom,
+        duration: const Duration(milliseconds: 300),
       ),
       child: Text('选择计分模板'),
     );
@@ -178,9 +179,10 @@ class HomePage extends ConsumerWidget {
       style: OutlinedButton.styleFrom(
         minimumSize: Size(200, 48),
       ),
-      onPressed: () => Navigator.push(
-        ref.context,
-        MaterialPageRoute(builder: (_) => const HistoryPage()),
+      onPressed: () => Navigator.of(ref.context).pushWithSlide(
+        const HistoryPage(),
+        direction: SlideDirection.fromRight,
+        duration: const Duration(milliseconds: 300),
       ),
       child: Text('选择历史计分'),
     );
@@ -197,9 +199,10 @@ class HomePage extends ConsumerWidget {
       onPressed: isHost
           ? null
           : () {
-              Navigator.push(
-                ref.context,
-                MaterialPageRoute(builder: (_) => const LanDiscoveryPage()),
+              Navigator.of(ref.context).pushWithSlide(
+                const LanDiscoveryPage(),
+                direction: SlideDirection.fromRight,
+                duration: const Duration(milliseconds: 300),
               );
             },
       child: Text('连接到局域网计分(Beta)'),
@@ -263,11 +266,11 @@ class HomePage extends ConsumerWidget {
                       padding:
                           EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                     ),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            HomePage.buildSessionPage(template, template.tid),
+                    onPressed: () => Navigator.of(context).push(
+                      CustomPageTransitions.slideFromRight(
+                        HomePage.buildSessionPage(template, template.tid),
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeInOut,
                       ),
                     ),
                     child: Text('继续本轮', style: TextStyle(color: Colors.white)),

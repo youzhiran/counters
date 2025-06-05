@@ -6,8 +6,10 @@ import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
+import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/setting_list_tile.dart';
 import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/features/demo/animation_demo_page.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/theme_provider.dart';
@@ -184,6 +186,16 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     title: '隐藏开发者选项',
                     subtitle: '多次点击下方版本信息可再次开启',
                     onTap: _hideDevOptions,
+                  ),
+                  SettingListTile(
+                    icon: Icons.animation,
+                    title: '页面动画演示',
+                    subtitle: '查看各种页面切换动画效果',
+                    onTap: () => Navigator.of(context).pushWithSlide(
+                      const AnimationDemoPage(),
+                      direction: SlideDirection.fromRight,
+                      duration: const Duration(milliseconds: 300),
+                    ),
                   ),
                   SettingSwitchListTile(
                     icon: Icons.article,
