@@ -97,7 +97,7 @@ class _ScoreColumn extends ConsumerWidget {
                         initialValue: currentScore,
                         supportDecimal: true,
                         decimalMultiplier: 100,
-                        round: index,
+                        round: index + 1, // 修复轮次显示：从1开始计数而不是0开始
                         onConfirm: (newValue) {
                           ref
                               .read(scoreProvider.notifier)

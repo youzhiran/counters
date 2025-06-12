@@ -923,7 +923,7 @@ class ScoreEditService {
         initialValue: currentScore,
         supportDecimal: supportDecimal,
         decimalMultiplier: decimalMultiplier,
-        round: roundIndex,
+        round: roundIndex + 1, // 修复轮次显示：从1开始计数而不是0开始
         onConfirm: (newValue) {
           ref
               .read(scoreProvider.notifier)

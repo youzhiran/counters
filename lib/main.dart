@@ -177,6 +177,13 @@ class MyApp extends ConsumerWidget {
         height: 70,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       ),
+      navigationRailTheme: NavigationRailThemeData(
+        // 禁用侧边导航栏图标高亮的过渡动画
+        indicatorShape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+        useIndicator: true,
+      ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: ZoomPageTransitionsBuilder(),
@@ -203,6 +210,7 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
     with WidgetsBindingObserver {
   late int _selectedIndex;
   late PageController _pageController;
+  bool _isAnimating = false; // 标记是否正在执行页面切换动画
 
   // 定义导航目标常量列表，包含每个 Tab 的图标和标签文本。
   static const List<({Icon icon, Icon selectedIcon, String label})>
@@ -296,19 +304,29 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
 
   // 处理底部或侧边导航栏项目点击事件。
   void _onItemTapped(int index) {
-    // 只有当点击的项目不是当前选中项时才进行更新和跳转。
-    if (_selectedIndex != index) {
+    // 只有当点击的项目不是当前选中项且不在动画中时才进行更新和跳转。
+    if (_selectedIndex != index && !_isAnimating) {
+      // 立即更新导航栏状态，避免图标跟随页面滑动
       setState(() {
         _selectedIndex = index;
+        _isAnimating = true;
         // 保存当前的页面索引到 PageStorage，以便应用重启后恢复。
         PageStorage.of(context)
             .writeState(context, index, identifier: 'mainTabsPage');
-        // 使用 animateToPage 添加滑动动画效果
-        _pageController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
+      });
+
+      // 执行页面切换动画
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      ).then((_) {
+        // 动画完成后重置标志
+        if (mounted) {
+          setState(() {
+            _isAnimating = false;
+          });
+        }
       });
     }
   }
@@ -352,12 +370,14 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
                 // 启用滑动切换，添加滑动动画
                 controller: _pageController,
                 onPageChanged: (index) {
-                  // 当用户滑动切换页面时，同步更新导航栏状态
-                  setState(() {
-                    _selectedIndex = index;
-                    PageStorage.of(context)
-                        .writeState(context, index, identifier: 'mainTabsPage');
-                  });
+                  // 只有在非动画状态下（用户手动滑动）才更新导航栏状态
+                  if (!_isAnimating) {
+                    setState(() {
+                      _selectedIndex = index;
+                      PageStorage.of(context)
+                          .writeState(context, index, identifier: 'mainTabsPage');
+                    });
+                  }
                 },
                 children: _screens,
               ),
@@ -375,12 +395,14 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
           // 启用滑动切换，添加滑动动画
           controller: _pageController,
           onPageChanged: (index) {
-            // 当用户滑动切换页面时，同步更新导航栏状态
-            setState(() {
-              _selectedIndex = index;
-              PageStorage.of(context)
-                  .writeState(context, index, identifier: 'mainTabsPage');
-            });
+            // 只有在非动画状态下（用户手动滑动）才更新导航栏状态
+            if (!_isAnimating) {
+              setState(() {
+                _selectedIndex = index;
+                PageStorage.of(context)
+                    .writeState(context, index, identifier: 'mainTabsPage');
+              });
+            }
           },
           children: _screens,
         ),
