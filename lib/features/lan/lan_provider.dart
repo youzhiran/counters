@@ -212,6 +212,12 @@ class LanNotifier extends StateNotifier<LanState> {
                 break;
               }
 
+              // 修复：先应用玩家信息到 ScoreNotifier，确保后续的 sync_state 能正确使用玩家信息
+              if (players.isNotEmpty) {
+                Log.i("应用模板中的玩家信息到 ScoreNotifier: ${players.length} 个玩家");
+                _ref.read(scoreProvider.notifier).applyPlayerInfo(players);
+              }
+
               // 使用 templatesProvider.notifier 的新方法来保存或更新模板
               final templatesNotifier = _ref.read(templatesProvider.notifier);
               await templatesNotifier.saveOrUpdateNetworkTemplate(template);

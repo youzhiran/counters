@@ -107,6 +107,17 @@ class Score extends _$Score {
       _sessionDao.onPlayerPlayCountUpdate = null;
     });
 
+    // 修复：检查是否在联机模式下且已有状态，如果是则保持当前状态
+    final lanState = ref.read(lanProvider);
+    final currentState = state.valueOrNull;
+    if ((lanState.isConnected || lanState.isHost) &&
+        currentState != null &&
+        currentState.isInitialized &&
+        currentState.currentSession != null) {
+      Log.d('ScoreNotifier: 联机模式下保持当前状态，避免重新加载');
+      return currentState;
+    }
+
     // 优化：并行加载模板和会话数据，避免阻塞
     final futures = await Future.wait([
       _loadTemplatesWithCache(),
@@ -668,7 +679,9 @@ class Score extends _$Score {
     Log.i('ScoreNotifier 应用玩家信息: ${players.length} 个玩家');
     final currentState = state.valueOrNull;
     if (currentState != null) {
-      state = AsyncData(currentState.copyWith(players: players));
+      // 修复：直接更新状态，避免触发重建
+      final newState = currentState.copyWith(players: players);
+      state = AsyncData(newState);
     } else {
       Log.w('ScoreNotifier applyPlayerInfo: 当前状态为空，将创建一个仅包含玩家信息的新状态');
       state = AsyncData(ScoreState(players: players, isInitialized: true));
@@ -681,25 +694,26 @@ class Score extends _$Score {
     final currentState = state.valueOrNull;
     final existingPlayers = currentState?.players ?? [];
 
-    state = AsyncData(
-      currentState?.copyWith(
-            currentSession: session,
-            currentRound: _calculateCurrentRound(session),
-            isInitialized: true,
-            currentHighlight: null,
-            showGameEndDialog: false,
-            // players 列表通过 copyWith 保留，或在 currentState 为 null 时使用 existingPlayers
-          ) ??
-          ScoreState(
-            currentSession: session,
-            currentRound: _calculateCurrentRound(session),
-            isInitialized: true,
-            players: existingPlayers,
-            // 确保在初始状态时也设置
-            showGameEndDialog: false,
-            currentHighlight: null,
-          ),
-    );
+    // 修复：直接更新状态，避免触发 Provider 重建导致从 DAO 重新加载空状态
+    final newState = currentState?.copyWith(
+          currentSession: session,
+          currentRound: _calculateCurrentRound(session),
+          isInitialized: true,
+          currentHighlight: null,
+          showGameEndDialog: false,
+          // players 列表通过 copyWith 保留
+        ) ??
+        ScoreState(
+          currentSession: session,
+          currentRound: _calculateCurrentRound(session),
+          isInitialized: true,
+          players: existingPlayers,
+          showGameEndDialog: false,
+          currentHighlight: null,
+        );
+
+    // 使用 AsyncData 包装新状态，确保不触发重建
+    state = AsyncData(newState);
     updateHighlight();
 
     // 客户端收到同步状态后，保存会话到本地 DAO，以便后续启动或重建时能加载
@@ -881,10 +895,11 @@ class Score extends _$Score {
     try {
       Log.d('ScoreNotifier: 正在加载模板（带缓存）...');
 
-      // 直接从Provider获取（简化版本，移除缓存依赖）
-      final templates = await ref.watch(templatesProvider.future);
+      // 修复：使用 ref.read 而不是 ref.watch，避免在模板更新时触发重建
+      final templatesAsync = ref.read(templatesProvider);
+      final templates = templatesAsync.valueOrNull ?? await ref.read(templatesProvider.future);
 
-      Log.d('ScoreNotifier: 从Provider获取到 ${templates.length} 个模板');
+      Log.d('ScoreNotifier: 从Provider获取到 ${templates?.length ?? 0} 个模板');
       return templates;
     } catch (e, s) {
       Log.e('ScoreNotifier: 加载模板时出错： $e\nStack: $s');

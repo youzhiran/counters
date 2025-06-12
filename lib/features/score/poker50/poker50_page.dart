@@ -149,6 +149,9 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
 
   // 抽取滚动逻辑到单独的方法
   void _scrollToHighlight() {
+    // 修复：检查 Widget 是否已被销毁
+    if (!mounted) return;
+
     final highlight = ref.read(scoreProvider).value?.currentHighlight;
     if (highlight != null) {
       final key = '${highlight.key}_${highlight.value}';
@@ -176,7 +179,10 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
     ref.listen(scoreProvider, (previous, next) {
       if (next.value?.currentHighlight != null) {
         Future.delayed(Duration(milliseconds: 100), () {
-          _scrollToHighlight();
+          // 修复：在回调中再次检查 Widget 是否已被销毁
+          if (mounted) {
+            _scrollToHighlight();
+          }
         });
       }
     });

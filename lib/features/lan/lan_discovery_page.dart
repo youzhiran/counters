@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/log.dart';
@@ -9,7 +8,7 @@ import 'package:counters/common/widgets/ip_display_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/lan_provider.dart';
-import 'package:counters/features/template/template_provider.dart';
+import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -72,33 +71,33 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       final jsonString = jsonEncode(requestMessage.toJson());
       lanNotifier.sendJsonMessage(jsonString);
 
-      // 4. 使用轮询等待模板同步（包含玩家信息）
-      const pollInterval = Duration(milliseconds: 2000); // 轮询间隔
+      // 4. 修复：使用轮询等待会话状态同步（而不是模板同步）
+      const pollInterval = Duration(milliseconds: 500); // 轮询间隔
       const timeoutDuration = Duration(seconds: 10); // 超时时间
       final stopwatch = Stopwatch()..start();
-      bool templateSynced = false;
+      bool sessionSynced = false;
 
       while (stopwatch.elapsed < timeoutDuration) {
-        final templatesAsync = ref.read(templatesProvider);
+        final scoreAsync = ref.read(scoreProvider);
         // 记录 Provider 当前状态
-        Log.d(
-            '_connectToHost 轮询: templatesProvider 状态为 ${templatesAsync.runtimeType}');
+        Log.d('_connectToHost 轮询: scoreProvider 状态为 ${scoreAsync.runtimeType}');
 
-        if (templatesAsync is AsyncData) {
-          Log.d('_connectToHost 轮询: 发现 AsyncData, 检查内容...');
-          final template = templatesAsync.value
-              ?.firstWhereOrNull((t) => t.tid == host.baseTid);
-          // 检查模板是否存在并且包含玩家信息
-          if (template != null && template.players.isNotEmpty) {
-            Log.i('_connectToHost 轮询: 模板 ${host.baseTid} 已成功同步（包含玩家）!');
-            templateSynced = true;
-            break; // 模板已同步，退出循环
+        if (scoreAsync is AsyncData) {
+          final scoreState = scoreAsync.value;
+          // 检查是否有会话状态且模板ID匹配
+          if (scoreState != null &&
+              scoreState.currentSession != null &&
+              scoreState.currentSession!.templateId == host.baseTid &&
+              scoreState.players.isNotEmpty) {
+            Log.i('_connectToHost 轮询: 会话状态已成功同步（模板: ${host.baseTid}）!');
+            sessionSynced = true;
+            break; // 会话已同步，退出循环
           } else {
-            Log.d('_connectToHost 轮询: 找到模板但玩家列表为空或模板为 null。');
+            Log.d('_connectToHost 轮询: 会话状态尚未同步或玩家列表为空。');
           }
-        } else if (templatesAsync is AsyncError) {
+        } else if (scoreAsync is AsyncError) {
           Log.e(
-              '_connectToHost 轮询: templatesProvider 处于 AsyncError 状态: ${templatesAsync.error}');
+              '_connectToHost 轮询: scoreProvider 处于 AsyncError 状态: ${scoreAsync.error}');
           // 可选：立即中断循环或处理错误
           // break;
         }
@@ -109,10 +108,10 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       stopwatch.stop();
 
       // 5. 检查同步结果
-      if (!templateSynced) {
+      if (!sessionSynced) {
         if (!mounted) return;
         globalState.navigatorKey.currentState?.pop(); // 关闭加载对话框
-        AppSnackBar.error('模板同步超时或失败，请重试');
+        AppSnackBar.error('会话状态同步超时或失败，请重试');
         // 新增：断开连接
         lanNotifier.disposeManager();
         return;
