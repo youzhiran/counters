@@ -1,6 +1,7 @@
 import 'package:counters/app/state.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_provider.dart';
+import 'package:counters/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -458,6 +459,14 @@ class _ActionButtons extends ConsumerWidget {
           globalState.navigatorKey.currentState?.pop();
           ref.read(lanProvider.notifier).disposeManager();
           AppSnackBar.show(lanState.isHost ? '已停止主机' : '已断开连接');
+
+          // 修复：如果是客户端断开连接，返回到带有底部导航栏的主界面
+          if (!lanState.isHost && lanState.isConnected) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+              (route) => false,
+            );
+          }
         },
         icon: Icon(lanState.isHost ? Icons.stop : Icons.wifi_off),
         label: Text(lanState.isHost ? '停止主机' : '断开连接'),

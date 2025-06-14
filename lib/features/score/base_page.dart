@@ -20,6 +20,7 @@ import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:counters/features/score/widgets/score_chart_bottom_sheet.dart';
 import 'package:counters/features/template/template_provider.dart';
+import 'package:counters/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -144,7 +145,11 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   ref.invalidate(scoreProvider);
                   AppSnackBar.show('已断开连接');
                   if (mounted) {
-                    globalState.navigatorKey.currentState?.pop();
+                    // 修复：客户端断开连接时返回到带有底部导航栏的主界面
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+                      (route) => false,
+                    );
                   }
                 }
               } else {
@@ -328,8 +333,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       lanNotifier.disposeManager();
       AppSnackBar.show('已停止主机');
     } else if (lanState.isConnected) {
+      // 修复：客户端断开连接时返回到带有底部导航栏的主界面
       lanNotifier.disposeManager();
       AppSnackBar.show('已断开连接');
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+        (route) => false,
+      );
     } else {
       lanNotifier
           .startHost(8080, template.tid, templateName: template.templateName)

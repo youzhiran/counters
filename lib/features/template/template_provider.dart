@@ -216,19 +216,24 @@ class Templates extends _$Templates {
 
   /// 清理客户端模式下的临时模板数据（当断开连接时调用）
   Future<void> clearClientModeTemplates() async {
-    if (!_isClientMode()) {
-      Log.d('非客户端模式，跳过临时模板清理');
-      return;
-    }
+    Log.i('清理客户端模式临时模板数据');
 
-    Log.i('客户端模式：清理临时模板数据，重新从数据库加载');
-    // 清除全局缓存
+    // 清除全局缓存（无论当前状态如何都要清理）
     _ClientModeTemplateCache.clear();
+
     // 重新从数据库加载模板，这样会移除所有仅在内存中的网络模板
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      return _templateDao.getAllTemplatesWithPlayers();
-    });
+    try {
+      state = await AsyncValue.guard(() async {
+        return _templateDao.getAllTemplatesWithPlayers();
+      });
+      Log.i('客户端模式：模板数据已重新从数据库加载');
+    } catch (e) {
+      Log.e('重新加载模板数据时出错: $e');
+      // 如果加载失败，至少确保状态不是loading
+      if (state.isLoading) {
+        state = AsyncError(e, StackTrace.current);
+      }
+    }
   }
 }
 
