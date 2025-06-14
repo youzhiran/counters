@@ -700,6 +700,15 @@ class LanNotifier extends StateNotifier<LanState> {
     Log.d('Disposing network manager...');
     _stopDiscoveryBroadcast();
 
+    // 修复：如果是客户端模式，清理临时数据
+    final wasClientMode = state.isConnected && !state.isHost && !state.isHostAndClientMode;
+    if (wasClientMode) {
+      Log.i('客户端断开连接，清理临时数据');
+      _ref.read(scoreProvider.notifier).clearClientModeData();
+      // 同时清理模板中的临时数据
+      _ref.read(templatesProvider.notifier).clearClientModeTemplates();
+    }
+
     Log.d("正在处理网络管理器...");
     // Dispose the Host manager first if it exists
     if (state.networkManager != null && state.networkManager!.isHost) {

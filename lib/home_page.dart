@@ -383,14 +383,32 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
         final template =
             templates.firstWhereOrNull((t) => t.tid == widget.templateId);
         if (template == null) {
-          if (_retryCount < 5) {
-            _retryCount++;
-            Future.delayed(Duration(seconds: 2), () {
-              if (mounted) {
-                ref.invalidate(templatesProvider);
-                ref.read(templatesProvider.notifier).refreshTemplates();
-              }
-            });
+          // 修复：检查是否为客户端模式，如果是则不要重新加载模板
+          final lanState = ref.read(lanProvider);
+          final isClientMode = lanState.isConnected && !lanState.isHost && !lanState.isHostAndClientMode;
+
+          if (isClientMode) {
+            // 客户端模式下，模板可能还在同步中，等待一下但不要重新加载
+            Log.w('客户端模式：等待模板同步，模板ID: ${widget.templateId}');
+            if (_retryCount < 10) { // 增加重试次数但不重新加载
+              _retryCount++;
+              Future.delayed(Duration(milliseconds: 500), () {
+                if (mounted) {
+                  setState(() {}); // 仅触发重建，不重新加载模板
+                }
+              });
+            }
+          } else {
+            // 主机模式或非联机模式：正常重新加载模板
+            if (_retryCount < 5) {
+              _retryCount++;
+              Future.delayed(Duration(seconds: 2), () {
+                if (mounted) {
+                  ref.invalidate(templatesProvider);
+                  ref.read(templatesProvider.notifier).refreshTemplates();
+                }
+              });
+            }
           }
           return Scaffold(
             appBar: AppBar(title: const Text('模板同步中')),

@@ -131,6 +131,10 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       if (!mounted) return;
       globalState.navigatorKey.currentState?.pop();
 
+      // 修复：等待一小段时间确保模板状态完全稳定后再导航
+      await Future.delayed(Duration(milliseconds: 100));
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

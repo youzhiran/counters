@@ -180,11 +180,43 @@ class Score extends _$Score {
     _broadcastResetGame();
   }
 
+  /// 检查当前是否为纯客户端模式（连接到主机但不是主机）
+  bool _isClientMode() {
+    final lanState = ref.read(lanProvider);
+    // 纯客户端模式：已连接但不是主机，且不是主机+客户端组合模式
+    return lanState.isConnected && !lanState.isHost && !lanState.isHostAndClientMode;
+  }
+
+  /// 清理客户端模式下的临时数据（当断开连接时调用）
+  void clearClientModeData() {
+    if (!_isClientMode()) {
+      Log.d('非客户端模式，跳过临时数据清理');
+      return;
+    }
+
+    Log.i('客户端模式：清理临时数据（会话、玩家信息等）');
+    state = AsyncData(const ScoreState(
+      currentSession: null,
+      currentRound: 0,
+      isInitialized: true,
+      currentHighlight: null,
+      showGameEndDialog: false,
+      players: [], // 清空玩家信息
+    ));
+  }
+
   Future<void> _saveSession() async {
+    // 修复：客户端模式下不保存会话到本地数据库
+    if (_isClientMode()) {
+      Log.i('客户端模式：跳过会话保存，数据仅保存在内存中');
+      return;
+    }
+
     final currentState = state.valueOrNull;
     if (currentState?.currentSession == null) return;
     final sessionToSave = currentState!.currentSession!;
     await _sessionDao.saveGameSession(sessionToSave);
+    Log.d('主机模式：会话已保存到本地数据库');
   }
 
   Future<List<GameSession>> getAllSessions() async {
@@ -422,6 +454,7 @@ class Score extends _$Score {
       _broadcastSyncState(updatedSession);
     }
 
+    // 根据模式决定是否保存会话到本地数据库
     await _saveSession();
   }
 
@@ -473,19 +506,24 @@ class Score extends _$Score {
     _broadcastNewRoundPayload(
         NewRoundPayload(newRoundIndex: currentRoundIndex + 1));
     updateHighlight();
+    // 根据模式决定是否保存会话到本地数据库
     _saveSession();
   }
 
   Future<void> resetGame(bool saveToHistory) async {
     final currentState = state.valueOrNull;
 
-    if (saveToHistory && currentState?.currentSession != null) {
+    // 修复：客户端模式下不保存历史记录到本地数据库
+    if (saveToHistory && currentState?.currentSession != null && !_isClientMode()) {
       final sessionToSave = currentState!.currentSession!;
       final completedSession = sessionToSave.copyWith(
         isCompleted: true,
         endTime: DateTime.now(),
       );
       await _sessionDao.saveGameSession(completedSession);
+      Log.d('主机模式：游戏历史已保存到本地数据库');
+    } else if (saveToHistory && _isClientMode()) {
+      Log.i('客户端模式：跳过游戏历史保存，数据仅在内存中');
     }
 
     state = AsyncData(const ScoreState(
@@ -724,7 +762,7 @@ class Score extends _$Score {
     Log.i('applySyncState 完成: 最终玩家数量: ${newState.players.length}');
     updateHighlight();
 
-    // 客户端收到同步状态后，保存会话到本地 DAO，以便后续启动或重建时能加载
+    // 客户端收到同步状态后，根据模式决定是否保存会话到本地 DAO
     _saveSession();
   }
 
