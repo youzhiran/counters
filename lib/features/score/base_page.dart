@@ -120,11 +120,26 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                 return;
               }
               final lanState = ref.read(lanProvider);
-              if (lanState.isConnected && !lanState.isHost) {
+              // 修复：检查所有客户端模式状态（包括重连状态）
+              if (lanState.isClientMode && !lanState.isHost) {
+                String dialogContent;
+                String actionText;
+
+                if (lanState.isConnected) {
+                  dialogContent = '退出当前页面将会断开与主机的连接，确定要退出吗？';
+                  actionText = '断开并退出';
+                } else if (lanState.isReconnecting) {
+                  dialogContent = '当前正在重连中，退出将停止重连并退出客户端模式，确定要退出吗？';
+                  actionText = '停止重连并退出';
+                } else {
+                  dialogContent = '退出当前页面将退出客户端模式，确定要退出吗？';
+                  actionText = '退出客户端模式';
+                }
+
                 final confirmed = await globalState.showCommonDialog(
                   child: AlertDialog(
                     title: Text('确认退出'),
-                    content: Text('退出当前页面将会断开与主机的连接，确定要退出吗？'),
+                    content: Text(dialogContent),
                     actions: [
                       TextButton(
                         onPressed: () =>
@@ -135,15 +150,18 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                         onPressed: () {
                           globalState.navigatorKey.currentState?.pop(true);
                         },
-                        child: Text('确定'),
+                        child: Text(actionText),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
                   ),
                 );
                 if (confirmed == true) {
-                  ref.read(lanProvider.notifier).disposeManager();
+                  // 使用exitClientMode来完全退出客户端模式
+                  ref.read(lanProvider.notifier).exitClientMode();
                   ref.invalidate(scoreProvider);
-                  AppSnackBar.show('已断开连接');
                   if (mounted) {
                     // 修复：客户端断开连接时返回到带有底部导航栏的主界面
                     Navigator.of(context).pushAndRemoveUntil(
@@ -162,20 +180,11 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
               appBar: AppBar(
                 title: Text(template.templateName),
                 actions: [
-                  if (lanState.isHost || lanState.isConnected)
+                  // 显示LAN状态图标：主机模式、已连接的客户端、或处于客户端模式（包括重连状态）
+                  if (lanState.isHost || lanState.isConnected || lanState.isClientMode)
                     IconButton(
-                      icon: ScaleTransition(
-                        scale: _broadcastScaleAnimation,
-                        child: Icon(
-                          _getLanIcon(lanState),
-                          color: lanState.isConnected
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
-                      ),
-                      tooltip: lanState.isHost
-                          ? '主机模式: ${lanState.connectionStatus}'
-                          : '客户端模式: ${lanState.connectionStatus}',
+                      icon: _buildLanIcon(lanState),
+                      tooltip: _getLanTooltip(lanState),
                       onPressed: () => showLanStatus(context),
                     ),
                   IconButton(
@@ -271,27 +280,29 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                       ),
                       PopupMenuItem<String>(
                         value: 'lan_conn',
-                        enabled: !lanState.isConnected,
+                        enabled: !lanState.isConnected && !lanState.isClientMode,
                         child: Row(
                           children: [
-                            Icon(Icons.wifi),
+                            Icon(Icons.wifi,
+                                color: (!lanState.isConnected && !lanState.isClientMode) ? null : Colors.grey),
                             SizedBox(width: 8),
-                            Text(lanState.isHost ? '停止主机' : '开启局域网联机'),
+                            Text(lanState.isHost ? '停止主机' : '开启局域网联机',
+                                style: TextStyle(
+                                    color: (!lanState.isConnected && !lanState.isClientMode) ? null : Colors.grey)),
                           ],
                         ),
                       ),
                       PopupMenuItem<String>(
                         value: 'lan_discovery',
-                        enabled: !lanState.isHost,
+                        enabled: !lanState.isHost && !lanState.isClientMode,
                         child: Row(
                           children: [
                             Icon(Icons.search,
-                                color: !lanState.isHost ? null : Colors.grey),
+                                color: (!lanState.isHost && !lanState.isClientMode) ? null : Colors.grey),
                             SizedBox(width: 8),
                             Text('发现局域网游戏',
                                 style: TextStyle(
-                                    color:
-                                        !lanState.isHost ? null : Colors.grey)),
+                                    color: (!lanState.isHost && !lanState.isClientMode) ? null : Colors.grey)),
                           ],
                         ),
                       ),
@@ -329,6 +340,12 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     final lanNotifier = ref.read(lanProvider.notifier);
     final lanState = ref.read(lanProvider);
 
+    // 检查客户端模式限制
+    if (lanState.isClientMode) {
+      AppSnackBar.show('客户端模式下无法开启局域网联机');
+      return;
+    }
+
     if (lanState.isHost) {
       lanNotifier.disposeManager();
       AppSnackBar.show('已停止主机');
@@ -355,14 +372,84 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     showLanStatusDialog();
   }
 
+  /// 构建LAN状态图标，包含动画效果
+  Widget _buildLanIcon(LanState lanState) {
+    final icon = Icon(
+      _getLanIcon(lanState),
+      color: _getLanIconColor(lanState),
+    );
+
+    // 主机广播状态或客户端重连状态使用缩放动画
+    if ((lanState.isHost && lanState.isBroadcasting) ||
+        (lanState.isClientMode && lanState.isReconnecting)) {
+      return ScaleTransition(
+        scale: _broadcastScaleAnimation,
+        child: icon,
+      );
+    }
+
+    // 其他状态不使用动画
+    return icon;
+  }
+
   /// 根据LAN状态获取对应的图标
   IconData _getLanIcon(LanState lanState) {
     if (lanState.isHost) {
       // 主机模式：根据广播状态显示不同图标
       return lanState.isBroadcasting ? Icons.wifi_tethering : Icons.dns;
+    } else if (lanState.isClientMode) {
+      if (lanState.isConnected) {
+        // 客户端已连接
+        return Icons.wifi;
+      } else if (lanState.isReconnecting) {
+        // 客户端重连中
+        return Icons.wifi_find;
+      } else {
+        // 客户端已断开
+        return Icons.wifi_off;
+      }
     } else {
-      // 客户端模式：显示wifi图标
+      // 默认状态
       return Icons.wifi;
+    }
+  }
+
+  /// 根据LAN状态获取图标颜色
+  Color _getLanIconColor(LanState lanState) {
+    if (lanState.isHost) {
+      // 主机模式：绿色表示正常，橙色表示等待连接
+      return lanState.connectedClientIps.isNotEmpty ? Colors.green : Colors.orange;
+    } else if (lanState.isClientMode) {
+      if (lanState.isConnected) {
+        // 客户端已连接：绿色
+        return Colors.green;
+      } else if (lanState.isReconnecting) {
+        // 客户端重连中：橙色
+        return Colors.orange;
+      } else {
+        // 客户端已断开：红色
+        return Colors.red;
+      }
+    } else {
+      // 默认状态：灰色
+      return Colors.grey;
+    }
+  }
+
+  /// 根据LAN状态获取工具提示文本
+  String _getLanTooltip(LanState lanState) {
+    if (lanState.isHost) {
+      return '主机模式: ${lanState.connectionStatus}';
+    } else if (lanState.isClientMode) {
+      if (lanState.isConnected) {
+        return '客户端模式: 已连接';
+      } else if (lanState.isReconnecting) {
+        return '客户端模式: 重连中 (${lanState.reconnectAttempts}/${lanState.maxReconnectAttempts})';
+      } else {
+        return '客户端模式: 已断开连接';
+      }
+    } else {
+      return '局域网状态: ${lanState.connectionStatus}';
     }
   }
 

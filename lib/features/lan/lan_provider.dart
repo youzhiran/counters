@@ -37,6 +37,14 @@ class LanState {
   final String interfaceName; // 新增：本机网络接口名称
   final int serverPort; // 新增：服务器端口号
 
+  // 新增：客户端模式状态管理
+  final bool isClientMode; // 是否处于客户端模式（即使断开连接也保持）
+  final bool isReconnecting; // 是否正在重连
+  final int reconnectAttempts; // 当前重连尝试次数
+  final int maxReconnectAttempts; // 最大重连次数
+  final String? disconnectReason; // 断开连接的原因
+  final String? hostIp; // 记录主机IP用于重连
+
   const LanState({
     this.isLoading = false,
     this.isHost = false,
@@ -49,6 +57,13 @@ class LanState {
     this.connectedClientIps = const [], // 新增：默认空列表
     this.interfaceName = '', // 新增：默认空字符串
     this.serverPort = 0, // 新增：默认端口为0
+    // 新增：客户端模式相关状态
+    this.isClientMode = false, // 默认不是客户端模式
+    this.isReconnecting = false, // 默认不在重连
+    this.reconnectAttempts = 0, // 默认重连次数为0
+    this.maxReconnectAttempts = 5, // 默认最大重连次数为5
+    this.disconnectReason, // 默认无断开原因
+    this.hostIp, // 默认无主机IP
   });
 
   LanState copyWith({
@@ -64,6 +79,15 @@ class LanState {
     bool clearNetworkManager = false,
     String? interfaceName, // 新增
     int? serverPort, // 新增
+    // 新增：客户端模式相关参数
+    bool? isClientMode,
+    bool? isReconnecting,
+    int? reconnectAttempts,
+    int? maxReconnectAttempts,
+    String? disconnectReason,
+    String? hostIp,
+    bool clearDisconnectReason = false,
+    bool clearHostIp = false,
   }) {
     return LanState(
       isLoading: isLoading ?? this.isLoading,
@@ -79,6 +103,13 @@ class LanState {
       connectedClientIps: connectedClientIps ?? this.connectedClientIps, // 新增
       interfaceName: interfaceName ?? this.interfaceName, // 新增
       serverPort: serverPort ?? this.serverPort, // 新增
+      // 新增：客户端模式相关状态
+      isClientMode: isClientMode ?? this.isClientMode,
+      isReconnecting: isReconnecting ?? this.isReconnecting,
+      reconnectAttempts: reconnectAttempts ?? this.reconnectAttempts,
+      maxReconnectAttempts: maxReconnectAttempts ?? this.maxReconnectAttempts,
+      disconnectReason: clearDisconnectReason ? null : (disconnectReason ?? this.disconnectReason),
+      hostIp: clearHostIp ? null : (hostIp ?? this.hostIp),
     );
   }
 }
@@ -320,6 +351,18 @@ class LanNotifier extends StateNotifier<LanState> {
             }
             break;
 
+          case "host_disconnect":
+            Log.i('收到主机断开连接通知');
+            String reason = '主机已断开连接';
+            if (data is Map<String, dynamic>) {
+              final payload = HostDisconnectPayload.fromJson(data);
+              if (payload.reason != null && payload.reason!.isNotEmpty) {
+                reason = '主机已断开连接: ${payload.reason}';
+              }
+            }
+            _handleHostDisconnect(reason);
+            break;
+
           default:
             Log.w('收到未知消息类型: $type');
             break;
@@ -344,9 +387,54 @@ class LanNotifier extends StateNotifier<LanState> {
     Log.i(
         '_handleConnectionChanged: $statusMessage (isConnected: $isConnected)');
     if (mounted) {
+      // 更新重连状态
+      final isReconnecting = statusMessage.contains('重连中') || statusMessage.contains('正在尝试重连');
+      int reconnectAttempts = 0;
+
+      // 从状态消息中提取重连次数
+      if (isReconnecting && statusMessage.contains('(') && statusMessage.contains('/')) {
+        final match = RegExp(r'\((\d+)/\d+\)').firstMatch(statusMessage);
+        if (match != null) {
+          reconnectAttempts = int.tryParse(match.group(1) ?? '0') ?? 0;
+        }
+      }
+
       state = state.copyWith(
-          isConnected: isConnected, connectionStatus: statusMessage);
+        isConnected: isConnected,
+        connectionStatus: statusMessage,
+        isReconnecting: isReconnecting,
+        reconnectAttempts: reconnectAttempts,
+      );
+
+      // 如果连接断开且处于客户端模式，显示相应提示
+      if (!isConnected && state.isClientMode && !isReconnecting) {
+        if (statusMessage.contains('重连失败')) {
+          AppSnackBar.error('连接断开，重连失败。您可以尝试手动重连或退出客户端模式。');
+        } else if (!statusMessage.contains('已断开连接')) {
+          AppSnackBar.warn('与主机的连接已断开，正在尝试重连...');
+        }
+      }
     }
+  }
+
+  // 处理主机主动断开连接
+  void _handleHostDisconnect(String reason) {
+    if (!mounted) return;
+
+    Log.i('处理主机断开连接: $reason');
+    AppSnackBar.error(reason);
+
+    // 清理连接但保持客户端模式状态
+    state = state.copyWith(
+      isConnected: false,
+      connectionStatus: '主机已断开连接',
+      disconnectReason: reason,
+      isReconnecting: false,
+      reconnectAttempts: 0,
+    );
+
+    // 清理网络管理器
+    disposeManager();
   }
 
   // 修改：处理客户端连接的回调 - 仅更新状态，不主动发送消息
@@ -509,7 +597,13 @@ class LanNotifier extends StateNotifier<LanState> {
         isLoading: true,
         isHost: false,
         isConnected: false,
-        connectionStatus: '连接中...');
+        isClientMode: true, // 设置为客户端模式
+        hostIp: hostIp, // 记录主机IP用于重连
+        connectionStatus: '连接中...',
+        clearDisconnectReason: true, // 清除之前的断开原因
+        reconnectAttempts: 0, // 重置重连次数
+        isReconnecting: false,
+    );
     try {
       // === 修复点 2：使用 ScoreNetworkManager.createClient 静态方法创建管理器 ===
       final manager = await ScoreNetworkManager.createClient(
@@ -617,12 +711,99 @@ class LanNotifier extends StateNotifier<LanState> {
     }
   }
 
+  /// 手动重连到主机
+  Future<void> manualReconnect() async {
+    if (!state.isClientMode || state.hostIp == null) {
+      AppSnackBar.warn('无法重连：不在客户端模式或缺少主机信息');
+      return;
+    }
+
+    if (state.isConnected) {
+      AppSnackBar.show('当前已连接，无需重连');
+      return;
+    }
+
+    Log.i('开始手动重连到主机: ${state.hostIp}');
+    AppSnackBar.show('正在尝试重连...');
+
+    // 如果有现有的网络管理器，先清理
+    if (state.networkManager != null) {
+      await state.networkManager?.dispose();
+      state = state.copyWith(clearNetworkManager: true);
+    }
+
+    // 尝试重连
+    try {
+      final manager = await ScoreNetworkManager.createClient(
+        state.hostIp!,
+        state.serverPort > 0 ? state.serverPort : 8080, // 使用记录的端口或默认端口
+        onMessageReceived: _handleMessageReceived,
+        onConnectionChanged: _handleConnectionChanged,
+      );
+
+      if (mounted) {
+        state = state.copyWith(
+          networkManager: manager,
+          isReconnecting: false,
+          reconnectAttempts: 0,
+          clearDisconnectReason: true,
+        );
+      }
+    } catch (e) {
+      Log.e('手动重连失败: $e');
+      AppSnackBar.error('重连失败: $e');
+    }
+  }
+
+  /// 退出客户端模式
+  Future<void> exitClientMode() async {
+    Log.i('退出客户端模式');
+
+    // 清理网络连接
+    await disposeManager();
+
+    // 清理客户端模式数据
+    _ref.read(scoreProvider.notifier).clearClientModeData();
+    _ref.read(templatesProvider.notifier).clearClientModeTemplates();
+
+    if (mounted) {
+      state = state.copyWith(
+        isClientMode: false,
+        isReconnecting: false,
+        reconnectAttempts: 0,
+        clearDisconnectReason: true,
+        clearHostIp: true,
+        connectionStatus: '未连接',
+      );
+    }
+
+    AppSnackBar.show('已退出客户端模式');
+  }
+
   /// 清理并释放所有网络资源。
   Future<void> disposeManager() async {
     Log.d('Disposing network manager...');
     _stopDiscoveryBroadcast();
 
-    // 修复：如果是客户端模式，清理临时数据
+    // 如果是主机模式且有连接的客户端，发送断开通知
+    if (state.isHost && state.connectedClientIps.isNotEmpty && state.networkManager != null) {
+      Log.i('主机断开连接，向 ${state.connectedClientIps.length} 个客户端发送断开通知');
+      try {
+        final disconnectMessage = SyncMessage(
+          type: "host_disconnect",
+          data: HostDisconnectPayload(reason: "主机主动断开连接").toJson(),
+        );
+        final jsonString = jsonEncode(disconnectMessage.toJson());
+        state.networkManager!.broadcast(jsonString);
+
+        // 给客户端一点时间接收消息
+        await Future.delayed(const Duration(milliseconds: 500));
+      } catch (e) {
+        Log.e('发送主机断开通知失败: $e');
+      }
+    }
+
+    // 修复：如果是客户端模式，清理临时数据（但不退出客户端模式）
     final wasClientMode = state.isConnected && !state.isHost;
     if (wasClientMode) {
       Log.i('客户端断开连接，清理临时数据');
@@ -639,13 +820,18 @@ class LanNotifier extends StateNotifier<LanState> {
 
     Log.d("网络管理器处理完毕。");
     if (mounted) {
+      // 保存当前状态用于判断
+      final wasClientMode = state.isClientMode;
+      final wasHost = state.isHost;
+
       state = state.copyWith(
         clearNetworkManager: true,
         isConnected: false,
         isHost: false,
-        connectionStatus: '未连接',
+        connectionStatus: wasClientMode ? '客户端模式（已断开连接）' : '未连接',
         receivedMessages: [],
-        serverPort: 0, // 重置端口
+        serverPort: wasHost ? 0 : state.serverPort, // 主机模式重置端口，客户端模式保留端口用于重连
+        connectedClientIps: [], // 清空客户端列表
       );
     }
   }

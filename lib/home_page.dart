@@ -195,14 +195,14 @@ class HomePage extends ConsumerWidget {
   }
 
   Widget _buildLanButton(WidgetRef ref, LanState lanState) {
-    final isHost = lanState.isHost;
+    final isDisabled = lanState.isHost || lanState.isClientMode;
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
         minimumSize: Size(200, 48),
-        foregroundColor: isHost ? Colors.grey : null,
-        side: isHost ? BorderSide(color: Colors.grey.shade300) : null,
+        foregroundColor: isDisabled ? Colors.grey : null,
+        side: isDisabled ? BorderSide(color: Colors.grey.shade300) : null,
       ),
-      onPressed: isHost
+      onPressed: isDisabled
           ? null
           : () {
               Navigator.of(ref.context).pushWithSlide(
