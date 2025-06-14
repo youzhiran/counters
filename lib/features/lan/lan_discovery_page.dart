@@ -9,6 +9,7 @@ import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/score/score_provider.dart';
+import 'package:counters/features/template/template_provider.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +36,29 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
     // Notifier 是 autoDispose ，页面销毁时会停止扫描
     // ref.read(lanDiscoveryProvider.notifier).stopDiscovery();
     super.dispose();
+  }
+
+  /// 获取模板显示名称，优先使用广播中的模板名称，否则查询本地数据库
+  String _getTemplateName(DiscoveredHost host) {
+    // 优先使用广播消息中的模板名称
+    if (host.templateName != null && host.templateName!.isNotEmpty) {
+      return host.templateName!;
+    }
+
+    // 如果广播消息中没有模板名称，则查询本地数据库（向后兼容）
+    final templatesAsync = ref.read(templatesProvider);
+    if (templatesAsync.hasValue && templatesAsync.value != null) {
+      try {
+        final template = templatesAsync.value!.firstWhere(
+          (t) => t.tid == host.baseTid,
+        );
+        return template.templateName;
+      } catch (e) {
+        // 如果找不到匹配的模板，firstWhere 会抛出异常
+      }
+    }
+    // 如果找不到模板或模板数据未加载，返回ID
+    return host.baseTid;
   }
 
   Future<void> _connectToHost(DiscoveredHost host) async {
@@ -214,7 +238,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
                     title: Text(host.hostName),
                     // 显示主机名
                     subtitle:
-                        Text('${host.ip}:${host.port} (模板: ${host.baseTid})'),
+                        Text('${host.ip}:${host.port} (模板: ${_getTemplateName(host)})'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _connectToHost(host), // 点击连接
                   );

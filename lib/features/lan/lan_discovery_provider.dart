@@ -15,6 +15,7 @@ class DiscoveredHost {
   final int port; // WebSocket 端口
   final String baseTid;
   final String hostName; // 可以是设备名或自定义名称
+  final String? templateName; // 模板名称，可能为空（向后兼容）
   final DateTime lastSeen;
 
   const DiscoveredHost({
@@ -22,6 +23,7 @@ class DiscoveredHost {
     required this.port,
     required this.baseTid,
     required this.hostName,
+    this.templateName,
     required this.lastSeen,
   });
 
@@ -40,7 +42,7 @@ class DiscoveredHost {
 
   @override
   String toString() {
-    return 'DiscoveredHost{ipAddress: $ip, port: $port, baseTid: $baseTid, hostName: $hostName, lastSeen: $lastSeen}';
+    return 'DiscoveredHost{ipAddress: $ip, port: $port, baseTid: $baseTid, hostName: $hostName, templateName: $templateName, lastSeen: $lastSeen}';
   }
 }
 
@@ -146,12 +148,13 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
           if (message.startsWith(Config.discoveryMsgPrefix)) {
             final parts =
                 message.substring(Config.discoveryMsgPrefix.length).split('|');
-            // 期望格式: Prefix<HostIP>|<WebSocketPort>|<BaseTID>|<TemplateID>|<HostName>
+            // 期望格式: Prefix<HostIP>|<WebSocketPort>|<BaseTID>|<HostName>|<TemplateName>
             if (parts.length >= 4) {
               final hostIp = parts[0];
               final wsPort = int.tryParse(parts[1]);
               final baseTid = parts[2];
               final hostName = parts[3]; // 主机名
+              final templateName = parts.length >= 5 ? parts[4] : null; // 模板名称（向后兼容）
 
               if (wsPort != null) {
                 final hostKey = '$hostIp:$wsPort:$baseTid';
@@ -161,6 +164,7 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
                   port: wsPort,
                   baseTid: baseTid,
                   hostName: hostName,
+                  templateName: templateName,
                   lastSeen: now,
                 );
 

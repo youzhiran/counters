@@ -331,7 +331,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       lanNotifier.disposeManager();
       AppSnackBar.show('已断开连接');
     } else {
-      lanNotifier.startHost(8080, template.tid).then((_) {
+      lanNotifier.startHost(8080, template.tid, templateName: template.templateName).then((_) {
         AppSnackBar.show('主机已启动，等待客户端连接');
       }).catchError((error) {
         AppSnackBar.error('启动主机失败: $error');

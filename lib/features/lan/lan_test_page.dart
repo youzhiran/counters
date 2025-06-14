@@ -81,7 +81,7 @@ class LanTestPage extends ConsumerWidget {
                   ElevatedButton(
                     onPressed: lanState.isLoading
                         ? null
-                        : () => lanNotifier.startHost(defaultPort, "poker50"),
+                        : () => lanNotifier.startHost(defaultPort, "poker50", templateName: "扑克50"),
                     child: const Text('成为主机'),
                   ),
                 ],

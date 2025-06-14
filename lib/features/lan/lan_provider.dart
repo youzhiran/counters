@@ -93,6 +93,7 @@ class LanNotifier extends StateNotifier<LanState> {
   Timer? _broadcastTimer;
   String _currentBaseTid = '';
   int _currentWsPort = 0;
+  String _currentTemplateName = '';
 
   @override
   void dispose() {
@@ -379,14 +380,15 @@ class LanNotifier extends StateNotifier<LanState> {
     }
   }
 
-  /// 修改 startHost 方法以传递回调
-  Future<void> startHost(int port, String baseTid) async {
+  /// 修改 startHost 方法以传递回调和模板名称
+  Future<void> startHost(int port, String baseTid, {String? templateName}) async {
     Log.i('尝试启动主机模式...');
     disposeManager(); // 确保旧的管理器已清理
     if (!mounted) return;
     state = state.copyWith(isLoading: true, isHost: true, isConnected: false);
     _currentBaseTid = baseTid;
     _currentWsPort = port;
+    _currentTemplateName = templateName ?? '';
     try {
       final manager = await ScoreNetworkManager.createHost(
         port,
@@ -739,8 +741,9 @@ class LanNotifier extends StateNotifier<LanState> {
 
     try {
       String hostName = Platform.localHostname;
+      // 新格式: Prefix<HostIP>|<WebSocketPort>|<BaseTID>|<HostName>|<TemplateName>
       final message =
-          '${Config.discoveryMsgPrefix}${state.localIp}|$_currentWsPort|$_currentBaseTid|$hostName';
+          '${Config.discoveryMsgPrefix}${state.localIp}|$_currentWsPort|$_currentBaseTid|$hostName|$_currentTemplateName';
       final data = utf8.encode(message);
       var send = _udpSocket?.send(
           data, InternetAddress('255.255.255.255'), Config.discoveryPort);
