@@ -731,6 +731,151 @@ class _ResetGamePayload extends ResetGamePayload {
 }
 
 /// @nodoc
+mixin _$HostDisconnectPayload {
+  String? get reason;
+
+  /// Create a copy of HostDisconnectPayload
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $HostDisconnectPayloadCopyWith<HostDisconnectPayload> get copyWith =>
+      _$HostDisconnectPayloadCopyWithImpl<HostDisconnectPayload>(
+          this as HostDisconnectPayload, _$identity);
+
+  /// Serializes this HostDisconnectPayload to a JSON map.
+  Map<String, dynamic> toJson();
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is HostDisconnectPayload &&
+            (identical(other.reason, reason) || other.reason == reason));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, reason);
+
+  @override
+  String toString() {
+    return 'HostDisconnectPayload(reason: $reason)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $HostDisconnectPayloadCopyWith<$Res> {
+  factory $HostDisconnectPayloadCopyWith(HostDisconnectPayload value,
+          $Res Function(HostDisconnectPayload) _then) =
+      _$HostDisconnectPayloadCopyWithImpl;
+  @useResult
+  $Res call({String? reason});
+}
+
+/// @nodoc
+class _$HostDisconnectPayloadCopyWithImpl<$Res>
+    implements $HostDisconnectPayloadCopyWith<$Res> {
+  _$HostDisconnectPayloadCopyWithImpl(this._self, this._then);
+
+  final HostDisconnectPayload _self;
+  final $Res Function(HostDisconnectPayload) _then;
+
+  /// Create a copy of HostDisconnectPayload
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? reason = freezed,
+  }) {
+    return _then(_self.copyWith(
+      reason: freezed == reason
+          ? _self.reason
+          : reason // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _HostDisconnectPayload extends HostDisconnectPayload {
+  const _HostDisconnectPayload({this.reason}) : super._();
+  factory _HostDisconnectPayload.fromJson(Map<String, dynamic> json) =>
+      _$HostDisconnectPayloadFromJson(json);
+
+  @override
+  final String? reason;
+
+  /// Create a copy of HostDisconnectPayload
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$HostDisconnectPayloadCopyWith<_HostDisconnectPayload> get copyWith =>
+      __$HostDisconnectPayloadCopyWithImpl<_HostDisconnectPayload>(
+          this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$HostDisconnectPayloadToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _HostDisconnectPayload &&
+            (identical(other.reason, reason) || other.reason == reason));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, reason);
+
+  @override
+  String toString() {
+    return 'HostDisconnectPayload(reason: $reason)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$HostDisconnectPayloadCopyWith<$Res>
+    implements $HostDisconnectPayloadCopyWith<$Res> {
+  factory _$HostDisconnectPayloadCopyWith(_HostDisconnectPayload value,
+          $Res Function(_HostDisconnectPayload) _then) =
+      __$HostDisconnectPayloadCopyWithImpl;
+  @override
+  @useResult
+  $Res call({String? reason});
+}
+
+/// @nodoc
+class __$HostDisconnectPayloadCopyWithImpl<$Res>
+    implements _$HostDisconnectPayloadCopyWith<$Res> {
+  __$HostDisconnectPayloadCopyWithImpl(this._self, this._then);
+
+  final _HostDisconnectPayload _self;
+  final $Res Function(_HostDisconnectPayload) _then;
+
+  /// Create a copy of HostDisconnectPayload
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? reason = freezed,
+  }) {
+    return _then(_HostDisconnectPayload(
+      reason: freezed == reason
+          ? _self.reason
+          : reason // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
 mixin _$GameEndPayload {
   /// Serializes this GameEndPayload to a JSON map.
   Map<String, dynamic> toJson();

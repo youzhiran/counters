@@ -1,25 +1,24 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'score_provider.dart';
+part of 'lan_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$scoreHash() => r'ccac5cdc60680175962f9da6c5ea01fd4c53225a';
+String _$lanHash() => r'deb1875bba2d304b2df26439451ac421a7c1a613';
 
-/// See also [Score].
-@ProviderFor(Score)
-final scoreProvider =
-    AutoDisposeAsyncNotifierProvider<Score, ScoreState>.internal(
-  Score.new,
-  name: r'scoreProvider',
+/// See also [Lan].
+@ProviderFor(Lan)
+final lanProvider = NotifierProvider<Lan, LanState>.internal(
+  Lan.new,
+  name: r'lanProvider',
   debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$scoreHash,
+      const bool.fromEnvironment('dart.vm.product') ? null : _$lanHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$Score = AutoDisposeAsyncNotifier<ScoreState>;
+typedef _$Lan = Notifier<LanState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

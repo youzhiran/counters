@@ -22,26 +22,25 @@ class IpDisplayWidget extends StatelessWidget {
         children: [
           Text('你的IP地址: $localIp ($interfaceName)',
               style: Theme.of(context).textTheme.titleMedium),
-          if (localIp != '获取中...' && localIp != '获取失败')
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton.icon(
-                  icon: const Icon(Icons.copy, size: 16),
-                  label: const Text('复制IP'),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: localIp));
-                    AppSnackBar.show('IP地址已复制');
-                  },
-                ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('刷新IP'),
-                  onPressed: onRefreshIp,
-                ),
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text('复制IP'),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: localIp));
+                  AppSnackBar.show('IP地址已复制');
+                },
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('刷新IP'),
+                onPressed: onRefreshIp,
+              ),
+            ],
+          ),
         ],
       ),
     );

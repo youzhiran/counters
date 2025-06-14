@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:counters/common/model/sync_messages.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 
 // 定义回调类型别名
@@ -19,6 +20,8 @@ class WsHost {
   final ClientMessageCallback? onMessageReceived;
   final ClientConnectionCallback? onClientConnected; // 新增：客户端连接回调
   final ClientConnectionCallback? onClientDisconnected; // 新增：客户端断开回调
+  final Function(String error)? onServerError; // 新增：服务器错误回调
+  final Function(String error)? onStartupError; // 新增：启动失败回调
 
   // 修改构造函数，添加回调参数
   WsHost({
@@ -26,6 +29,8 @@ class WsHost {
     this.onMessageReceived,
     this.onClientConnected, // 新增
     this.onClientDisconnected, // 新增
+    this.onServerError, // 新增：服务器错误回调
+    this.onStartupError, // 新增：启动失败回调
   });
 
   Future<void> start() async {
@@ -53,12 +58,16 @@ class WsHost {
           await request.response.close();
         }
       }, onError: (e) {
-        Log.e('WebSocket 服务器监听错误: $e');
-        // TODO: 通知 LanNotifier 服务器错误
+        // 使用统一的错误处理器
+        ErrorHandler.handle(e, StackTrace.current, prefix: 'WebSocket 服务器监听错误');
+        // 通知 LanNotifier 服务器错误
+        onServerError?.call('WebSocket 服务器监听错误: $e');
       });
     } catch (e) {
-      Log.e('启动 WebSocket 服务器失败: $e');
-      // TODO: 通知 LanNotifier 启动失败
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '启动 WebSocket 服务器失败');
+      // 通知 LanNotifier 启动失败
+      onStartupError?.call('启动 WebSocket 服务器失败: $e');
       rethrow;
     }
   }
@@ -75,9 +84,10 @@ class WsHost {
     socket.listen(
       (message) {
         // Host 收到客户端消息。在我们的同步方案中，客户端可能发送命令。
-        // TODO: 将收到的消息转发给 LanNotifier 或 ScoreNotifier 处理客户端命令
-        // onMessageReceived?.call(socket, message is String ? message : message.toString());
         Log.i('收到来自客户端 ($clientIp) 的消息: $message');
+
+        // 将收到的消息转发给 LanNotifier 或 ScoreNotifier 处理客户端命令
+        final messageString = message is String ? message : message.toString();
 
         // 处理客户端消息
         if (message is String) {
@@ -86,24 +96,38 @@ class WsHost {
             final jsonMap = jsonDecode(message) as Map<String, dynamic>;
             final syncMessage = SyncMessage.fromJson(jsonMap);
 
-            // 处理 request_sync_state 消息
-            if (syncMessage.type == "request_sync_state") {
-              Log.i('收到客户端 ($clientIp) 请求同步状态: ${syncMessage.data}');
-              // 将消息传递给回调函数处理
-              onMessageReceived?.call(socket, message);
+            // 处理各种类型的客户端消息
+            switch (syncMessage.type) {
+              case "request_sync_state":
+                Log.i('收到客户端 ($clientIp) 请求同步状态: ${syncMessage.data}');
+                break;
+              case "client_command":
+                Log.i('收到客户端 ($clientIp) 命令: ${syncMessage.data}');
+                break;
+              default:
+                Log.i('收到客户端 ($clientIp) 未知消息类型: ${syncMessage.type}');
+                break;
             }
-          } catch (e) {
-            Log.e('解析客户端 ($clientIp) 消息失败: $e');
-          }
-        }
 
-        // 移除自动广播逻辑
+            // 将所有消息传递给回调函数处理
+            onMessageReceived?.call(socket, messageString);
+          } catch (e) {
+            // 使用统一的错误处理器
+            ErrorHandler.handle(e, StackTrace.current, prefix: '解析客户端 ($clientIp) 消息失败');
+            // 即使解析失败，也尝试转发原始消息
+            onMessageReceived?.call(socket, messageString);
+          }
+        } else {
+          // 非字符串消息也转发
+          onMessageReceived?.call(socket, messageString);
+        }
       },
       onDone: () {
         _handleClientDisconnect(socket); // 调用统一处理方法
       },
       onError: (error) {
-        Log.e('客户端 ($clientIp) 错误: $error');
+        // 使用统一的错误处理器
+        ErrorHandler.handle(error, StackTrace.current, prefix: '客户端 ($clientIp) 连接错误');
         _handleClientDisconnect(socket); // 出错也视为断开
       },
     );
@@ -127,7 +151,8 @@ class WsHost {
         try {
           client.add(message);
         } catch (e) {
-          Log.e('发送消息到客户端失败: $e');
+          // 使用统一的错误处理器
+          ErrorHandler.handle(e, StackTrace.current, prefix: '发送消息到客户端失败');
         }
       }
     }

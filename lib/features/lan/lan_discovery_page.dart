@@ -182,6 +182,49 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
     final lanState = ref.watch(lanProvider);
     final lanNotifier = ref.read(lanProvider.notifier);
 
+    // 检查是否处于客户端模式
+    if (lanState.isClientMode) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('发现局域网游戏'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.block,
+                size: 64,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '客户端模式下无法发现局域网游戏',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '请先退出客户端模式或断开当前连接',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('返回'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('发现局域网游戏'),
