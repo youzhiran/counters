@@ -180,11 +180,11 @@ class Score extends _$Score {
     _broadcastResetGame();
   }
 
-  /// 检查当前是否为客户端模式（连接到主机但不是主机）
+  /// 检查当前是否为客户端模式（连接到主机但不是主机，或处于客户端模式状态）
   bool _isClientMode() {
     final lanState = ref.read(lanProvider);
-    // 客户端模式：已连接但不是主机
-    return lanState.isConnected && !lanState.isHost;
+    // 客户端模式：处于客户端模式状态（无论是否连接）
+    return lanState.isClientMode;
   }
 
   /// 统一的客户端限制检查

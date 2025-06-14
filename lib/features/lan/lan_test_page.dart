@@ -1,7 +1,9 @@
 import 'package:counters/common/log_provider.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/widgets/ip_display_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_provider.dart';
+import 'package:counters/features/lan/widgets/lan_status_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,35 +17,29 @@ class LanTestPage extends ConsumerWidget {
     final lanNotifier = ref.read(lanProvider.notifier);
     final appLogs = ref.watch(logProvider);
     final logNotifier = ref.read(logProvider.notifier);
-    const int defaultPort = 8080;
 
     String modeText = '未知';
     if (lanState.isHost) {
       modeText = '模式: 主机';
+    } else if (lanState.isClientMode) {
+      if (lanState.isConnected) {
+        modeText = '模式: 客户端（已连接）';
+      } else if (lanState.isReconnecting) {
+        modeText =
+            '模式: 客户端（重连中 ${lanState.reconnectAttempts}/${lanState.maxReconnectAttempts}）';
+      } else {
+        modeText = '模式: 客户端（已断开连接）';
+      }
     } else {
-      modeText = '模式: 客户端';
+      modeText = '模式: 未连接';
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('通信测试&日志'),
+        title: const Text('程序日志'),
         actions: [
-          // 新增：广播控制按钮（仅主机模式显示）
-          if (lanState.isHost)
-            IconButton(
-              icon: Icon(
-                lanState.isBroadcasting
-                    ? Icons.wifi_tethering
-                    : Icons.wifi_tethering_off,
-              ),
-              tooltip: lanState.isBroadcasting ? '关闭广播' : '开启广播',
-              onPressed: () {
-                lanNotifier.toggleBroadcast();
-                AppSnackBar.show(
-                  lanState.isBroadcasting ? '广播已开启' : '广播已关闭',
-                );
-              },
-            ),
+          // LAN状态显示按钮（显示主机模式、客户端模式、连接状态等）
+          const LanStatusButton(),
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
             tooltip: '清空所有日志和消息',
@@ -53,13 +49,50 @@ class LanTestPage extends ConsumerWidget {
               AppSnackBar.show('日志和消息已清空');
             },
           ),
+          // 停止/断开连接按钮
           if (lanState.isConnected || lanState.isHost)
             IconButton(
               icon: const Icon(Icons.stop_circle_outlined),
               tooltip: lanState.isHost ? '停止主机' : '断开连接',
               onPressed: () async {
-                await lanNotifier.disposeManager();
-                AppSnackBar.show(lanState.isHost ? '主机已停止' : '连接已断开');
+                try {
+                  await lanNotifier.disposeManager();
+                  AppSnackBar.show(lanState.isHost ? '主机已停止' : '连接已断开');
+                } catch (e) {
+                  ErrorHandler.handle(e, StackTrace.current, prefix: '停止连接失败');
+                }
+              },
+            ),
+          // 重连按钮（客户端模式且未连接且有主机IP时显示）
+          if (lanState.isClientMode &&
+              !lanState.isConnected &&
+              !lanState.isReconnecting &&
+              lanState.hostIp != null)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: '重连到主机',
+              onPressed: () async {
+                try {
+                  await lanNotifier.manualReconnect();
+                } catch (e) {
+                  ErrorHandler.handle(e, StackTrace.current, prefix: '手动重连失败');
+                }
+              },
+            ),
+          // 退出客户端模式按钮（客户端模式且未连接时显示）
+          if (lanState.isClientMode &&
+              !lanState.isConnected &&
+              !lanState.isReconnecting)
+            IconButton(
+              icon: const Icon(Icons.exit_to_app),
+              tooltip: '退出客户端模式',
+              onPressed: () async {
+                try {
+                  await lanNotifier.exitClientMode();
+                } catch (e) {
+                  ErrorHandler.handle(e, StackTrace.current,
+                      prefix: '退出客户端模式失败');
+                }
               },
             ),
         ],
@@ -68,53 +101,13 @@ class LanTestPage extends ConsumerWidget {
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
-            // --- 顶部控制区域 (如果连接未建立) ---
+            // --- 顶部控制区域 ---
             if (!lanState.isConnected && !lanState.isHost) ...[
+              // IP 显示组件
               IpDisplayWidget(
                 localIp: lanState.localIp,
                 interfaceName: lanState.interfaceName,
                 onRefreshIp: () => lanNotifier.refreshLocalIp(),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: lanState.isLoading
-                        ? null
-                        : () => lanNotifier.startHost(defaultPort, "poker50", templateName: "扑克50"),
-                    child: const Text('成为主机'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: lanNotifier.hostIpController,
-                      decoration: const InputDecoration(
-                        labelText: '输入主机IP地址',
-                        hintText: '例如: 192.168.1.100',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: lanState.isLoading
-                        ? null
-                        : () {
-                            final hostIp =
-                                lanNotifier.hostIpController.text.trim();
-                            if (hostIp.isNotEmpty) {
-                              lanNotifier.connectToHost(hostIp, defaultPort);
-                            } else {
-                              AppSnackBar.show('请输入主机IP地址');
-                            }
-                          },
-                    child: const Text('连接主机'),
-                  ),
-                ],
               ),
               const Divider(),
             ],
@@ -122,17 +115,93 @@ class LanTestPage extends ConsumerWidget {
             // --- 连接后的状态和消息发送 ---
             // 当连接有效 (纯客户端连接成功)，或者处于主机模式 (纯主机或HostAndClient)
             if (lanState.isConnected || lanState.isHost) ...[
-              Text(modeText, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              // 显示更详细的状态，包括是否已连接 (如果是客户端)
-              Text(
-                  '状态: ${lanState.connectionStatus} ${lanState.isConnected ? '(客户端已连接)' : (lanState.isHost ? '(主机运行中)' : '')}'),
-              const SizedBox(height: 20),
+              // 模式状态显示
+              Card(
+                color: lanState.isHost
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.secondaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            lanState.isHost ? Icons.router : Icons.devices,
+                            color: lanState.isHost
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSecondaryContainer,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            modeText,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: lanState.isHost
+                                      ? Theme.of(context)
+                                          .colorScheme
+                                          .onPrimaryContainer
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSecondaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '状态: ${lanState.connectionStatus}',
+                        style: TextStyle(
+                          color: lanState.isHost
+                              ? Theme.of(context).colorScheme.onPrimaryContainer
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSecondaryContainer,
+                        ),
+                      ),
+                      if (lanState.isHost &&
+                          lanState.connectedClientIps.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '已连接客户端: ${lanState.connectedClientIps.length} 个',
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                      if (lanState.isClientMode && lanState.hostIp != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '主机IP: ${lanState.hostIp}',
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSecondaryContainer,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: TextField(
-                      controller: lanNotifier.messageController,
+                      controller: lanNotifier.getMessageController(),
                       decoration: const InputDecoration(
                         labelText: '输入消息发送',
                         border: OutlineInputBorder(),
@@ -151,7 +220,6 @@ class LanTestPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
               const Divider(),
             ],
 
@@ -160,39 +228,6 @@ class LanTestPage extends ConsumerWidget {
               child: Row(
                 children: [
                   Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('网络消息:',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const Divider(),
-                        Expanded(
-                          child: lanState.receivedMessages.isEmpty
-                              ? const Center(child: Text('暂无网络消息'))
-                              : ListView.builder(
-                                  reverse: true,
-                                  itemCount: lanState.receivedMessages.length,
-                                  itemBuilder: (context, index) {
-                                    return ListTile(
-                                      title: Text(
-                                        lanState.receivedMessages[index],
-                                        style: TextStyle(fontSize: 12), // 减小字体
-                                      ),
-                                      dense: true,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 8.0,
-                                          vertical: 0), // 减小内边距
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const VerticalDivider(),
-                  Expanded(
-                    flex: 7,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

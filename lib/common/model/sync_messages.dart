@@ -95,6 +95,20 @@ sealed class ResetGamePayload with _$ResetGamePayload {
       _$ResetGamePayloadFromJson(json);
 }
 
+/// "host_disconnect" 消息的负载
+/// 通知主机主动断开连接
+@freezed
+sealed class HostDisconnectPayload with _$HostDisconnectPayload {
+  const HostDisconnectPayload._();
+
+  const factory HostDisconnectPayload({
+    String? reason, // 断开原因（可选）
+  }) = _HostDisconnectPayload;
+
+  factory HostDisconnectPayload.fromJson(Map<String, dynamic> json) =>
+      _$HostDisconnectPayloadFromJson(json);
+}
+
 /// "game_end" 消息的负载
 /// 通知游戏结束。负载可以包含游戏结果信息。
 @freezed

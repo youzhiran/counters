@@ -48,7 +48,7 @@ class DataManager {
   }
 
   /// 迁移程序数据
-  /// todo Windows sp 在 C:\Users\yooyi\AppData\Roaming\com.devyi\counters 需要考虑修改
+  /// Windows sp 在 C:\Users\yooyi\AppData\Roaming\com.devyi\counters 需要考虑修改
   static Future<bool> migrateData(
     String oldPath,
     String newPath, {

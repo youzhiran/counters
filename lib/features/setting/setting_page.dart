@@ -143,9 +143,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   onTap: _resetDatabase,
                 ),
                 SettingListTile(
-                  icon: Icons.network_check_outlined,
-                  title: '通信测试&日志',
-                  subtitle: '提供局域网联机测试和程序日志查看',
+                  icon: Icons.article,
+                  title: '程序日志',
+                  subtitle: '提供局域网状态和程序日志查看',
                   onTap: () {
                     Navigator.pushNamed(context, '/lan_test');
                   },

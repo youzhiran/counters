@@ -127,13 +127,31 @@ class _StatusCard extends StatelessWidget {
         '主机模式',
         lanState.connectionStatus,
       );
-    } else if (lanState.isConnected) {
-      return (
-        Icons.wifi,
-        Colors.blue,
-        '客户端模式',
-        '已连接到主机',
-      );
+    } else if (lanState.isClientMode) {
+      if (lanState.isConnected) {
+        return (
+          Icons.wifi,
+          Colors.blue,
+          '客户端模式',
+          '已连接到主机',
+        );
+      } else if (lanState.isReconnecting) {
+        return (
+          Icons.wifi_tethering,
+          Colors.orange,
+          '客户端模式',
+          '正在重连... (${lanState.reconnectAttempts}/${lanState.maxReconnectAttempts})',
+        );
+      } else {
+        String statusText = '客户端模式（已断开）';
+        String description = lanState.disconnectReason ?? '与主机的连接已断开';
+        return (
+          Icons.wifi_off,
+          Colors.red,
+          statusText,
+          description,
+        );
+      }
     } else {
       return (
         Icons.wifi_off,
@@ -196,13 +214,28 @@ class _NetworkInfoCard extends ConsumerWidget {
               label: '服务端口',
               value: lanState.serverPort > 0 ? lanState.serverPort.toString() : '8080',
             ),
-          if (lanState.isConnected && !lanState.isHost)
-            _InfoRow(
-              icon: Icons.dns,
-              label: '主机地址',
-              value: _extractHostIp(lanState.connectionStatus),
-              canCopy: true,
-            ),
+          // 客户端模式显示主机信息
+          if (lanState.isClientMode && !lanState.isHost) ...[
+            if (lanState.hostIp != null)
+              _InfoRow(
+                icon: Icons.dns,
+                label: '主机地址',
+                value: lanState.hostIp!,
+                canCopy: true,
+              ),
+            if (lanState.serverPort > 0)
+              _InfoRow(
+                icon: Icons.router,
+                label: '主机端口',
+                value: lanState.serverPort.toString(),
+              ),
+            if (lanState.disconnectReason != null)
+              _InfoRow(
+                icon: Icons.error_outline,
+                label: '断开原因',
+                value: lanState.disconnectReason!,
+              ),
+          ],
         ],
       ),
     );
@@ -210,26 +243,7 @@ class _NetworkInfoCard extends ConsumerWidget {
 
 
 
-  String _extractHostIp(String connectionStatus) {
-    // 修复：正确解析主机IP地址
-    // 处理各种可能的格式：
-    // "已连接到 192.168.1.100:8080" -> "192.168.1.100"
-    // "192.168.1.100:8080" -> "192.168.1.100"
-    // "192.168.1.100" -> "192.168.1.100"
 
-    String result = connectionStatus.trim();
-
-    // 使用正则表达式匹配IP地址模式
-    final ipPattern = RegExp(r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b');
-    final match = ipPattern.firstMatch(result);
-
-    if (match != null) {
-      return match.group(1) ?? result;
-    }
-
-    // 如果没有匹配到IP地址模式，返回原始字符串
-    return result;
-  }
 }
 
 class _InfoRow extends StatelessWidget {
@@ -448,34 +462,113 @@ class _ActionButtons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!lanState.isHost && !lanState.isConnected) {
+    // 显示操作按钮的条件：主机模式、已连接的客户端、或处于客户端模式（即使断开）
+    if (!lanState.isHost && !lanState.isConnected && !lanState.isClientMode) {
       return const SizedBox.shrink();
     }
 
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: () {
-          globalState.navigatorKey.currentState?.pop();
-          ref.read(lanProvider.notifier).disposeManager();
-          AppSnackBar.show(lanState.isHost ? '已停止主机' : '已断开连接');
+    return Column(
+      children: [
+        // 主机模式：停止主机按钮
+        if (lanState.isHost) ...[
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                globalState.navigatorKey.currentState?.pop();
+                ref.read(lanProvider.notifier).disposeManager();
+                AppSnackBar.show('已停止主机');
+              },
+              icon: const Icon(Icons.stop),
+              label: const Text('停止主机'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
 
-          // 修复：如果是客户端断开连接，返回到带有底部导航栏的主界面
-          if (!lanState.isHost && lanState.isConnected) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => const MainTabsScreen()),
-              (route) => false,
-            );
-          }
-        },
-        icon: Icon(lanState.isHost ? Icons.stop : Icons.wifi_off),
-        label: Text(lanState.isHost ? '停止主机' : '断开连接'),
-        style: FilledButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.error,
-          foregroundColor: Theme.of(context).colorScheme.onError,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
-      ),
+        // 客户端模式：根据连接状态显示不同按钮
+        if (lanState.isClientMode && !lanState.isHost) ...[
+          // 如果已连接，显示断开连接按钮
+          if (lanState.isConnected) ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  globalState.navigatorKey.currentState?.pop();
+                  // 修复：使用exitClientMode完全退出客户端模式
+                  await ref.read(lanProvider.notifier).exitClientMode();
+                  // 修复：断开连接后导航到带有底部导航栏的主界面
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.wifi_off),
+                label: const Text('断开连接'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ] else ...[
+            // 如果未连接，显示重连和退出客户端模式按钮
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: lanState.isReconnecting ? null : () {
+                      globalState.navigatorKey.currentState?.pop();
+                      ref.read(lanProvider.notifier).manualReconnect();
+                    },
+                    icon: lanState.isReconnecting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh),
+                    label: Text(lanState.isReconnecting ? '重连中...' : '重连'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      globalState.navigatorKey.currentState?.pop();
+                      await ref.read(lanProvider.notifier).exitClientMode();
+                      // 修复：退出客户端模式后导航到带有底部导航栏的主界面
+                      if (context.mounted) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+                          (route) => false,
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.exit_to_app),
+                    label: const Text('退出客户端'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ],
     );
   }
 }

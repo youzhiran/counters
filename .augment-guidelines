@@ -1,0 +1,4 @@
+- Always reply in Chinese.
+- 错误处理使用：ErrorHandler.handle(e, StackTrace.current, prefix: '获取本地IP失败');
+- UI组件：AppSnackBar，showCommonDialog
+- 项目使用了riverpod

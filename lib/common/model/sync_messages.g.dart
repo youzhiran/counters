@@ -57,6 +57,18 @@ _ResetGamePayload _$ResetGamePayloadFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$ResetGamePayloadToJson(_ResetGamePayload instance) =>
     <String, dynamic>{};
 
+_HostDisconnectPayload _$HostDisconnectPayloadFromJson(
+        Map<String, dynamic> json) =>
+    _HostDisconnectPayload(
+      reason: json['reason'] as String?,
+    );
+
+Map<String, dynamic> _$HostDisconnectPayloadToJson(
+        _HostDisconnectPayload instance) =>
+    <String, dynamic>{
+      'reason': instance.reason,
+    };
+
 _GameEndPayload _$GameEndPayloadFromJson(Map<String, dynamic> json) =>
     _GameEndPayload();
 

@@ -35,6 +35,8 @@ class ScoreNetworkManager {
     ClientMessageCallback? onMessageReceived,
     ClientConnectionCallback? onClientConnected, // 新增回调参数
     ClientConnectionCallback? onClientDisconnected, // 新增回调参数
+    Function(String error)? onServerError, // 新增：服务器错误回调
+    Function(String error)? onStartupError, // 新增：启动失败回调
   }) async {
     // 在内部创建并启动 WsHost，传递所有回调
     final server = WsHost(
@@ -42,6 +44,8 @@ class ScoreNetworkManager {
       onMessageReceived: onMessageReceived,
       onClientConnected: onClientConnected, // 传递回调
       onClientDisconnected: onClientDisconnected, // 传递回调
+      onServerError: onServerError, // 传递错误回调
+      onStartupError: onStartupError, // 传递启动失败回调
     );
     await server.start();
     // === 修复点 1 续：使用修改后的命名构造函数 "_" ===

@@ -7,6 +7,7 @@ import 'package:counters/app/config.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/sync_messages.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/template_utils.dart';
 import 'package:counters/common/widgets/snackbar.dart';
@@ -16,11 +17,9 @@ import 'package:counters/features/lan/network_manager.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final lanProvider = StateNotifierProvider<LanNotifier, LanState>((ref) {
-  return LanNotifier(ref);
-});
+part 'lan_provider.g.dart';
 
 // 状态类 (保持不变)
 @immutable
@@ -37,6 +36,14 @@ class LanState {
   final String interfaceName; // 新增：本机网络接口名称
   final int serverPort; // 新增：服务器端口号
 
+  // 新增：客户端模式状态管理
+  final bool isClientMode; // 是否处于客户端模式（即使断开连接也保持）
+  final bool isReconnecting; // 是否正在重连
+  final int reconnectAttempts; // 当前重连尝试次数
+  final int maxReconnectAttempts; // 最大重连次数
+  final String? disconnectReason; // 断开连接的原因
+  final String? hostIp; // 记录主机IP用于重连
+
   const LanState({
     this.isLoading = false,
     this.isHost = false,
@@ -49,6 +56,13 @@ class LanState {
     this.connectedClientIps = const [], // 新增：默认空列表
     this.interfaceName = '', // 新增：默认空字符串
     this.serverPort = 0, // 新增：默认端口为0
+    // 新增：客户端模式相关状态
+    this.isClientMode = false, // 默认不是客户端模式
+    this.isReconnecting = false, // 默认不在重连
+    this.reconnectAttempts = 0, // 默认重连次数为0
+    this.maxReconnectAttempts = 5, // 默认最大重连次数为5
+    this.disconnectReason, // 默认无断开原因
+    this.hostIp, // 默认无主机IP
   });
 
   LanState copyWith({
@@ -64,6 +78,15 @@ class LanState {
     bool clearNetworkManager = false,
     String? interfaceName, // 新增
     int? serverPort, // 新增
+    // 新增：客户端模式相关参数
+    bool? isClientMode,
+    bool? isReconnecting,
+    int? reconnectAttempts,
+    int? maxReconnectAttempts,
+    String? disconnectReason,
+    String? hostIp,
+    bool clearDisconnectReason = false,
+    bool clearHostIp = false,
   }) {
     return LanState(
       isLoading: isLoading ?? this.isLoading,
@@ -79,19 +102,50 @@ class LanState {
       connectedClientIps: connectedClientIps ?? this.connectedClientIps, // 新增
       interfaceName: interfaceName ?? this.interfaceName, // 新增
       serverPort: serverPort ?? this.serverPort, // 新增
+      // 新增：客户端模式相关状态
+      isClientMode: isClientMode ?? this.isClientMode,
+      isReconnecting: isReconnecting ?? this.isReconnecting,
+      reconnectAttempts: reconnectAttempts ?? this.reconnectAttempts,
+      maxReconnectAttempts: maxReconnectAttempts ?? this.maxReconnectAttempts,
+      disconnectReason: clearDisconnectReason ? null : (disconnectReason ?? this.disconnectReason),
+      hostIp: clearHostIp ? null : (hostIp ?? this.hostIp),
     );
   }
 }
 
-class LanNotifier extends StateNotifier<LanState> {
-  final Ref _ref;
-
-  LanNotifier(this._ref) : super(const LanState()) {
-    _fetchLocalIp();
+@Riverpod(keepAlive: true)
+class Lan extends _$Lan {
+  @override
+  LanState build() {
+    // 延迟执行IP获取，避免在build中直接修改state
+    Future.microtask(() => _fetchLocalIp());
+    return const LanState();
   }
 
-  final TextEditingController hostIpController = TextEditingController();
-  final TextEditingController messageController = TextEditingController();
+  /// 手动重置状态（用于完全退出主机或客户端模式）
+  void resetToInitialState() {
+    Log.i('手动重置 LAN 状态到初始状态');
+    disposeManager();
+    state = const LanState();
+    Future.microtask(() => _fetchLocalIp());
+  }
+
+  late final TextEditingController _hostIpController = TextEditingController();
+  late final TextEditingController _messageController = TextEditingController();
+
+  // 提供访问控制器的方法（用于UI）
+  TextEditingController getHostIpController() => _hostIpController;
+  TextEditingController getMessageController() => _messageController;
+
+  // 使用当前输入的主机IP连接
+  Future<void> connectToHostFromInput(int port) async {
+    final hostIp = _hostIpController.text.trim();
+    if (hostIp.isNotEmpty) {
+      await connectToHost(hostIp, port);
+    } else {
+      AppSnackBar.show('请输入主机IP地址');
+    }
+  }
 
   RawDatagramSocket? _udpSocket;
   Timer? _broadcastTimer;
@@ -99,31 +153,25 @@ class LanNotifier extends StateNotifier<LanState> {
   int _currentWsPort = 0;
   String _currentTemplateName = '';
 
-  @override
   void dispose() {
-    hostIpController.dispose();
-    messageController.dispose();
+    _hostIpController.dispose();
+    _messageController.dispose();
     disposeManager();
     Log.d('LanNotifier dispose');
-    super.dispose();
   }
 
   Future<void> _fetchLocalIp() async {
-    if (!mounted) return;
     state = state.copyWith(localIp: '获取中...', interfaceName: ''); // 获取中时清空接口名
     try {
       final ipData = await getWlanIp(); // 获取包含IP和接口名称的Map
-      if (mounted) {
-        state = state.copyWith(
-          localIp: ipData?['ip'] ?? '获取失败',
-          interfaceName: ipData?['name'] ?? '',
-        );
-      }
+      state = state.copyWith(
+        localIp: ipData?['ip'] ?? '获取失败',
+        interfaceName: ipData?['name'] ?? '',
+      );
     } catch (e) {
-      Log.e('获取本地 IP 失败: $e');
-      if (mounted) {
-        state = state.copyWith(localIp: '获取失败', interfaceName: '');
-      }
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '获取本地IP失败');
+      state = state.copyWith(localIp: '获取失败', interfaceName: '');
     }
   }
 
@@ -134,14 +182,12 @@ class LanNotifier extends StateNotifier<LanState> {
 
   void _handleMessageReceived(String rawMessage) async {
     Log.d('收到原始网络消息: $rawMessage');
-    if (mounted) {
-      final currentMessages = List<String>.from(state.receivedMessages);
-      currentMessages.insert(0, "原始: $rawMessage");
-      if (currentMessages.length > 100) {
-        currentMessages.removeRange(100, currentMessages.length);
-      }
-      state = state.copyWith(receivedMessages: currentMessages);
+    final currentMessages = List<String>.from(state.receivedMessages);
+    currentMessages.insert(0, "原始: $rawMessage");
+    if (currentMessages.length > 100) {
+      currentMessages.removeRange(100, currentMessages.length);
     }
+    state = state.copyWith(receivedMessages: currentMessages);
 
     try {
       final jsonMap = jsonDecode(rawMessage) as Map<String, dynamic>;
@@ -159,19 +205,19 @@ class LanNotifier extends StateNotifier<LanState> {
               Log.i('收到全量同步状态');
 
               // 修复：在应用同步状态后，检查是否需要补充玩家信息
-              _ref.read(scoreProvider.notifier).applySyncState(payload.session);
+              ref.read(scoreProvider.notifier).applySyncState(payload.session);
 
               // 检查玩家信息是否为空，如果为空则尝试从模板中获取
-              final currentState = _ref.read(scoreProvider).valueOrNull;
+              final currentState = ref.read(scoreProvider).valueOrNull;
               if (currentState != null && currentState.players.isEmpty) {
                 Log.w('同步状态后玩家信息为空，尝试从模板中获取玩家信息');
-                final templatesAsync = _ref.read(templatesProvider);
+                final templatesAsync = ref.read(templatesProvider);
                 final templates = templatesAsync.valueOrNull;
                 if (templates != null) {
                   final template = templates.firstWhereOrNull((t) => t.tid == payload.session.templateId);
                   if (template != null && template.players.isNotEmpty) {
                     Log.i('从模板中补充玩家信息: ${template.players.length} 个玩家');
-                    _ref.read(scoreProvider.notifier).applyPlayerInfo(template.players);
+                    ref.read(scoreProvider.notifier).applyPlayerInfo(template.players);
                   }
                 }
               }
@@ -194,7 +240,7 @@ class LanNotifier extends StateNotifier<LanState> {
 
               // 获取当前页面需要的templateId（从当前session或_scoreProvider中获取）
               String? requiredTid;
-              final scoreStateValue = _ref.read(scoreProvider).value;
+              final scoreStateValue = ref.read(scoreProvider).value;
               if (scoreStateValue != null &&
                   scoreStateValue.currentSession != null) {
                 requiredTid = scoreStateValue.currentSession!.templateId;
@@ -227,18 +273,18 @@ class LanNotifier extends StateNotifier<LanState> {
               if (players.isNotEmpty) {
                 Log.i("应用模板中的玩家信息到 ScoreNotifier: ${players.length} 个玩家");
                 Log.i("玩家详情: ${players.map((p) => '${p.name}(${p.pid})').join(', ')}");
-                _ref.read(scoreProvider.notifier).applyPlayerInfo(players);
+                ref.read(scoreProvider.notifier).applyPlayerInfo(players);
               } else {
                 Log.w("模板中没有玩家信息，这可能导致后续的同步问题");
               }
 
               // 使用 templatesProvider.notifier 的新方法来保存或更新模板
-              final templatesNotifier = _ref.read(templatesProvider.notifier);
+              final templatesNotifier = ref.read(templatesProvider.notifier);
               await templatesNotifier.saveOrUpdateNetworkTemplate(template);
               Log.i("同步网络模板到本地：${template.tid}");
             } catch (e, stack) {
-              Log.e("解析 template_info 失败: $e");
-              Log.e("Stack: $stack");
+              // 使用统一的错误处理器
+              ErrorHandler.handle(e, stack, prefix: '解析template_info失败');
             }
             break;
 
@@ -247,7 +293,7 @@ class LanNotifier extends StateNotifier<LanState> {
               final payload = UpdateScorePayload.fromJson(data);
               Log.i(
                   '收到单点分数更新: Player ${payload.playerId}, Round ${payload.roundIndex}, Score ${payload.score}');
-              _ref.read(scoreProvider.notifier).applyUpdateScore(
+              ref.read(scoreProvider.notifier).applyUpdateScore(
                   payload.playerId, payload.roundIndex, payload.score);
             } else {
               Log.w('收到无效的 update_score 消息负载类型: ${data.runtimeType}');
@@ -270,7 +316,7 @@ class LanNotifier extends StateNotifier<LanState> {
                   playerScoresMap != null &&
                   playerExtendedDataMap != null) {
                 Log.i('收到轮次数据同步: Session $sessionId, Round $roundIndex');
-                _ref.read(scoreProvider.notifier).applyRoundData(sessionId,
+                ref.read(scoreProvider.notifier).applyRoundData(sessionId,
                     roundIndex, playerScoresMap, playerExtendedDataMap);
               } else {
                 Log.w('收到无效的 sync_round_data 消息负载格式');
@@ -284,7 +330,7 @@ class LanNotifier extends StateNotifier<LanState> {
             if (data is Map<String, dynamic>) {
               final payload = NewRoundPayload.fromJson(data);
               Log.i('收到新回合通知: New Round Index ${payload.newRoundIndex}');
-              _ref
+              ref
                   .read(scoreProvider.notifier)
                   .applyNewRound(payload.newRoundIndex);
             } else {
@@ -294,12 +340,12 @@ class LanNotifier extends StateNotifier<LanState> {
 
           case "reset_game":
             Log.i('收到游戏重置通知');
-            _ref.read(scoreProvider.notifier).applyResetGame();
+            ref.read(scoreProvider.notifier).applyResetGame();
             break;
 
           case "game_end":
             Log.i('收到游戏结束通知');
-            _ref.read(scoreProvider.notifier).applyGameEnd();
+            ref.read(scoreProvider.notifier).applyGameEnd();
             break;
 
           case "player_info":
@@ -311,13 +357,26 @@ class LanNotifier extends StateNotifier<LanState> {
                         PlayerInfo.fromJson(item as Map<String, dynamic>))
                     .toList();
                 Log.d("已解析到 ${players.length} 个玩家信息");
-                _ref.read(scoreProvider.notifier).applyPlayerInfo(players);
+                ref.read(scoreProvider.notifier).applyPlayerInfo(players);
               } catch (e) {
-                Log.e("解析 player_info 列表失败: $e");
+                // 使用统一的错误处理器
+                ErrorHandler.handle(e, StackTrace.current, prefix: '解析player_info列表失败');
               }
             } else {
               Log.w('收到无效的 player_info 消息负载类型: ${data.runtimeType}');
             }
+            break;
+
+          case "host_disconnect":
+            Log.i('收到主机断开连接通知');
+            String reason = '主机已断开连接';
+            if (data is Map<String, dynamic>) {
+              final payload = HostDisconnectPayload.fromJson(data);
+              if (payload.reason != null && payload.reason!.isNotEmpty) {
+                reason = '主机已断开连接: ${payload.reason}';
+              }
+            }
+            _handleHostDisconnect(reason);
             break;
 
           default:
@@ -328,30 +387,80 @@ class LanNotifier extends StateNotifier<LanState> {
         Log.d('主机收到来自客户端的消息 (未处理为命令): $type');
       }
     } catch (e) {
-      Log.e('解析或处理网络消息失败: $e. 原始消息: $rawMessage');
-      if (mounted) {
-        final currentMessages = List<String>.from(state.receivedMessages);
-        currentMessages.insert(0, "解析失败: $e");
-        if (currentMessages.length > 100) {
-          currentMessages.removeRange(100, currentMessages.length);
-        }
-        state = state.copyWith(receivedMessages: currentMessages);
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '解析或处理网络消息失败');
+      final currentMessages = List<String>.from(state.receivedMessages);
+      currentMessages.insert(0, "解析失败: $e");
+      if (currentMessages.length > 100) {
+        currentMessages.removeRange(100, currentMessages.length);
       }
+      state = state.copyWith(receivedMessages: currentMessages);
     }
   }
 
   void _handleConnectionChanged(bool isConnected, String statusMessage) {
     Log.i(
         '_handleConnectionChanged: $statusMessage (isConnected: $isConnected)');
-    if (mounted) {
-      state = state.copyWith(
-          isConnected: isConnected, connectionStatus: statusMessage);
+
+    // 检测重连状态和重连次数
+    final isReconnecting = statusMessage.contains('重连中') || statusMessage.contains('正在尝试重连') || statusMessage.startsWith('重连尝试:');
+    int reconnectAttempts = state.reconnectAttempts;
+
+    // 如果连接成功，重置重连次数
+    if (isConnected) {
+      reconnectAttempts = 0;
+    } else if (statusMessage.startsWith('重连尝试:')) {
+      // 修复：从客户端发送的特殊消息中解析重连次数
+      final attemptStr = statusMessage.substring('重连尝试:'.length);
+      reconnectAttempts = int.tryParse(attemptStr) ?? state.reconnectAttempts;
     }
+
+    // 构建显示用的状态消息，包含正确的重连次数
+    String displayStatusMessage = statusMessage;
+    if (isReconnecting && state.isClientMode) {
+      displayStatusMessage = '正在重连... ($reconnectAttempts/${state.maxReconnectAttempts})';
+    } else if (statusMessage.startsWith('重连尝试:')) {
+      // 将特殊的重连消息转换为用户友好的显示
+      displayStatusMessage = '正在重连... ($reconnectAttempts/${state.maxReconnectAttempts})';
+    }
+
+    state = state.copyWith(
+      isConnected: isConnected,
+      connectionStatus: displayStatusMessage,
+      isReconnecting: isReconnecting,
+      reconnectAttempts: reconnectAttempts,
+    );
+
+    // 如果连接断开且处于客户端模式，显示相应提示
+    if (!isConnected && state.isClientMode && !isReconnecting) {
+      if (statusMessage.contains('重连失败')) {
+        AppSnackBar.error('连接断开，重连失败。您可以尝试手动重连或退出客户端模式。');
+      } else if (!statusMessage.contains('已断开连接')) {
+        AppSnackBar.warn('与主机的连接已断开，正在尝试重连...');
+      }
+    }
+  }
+
+  // 处理主机主动断开连接
+  void _handleHostDisconnect(String reason) {
+    Log.i('处理主机断开连接: $reason');
+    AppSnackBar.error(reason);
+
+    // 清理连接但保持客户端模式状态
+    state = state.copyWith(
+      isConnected: false,
+      connectionStatus: '主机已断开连接',
+      disconnectReason: reason,
+      isReconnecting: false,
+      reconnectAttempts: 0,
+    );
+
+    // 清理网络管理器
+    disposeManager();
   }
 
   // 修改：处理客户端连接的回调 - 仅更新状态，不主动发送消息
   void _handleClientConnected(WebSocket client, String clientIp) {
-    if (!mounted) return;
     final currentClients = List<String>.from(state.connectedClientIps);
     if (!currentClients.contains(clientIp)) {
       // 防止重复添加
@@ -368,7 +477,6 @@ class LanNotifier extends StateNotifier<LanState> {
 
   // 新增：处理客户端断开的回调
   void _handleClientDisconnected(WebSocket client, String clientIp) {
-    if (!mounted) return;
     final currentClients = List<String>.from(state.connectedClientIps);
     final removed = currentClients.remove(clientIp);
     if (removed) {
@@ -384,11 +492,34 @@ class LanNotifier extends StateNotifier<LanState> {
     }
   }
 
+  // 新增：处理服务器错误的回调
+  void _handleServerError(String error) {
+    // 使用统一的错误处理器
+    ErrorHandler.handle(Exception(error), StackTrace.current, prefix: 'LAN服务器运行时错误');
+
+    // 更新状态显示错误信息
+    state = state.copyWith(
+      connectionStatus: '服务器错误',
+    );
+  }
+
+  // 新增：处理启动失败的回调
+  void _handleStartupError(String error) {
+    // 使用统一的错误处理器
+    ErrorHandler.handle(Exception(error), StackTrace.current, prefix: 'LAN服务器启动失败');
+
+    // 更新状态
+    state = state.copyWith(
+      isLoading: false,
+      isHost: false,
+      connectionStatus: '启动失败',
+    );
+  }
+
   /// 修改 startHost 方法以传递回调和模板名称
   Future<void> startHost(int port, String baseTid, {String? templateName}) async {
     Log.i('尝试启动主机模式...');
     disposeManager(); // 确保旧的管理器已清理
-    if (!mounted) return;
     state = state.copyWith(isLoading: true, isHost: true, isConnected: false);
     _currentBaseTid = baseTid;
     _currentWsPort = port;
@@ -399,11 +530,9 @@ class LanNotifier extends StateNotifier<LanState> {
         onMessageReceived: _handleClientMessage, // 处理客户端消息的回调
         onClientConnected: _handleClientConnected, // 新增：传递连接回调
         onClientDisconnected: _handleClientDisconnected, // 新增：传递断开回调
+        onServerError: _handleServerError, // 新增：服务器错误回调
+        onStartupError: _handleStartupError, // 新增：启动失败回调
       );
-      if (!mounted) {
-        await manager.dispose(); // 如果页面已卸载，清理新创建的管理器
-        return;
-      }
       state = state.copyWith(
         isLoading: false,
         networkManager: manager,
@@ -418,16 +547,13 @@ class LanNotifier extends StateNotifier<LanState> {
       Log.i('主机模式已成功启动在端口 $port');
     } catch (e) {
       Log.e('启动主机失败: $e');
-      if (mounted) {
-        state = state.copyWith(
-            isLoading: false, isHost: false, connectionStatus: '启动失败: $e');
-      }
+      state = state.copyWith(
+          isLoading: false, isHost: false, connectionStatus: '启动失败: $e');
     }
   }
 
   /// 处理客户端发送的消息 (例如 request_sync_state)
   void _handleClientMessage(WebSocket client, String message) {
-    if (!mounted) return;
     Log.d('主机收到客户端消息: $message');
     try {
       final jsonMap = jsonDecode(message) as Map<String, dynamic>;
@@ -444,7 +570,7 @@ class LanNotifier extends StateNotifier<LanState> {
         }
 
         // 1. 发送模板信息 (template_info)
-        final template = _ref
+        final template = ref
             .read(templatesProvider.notifier)
             .getTemplate(requestedTemplateId);
         if (template != null) {
@@ -465,7 +591,8 @@ class LanNotifier extends StateNotifier<LanState> {
             state.networkManager?.sendToClient(client, templateJsonString);
             Log.i('已发送 template_info 给客户端，玩家数量: ${template.players.length}');
           } catch (e) {
-            Log.e('序列化或发送 template_info 失败: $e');
+            // 使用统一的错误处理器
+            ErrorHandler.handle(e, StackTrace.current, prefix: '序列化或发送template_info失败');
             // 即使模板发送失败，也尝试发送状态
           }
         } else {
@@ -474,7 +601,7 @@ class LanNotifier extends StateNotifier<LanState> {
         }
 
         // 2. 发送会话状态 (sync_state) - 保持原有逻辑
-        final currentScoreState = _ref.read(scoreProvider).value;
+        final currentScoreState = ref.read(scoreProvider).value;
         if (currentScoreState != null &&
             currentScoreState.currentSession != null) {
           // 确保 session 的 templateId 与请求的一致，或者根据情况处理
@@ -498,7 +625,8 @@ class LanNotifier extends StateNotifier<LanState> {
       }
       // 可以添加对其他客户端消息类型的处理
     } catch (e) {
-      Log.e('处理客户端消息时出错: $e');
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '处理客户端消息时出错');
     }
   }
 
@@ -509,7 +637,13 @@ class LanNotifier extends StateNotifier<LanState> {
         isLoading: true,
         isHost: false,
         isConnected: false,
-        connectionStatus: '连接中...');
+        isClientMode: true, // 设置为客户端模式
+        hostIp: hostIp, // 记录主机IP用于重连
+        connectionStatus: '连接中...',
+        clearDisconnectReason: true, // 清除之前的断开原因
+        reconnectAttempts: 0, // 重置重连次数
+        isReconnecting: false,
+    );
     try {
       // === 修复点 2：使用 ScoreNetworkManager.createClient 静态方法创建管理器 ===
       final manager = await ScoreNetworkManager.createClient(
@@ -519,21 +653,20 @@ class LanNotifier extends StateNotifier<LanState> {
         onConnectionChanged: _handleConnectionChanged,
       );
 
-      if (mounted) {
-        state = state.copyWith(
-            isLoading: false,
-            networkManager: manager,
-            receivedMessages: []);
-      }
-      // TODO: Client 连接成功后，通知 ScoreNotifier
-      // _ref.read(scoreProvider.notifier).setHostMode(false);
-      // _ref.read(scoreProvider.notifier).setLanNotifier(this);
+      state = state.copyWith(
+          isLoading: false,
+          networkManager: manager,
+          receivedMessages: []);
+
+      // Client 连接成功后，确保 ScoreNotifier 知道当前处于客户端模式
+      // 由于 ScoreNotifier 会通过 ref.read(lanProvider) 检查状态，
+      // 我们只需要确保状态正确设置即可
+      Log.i('客户端连接成功，当前处于客户端模式，ScoreNotifier 将自动识别并限制操作权限');
     } catch (e) {
-      Log.e('连接主机失败: $e');
-      if (mounted) {
-        _handleConnectionChanged(false, '连接主机失败: $e'); // 确保状态更新
-        state = state.copyWith(isLoading: false);
-      }
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '连接主机失败');
+      _handleConnectionChanged(false, '连接主机失败: $e'); // 确保状态更新
+      state = state.copyWith(isLoading: false);
     }
   }
 
@@ -561,9 +694,7 @@ class LanNotifier extends StateNotifier<LanState> {
       }
     } else {
       Log.w('无法发送 JSON 消息：未连接');
-      if (mounted) {
-        AppSnackBar.show("无法发送消息：未连接");
-      }
+      AppSnackBar.show("无法发送消息：未连接");
     }
   }
 
@@ -585,13 +716,14 @@ class LanNotifier extends StateNotifier<LanState> {
       manager.broadcast(jsonString);
       Log.i('广播 JSON 消息: $jsonString');
     } catch (e) {
-      Log.e('广播 JSON 消息失败: $e');
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '广播JSON消息失败');
     }
   }
 
   /// 通过当前活动的网络连接发送消息 (用于 LanTestPage 的按钮)。
   void sendMessage() {
-    final message = messageController.text;
+    final message = _messageController.text;
     if (message.isNotEmpty) {
       final testMessage = SyncMessage(
         type: "test_message",
@@ -611,10 +743,81 @@ class LanNotifier extends StateNotifier<LanState> {
       }
       state = state.copyWith(receivedMessages: currentMessages);
 
-      messageController.clear();
+      _messageController.clear();
     } else {
       Log.w("发送空消息");
     }
+  }
+
+  /// 手动重连到主机
+  Future<void> manualReconnect() async {
+    if (!state.isClientMode || state.hostIp == null) {
+      AppSnackBar.warn('无法重连：不在客户端模式或缺少主机信息');
+      return;
+    }
+
+    if (state.isConnected) {
+      AppSnackBar.show('当前已连接，无需重连');
+      return;
+    }
+
+    Log.i('开始手动重连到主机: ${state.hostIp}');
+    AppSnackBar.show('正在尝试重连...');
+
+    // 如果有现有的网络管理器，先清理
+    if (state.networkManager != null) {
+      await state.networkManager?.dispose();
+      state = state.copyWith(clearNetworkManager: true);
+    }
+
+    // 修复：手动重连时递增重连计数器
+    final newAttempts = state.reconnectAttempts + 1;
+    state = state.copyWith(
+      isReconnecting: true,
+      reconnectAttempts: newAttempts,
+      connectionStatus: '正在重连... ($newAttempts/${state.maxReconnectAttempts})',
+    );
+
+    // 尝试重连
+    try {
+      final manager = await ScoreNetworkManager.createClient(
+        state.hostIp!,
+        state.serverPort > 0 ? state.serverPort : 8080, // 使用记录的端口或默认端口
+        onMessageReceived: _handleMessageReceived,
+        onConnectionChanged: _handleConnectionChanged,
+      );
+
+      state = state.copyWith(
+        networkManager: manager,
+        clearDisconnectReason: true,
+      );
+    } catch (e) {
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '手动重连失败');
+    }
+  }
+
+  /// 退出客户端模式
+  Future<void> exitClientMode() async {
+    Log.i('退出客户端模式');
+
+    // 清理网络连接
+    await disposeManager();
+
+    // 清理客户端模式数据
+    ref.read(scoreProvider.notifier).clearClientModeData();
+    ref.read(templatesProvider.notifier).clearClientModeTemplates();
+
+    state = state.copyWith(
+      isClientMode: false,
+      isReconnecting: false,
+      reconnectAttempts: 0,
+      clearDisconnectReason: true,
+      clearHostIp: true,
+      connectionStatus: '未连接',
+    );
+
+    AppSnackBar.show('已退出客户端模式');
   }
 
   /// 清理并释放所有网络资源。
@@ -622,13 +825,32 @@ class LanNotifier extends StateNotifier<LanState> {
     Log.d('Disposing network manager...');
     _stopDiscoveryBroadcast();
 
-    // 修复：如果是客户端模式，清理临时数据
-    final wasClientMode = state.isConnected && !state.isHost;
-    if (wasClientMode) {
+    // 如果是主机模式且有连接的客户端，发送断开通知
+    if (state.isHost && state.connectedClientIps.isNotEmpty && state.networkManager != null) {
+      Log.i('主机断开连接，向 ${state.connectedClientIps.length} 个客户端发送断开通知');
+      try {
+        final disconnectMessage = SyncMessage(
+          type: "host_disconnect",
+          data: HostDisconnectPayload(reason: "主机主动断开连接").toJson(),
+        );
+        final jsonString = jsonEncode(disconnectMessage.toJson());
+        state.networkManager!.broadcast(jsonString);
+
+        // 给客户端一点时间接收消息
+        await Future.delayed(const Duration(milliseconds: 500));
+      } catch (e) {
+        // 使用统一的错误处理器
+        ErrorHandler.handle(e, StackTrace.current, prefix: '发送主机断开通知失败');
+      }
+    }
+
+    // 修复：如果是客户端模式，清理临时数据（但不退出客户端模式）
+    final wasClientModeConnected = state.isConnected && !state.isHost;
+    if (wasClientModeConnected) {
       Log.i('客户端断开连接，清理临时数据');
-      _ref.read(scoreProvider.notifier).clearClientModeData();
+      ref.read(scoreProvider.notifier).clearClientModeData();
       // 同时清理模板中的临时数据
-      _ref.read(templatesProvider.notifier).clearClientModeTemplates();
+      ref.read(templatesProvider.notifier).clearClientModeTemplates();
     }
 
     Log.d("正在处理网络管理器...");
@@ -638,22 +860,23 @@ class LanNotifier extends StateNotifier<LanState> {
     }
 
     Log.d("网络管理器处理完毕。");
-    if (mounted) {
-      state = state.copyWith(
-        clearNetworkManager: true,
-        isConnected: false,
-        isHost: false,
-        connectionStatus: '未连接',
-        receivedMessages: [],
-        serverPort: 0, // 重置端口
-      );
-    }
+    // 保存当前状态用于判断
+    final wasClientMode = state.isClientMode;
+    final wasHost = state.isHost;
+
+    state = state.copyWith(
+      clearNetworkManager: true,
+      isConnected: false,
+      isHost: false,
+      connectionStatus: wasClientMode ? '客户端模式（已断开连接）' : '未连接',
+      receivedMessages: [],
+      serverPort: wasHost ? 0 : state.serverPort, // 主机模式重置端口，客户端模式保留端口用于重连
+      connectedClientIps: [], // 清空客户端列表
+    );
   }
 
   void clearMessages() {
-    if (mounted) {
-      state = state.copyWith(receivedMessages: []);
-    }
+    state = state.copyWith(receivedMessages: []);
   }
 
   Future<void> _startDiscoveryBroadcast(int wsPort, String baseTid) async {
@@ -684,7 +907,8 @@ class LanNotifier extends StateNotifier<LanState> {
         _sendDiscoveryBroadcast();
       }
     } catch (e) {
-      Log.e('启动 UDP 广播失败: $e');
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '启动UDP广播失败');
       await _stopDiscoveryBroadcast();
     }
   }
@@ -714,14 +938,10 @@ class LanNotifier extends StateNotifier<LanState> {
 
     if (shouldBroadcast) {
       _startDiscoveryBroadcast(_currentWsPort, _currentBaseTid);
-      if (mounted) {
-        state = state.copyWith(isBroadcasting: true);
-      }
+      state = state.copyWith(isBroadcasting: true);
     } else {
       _stopDiscoveryBroadcast();
-      if (mounted) {
-        state = state.copyWith(isBroadcasting: false);
-      }
+      state = state.copyWith(isBroadcasting: false);
     }
   }
 
@@ -757,7 +977,8 @@ class LanNotifier extends StateNotifier<LanState> {
         Log.w('UDP 广播发送结果:$send');
       }
     } catch (e) {
-      Log.e('发送 UDP 广播失败: $e');
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '发送UDP广播失败');
     }
   }
 
