@@ -187,6 +187,17 @@ class Score extends _$Score {
     return lanState.isConnected && !lanState.isHost;
   }
 
+  /// 统一的客户端限制检查
+  /// 如果是客户端模式，显示错误提示并返回true（表示操作被阻止）
+  /// 如果不是客户端模式，返回false（表示可以继续操作）
+  bool _checkAndHandleClientRestriction() {
+    if (_isClientMode()) {
+      AppSnackBar.show('仅主机可以进行计分操作');
+      return true;
+    }
+    return false;
+  }
+
   /// 清理客户端模式下的临时数据（当断开连接时调用）
   void clearClientModeData() {
     if (!_isClientMode()) {
@@ -341,6 +352,11 @@ class Score extends _$Score {
   }
 
   void updateScore(String playerId, int roundIndex, int newScore) {
+    // 统一的客户端限制检查
+    if (_checkAndHandleClientRestriction()) {
+      return;
+    }
+
     Log.d(
         'ScoreNotifier 更新分数: Player $playerId, 第 ${roundIndex + 1} 轮, Score $newScore');
     final currentState = state.valueOrNull;
@@ -370,6 +386,11 @@ class Score extends _$Score {
       int roundIndex,
       Map<String, int?> playerScoresMap,
       Map<String, Map<String, dynamic>?> playerExtendedDataMap) async {
+    // 统一的客户端限制检查
+    if (_checkAndHandleClientRestriction()) {
+      return;
+    }
+
     Log.d('ScoreNotifier 更新扩展数据: 第 ${roundIndex + 1} 轮');
     final currentStateBeforeUpdate = state.valueOrNull;
     if (currentStateBeforeUpdate?.currentSession == null) {
@@ -467,6 +488,11 @@ class Score extends _$Score {
   }
 
   void addNewRound() {
+    // 统一的客户端限制检查
+    if (_checkAndHandleClientRestriction()) {
+      return;
+    }
+
     final currentState = state.valueOrNull;
     if (currentState?.currentSession == null) return;
 
@@ -511,6 +537,11 @@ class Score extends _$Score {
   }
 
   Future<void> resetGame(bool saveToHistory) async {
+    // 统一的客户端限制检查
+    if (_checkAndHandleClientRestriction()) {
+      return;
+    }
+
     final currentState = state.valueOrNull;
 
     // 修复：客户端模式下不保存历史记录到本地数据库
