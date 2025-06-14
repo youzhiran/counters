@@ -385,7 +385,7 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
         if (template == null) {
           // 修复：检查是否为客户端模式，如果是则不要重新加载模板
           final lanState = ref.read(lanProvider);
-          final isClientMode = lanState.isConnected && !lanState.isHost && !lanState.isHostAndClientMode;
+          final isClientMode = lanState.isConnected && !lanState.isHost;
 
           if (isClientMode) {
             // 客户端模式下，模板可能还在同步中，等待一下但不要重新加载

@@ -18,9 +18,7 @@ class LanTestPage extends ConsumerWidget {
     const int defaultPort = 8080;
 
     String modeText = '未知';
-    if (lanState.isHostAndClientMode) {
-      modeText = '模式: 主机 & 客户端';
-    } else if (lanState.isHost) {
+    if (lanState.isHost) {
       modeText = '模式: 主机';
     } else {
       modeText = '模式: 客户端';
@@ -71,17 +69,13 @@ class LanTestPage extends ConsumerWidget {
         child: Column(
           children: [
             // --- 顶部控制区域 (如果连接未建立) ---
-            // 如果是 HostAndClient 模式，也隐藏连接控制，因为它自动连接
-            if (!lanState.isConnected &&
-                !lanState.isHost &&
-                !lanState.isHostAndClientMode) ...[
+            if (!lanState.isConnected && !lanState.isHost) ...[
               IpDisplayWidget(
                 localIp: lanState.localIp,
                 interfaceName: lanState.interfaceName,
                 onRefreshIp: () => lanNotifier.refreshLocalIp(),
               ),
               Row(
-                // 将成为主机和成为主机&客户端按钮分开，避免重复
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   ElevatedButton(
@@ -89,13 +83,6 @@ class LanTestPage extends ConsumerWidget {
                         ? null
                         : () => lanNotifier.startHost(defaultPort, "poker50"),
                     child: const Text('成为主机'),
-                  ),
-                  ElevatedButton(
-                    onPressed: lanState.isLoading
-                        ? null
-                        : () => lanNotifier.startHostAndClient(
-                            defaultPort, "poker50"),
-                    child: const Text('成为主机&客户端'),
                   ),
                 ],
               ),

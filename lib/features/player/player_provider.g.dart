@@ -1,25 +1,25 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'template_provider.dart';
+part of 'player_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$templatesHash() => r'3b536ba3e821baa246b3134b0840326cc8b25b5f';
+String _$playerHash() => r'7f807c7341262bac0264ba2bc0e6b625abda6872';
 
-/// See also [Templates].
-@ProviderFor(Templates)
-final templatesProvider =
-    AutoDisposeAsyncNotifierProvider<Templates, List<BaseTemplate>>.internal(
-  Templates.new,
-  name: r'templatesProvider',
+/// See also [Player].
+@ProviderFor(Player)
+final playerProvider =
+    AutoDisposeNotifierProvider<Player, PlayerState>.internal(
+  Player.new,
+  name: r'playerProvider',
   debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$templatesHash,
+      const bool.fromEnvironment('dart.vm.product') ? null : _$playerHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$Templates = AutoDisposeAsyncNotifier<List<BaseTemplate>>;
+typedef _$Player = AutoDisposeNotifier<PlayerState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -31,10 +31,7 @@ class LanState {
   final String localIp;
   final String connectionStatus;
   final List<String> receivedMessages;
-  final ScoreNetworkManager? networkManager; // 主管理器 (主机或客户端)
-  final ScoreNetworkManager?
-      clientNetworkManager; // 仅在 HostAndClient 模式下使用的客户端管理器
-  final bool isHostAndClientMode;
+  final ScoreNetworkManager? networkManager; // 网络管理器 (主机或客户端)
   final bool isBroadcasting; // 新增：是否正在广播
   final List<String> connectedClientIps; // 新增：存储已连接客户端 IP
   final String interfaceName; // 新增：本机网络接口名称
@@ -47,8 +44,6 @@ class LanState {
     this.connectionStatus = '未连接',
     this.receivedMessages = const [],
     this.networkManager,
-    this.clientNetworkManager,
-    this.isHostAndClientMode = false,
     this.isBroadcasting = false, // 新增：默认不广播
     this.connectedClientIps = const [], // 新增：默认空列表
     this.interfaceName = '', // 新增：默认空字符串
@@ -62,12 +57,9 @@ class LanState {
     String? connectionStatus,
     List<String>? receivedMessages,
     ScoreNetworkManager? networkManager,
-    ScoreNetworkManager? clientNetworkManager,
-    bool? isHostAndClientMode,
     bool? isBroadcasting, // 新增
     List<String>? connectedClientIps, // 新增
     bool clearNetworkManager = false,
-    bool clearClientNetworkManager = false,
     String? interfaceName, // 新增
   }) {
     return LanState(
@@ -79,10 +71,6 @@ class LanState {
       receivedMessages: receivedMessages ?? this.receivedMessages,
       networkManager:
           clearNetworkManager ? null : networkManager ?? this.networkManager,
-      clientNetworkManager: clearClientNetworkManager
-          ? null
-          : clientNetworkManager ?? this.clientNetworkManager,
-      isHostAndClientMode: isHostAndClientMode ?? this.isHostAndClientMode,
       isBroadcasting: isBroadcasting ?? this.isBroadcasting,
       // 新增
       connectedClientIps: connectedClientIps ?? this.connectedClientIps, // 新增
@@ -158,7 +146,7 @@ class LanNotifier extends StateNotifier<LanState> {
 
       Log.i('收到解析后消息: $type');
 
-      if (!state.isHost || state.isHostAndClientMode) {
+      if (!state.isHost) {
         switch (type) {
           case "sync_state":
             if (data is Map<String, dynamic>) {
@@ -513,7 +501,6 @@ class LanNotifier extends StateNotifier<LanState> {
     state = state.copyWith(
         isLoading: true,
         isHost: false,
-        isHostAndClientMode: false,
         isConnected: false,
         connectionStatus: '连接中...');
     try {
@@ -529,7 +516,6 @@ class LanNotifier extends StateNotifier<LanState> {
         state = state.copyWith(
             isLoading: false,
             networkManager: manager,
-            clientNetworkManager: null,
             receivedMessages: []);
       }
       // TODO: Client 连接成功后，通知 ScoreNotifier
@@ -544,96 +530,25 @@ class LanNotifier extends StateNotifier<LanState> {
     }
   }
 
-  /// 同时启动主机和客户端模式。
-  Future<void> startHostAndClient(int port, String templateId) async {
-    Log.i('清理所有旧的网络管理器...');
-    await disposeManager();
-    state = state.copyWith(
-        isLoading: true,
-        isHost: true,
-        isHostAndClientMode: true,
-        isConnected: false,
-        connectionStatus: '启动主机和客户端...');
 
-    ScoreNetworkManager? hostManager;
-    ScoreNetworkManager? clientManager;
-
-    try {
-      // 1. 启动主机部分 (通过管理器静态方法创建)
-      // === 修复点 3：使用 ScoreNetworkManager.createHost 静态方法创建并等待 ===
-      hostManager = await ScoreNetworkManager.createHost(port);
-      _currentBaseTid = templateId;
-      _currentWsPort = port;
-      Log.i('主机部分启动成功');
-      state = state.copyWith(
-          networkManager: hostManager, // 存储主机管理器
-          connectionStatus:
-              '主机运行中于 ${state.localIp}:$_currentWsPort, 正在连接客户端...');
-      Log.i('主机运行中于 ${state.localIp}:$_currentWsPort, 正在连接客户端...');
-      await _startDiscoveryBroadcast(_currentWsPort, templateId);
-
-      // TODO: Host 启动成功后，通知 ScoreNotifier 准备同步状态
-
-      // 2. 启动客户端部分并连接到本机主机 (通过管理器静态方法创建并等待)
-      // === 修复点 4：使用 ScoreNetworkManager.createClient 静态方法创建并等待 ===
-      clientManager = await ScoreNetworkManager.createClient(
-        '127.0.0.1',
-        port,
-        onMessageReceived: _handleMessageReceived,
-        onConnectionChanged: _handleConnectionChanged,
-      );
-
-      if (mounted) {
-        state = state.copyWith(
-          isLoading: false,
-          clientNetworkManager: clientManager, // 存储客户端管理器
-          receivedMessages: [],
-        );
-      }
-      // TODO: Client 连接成功后，通知 ScoreNotifier
-      // _ref.read(scoreProvider.notifier).setHostMode(true);
-      // _ref.read(scoreProvider.notifier).setLanNotifier(this);
-    } catch (e) {
-      Log.e('启动主机和客户端失败: $e');
-      await hostManager?.dispose();
-      await clientManager?.dispose();
-      if (mounted) {
-        state = state.copyWith(
-            isLoading: false,
-            isConnected: false,
-            isHostAndClientMode: false,
-            networkManager: null,
-            clientNetworkManager: null,
-            connectionStatus: '启动主机&客户端失败: $e');
-      }
-    }
-  }
 
   /// 发送 JSON 格式的消息。
   void sendJsonMessage(String jsonString) {
     ScoreNetworkManager? manager = state.networkManager;
 
-    // === 修复点 5：通过 ScoreNetworkManager 的 broadcast 方法广播 ===
-    if (state.isHost && !state.isHostAndClientMode) {
-      // 纯主机模式，使用 networkManager
+    if (state.isHost) {
+      // 主机模式，广播消息给所有客户端
       if (manager != null && manager.isHost) {
-        manager.broadcast(jsonString); // 调用 ScoreNetworkManager 的 broadcast 方法
+        manager.broadcast(jsonString);
         Log.i('主机广播消息: $jsonString');
       } else {
-        Log.w('无法广播 JSON 消息：不在纯主机模式或管理器未初始化');
+        Log.w('无法广播 JSON 消息：主机管理器未初始化');
       }
     } else if (state.isConnected) {
-      // 客户端模式 或 HostAndClient 的客户端部分
-      ScoreNetworkManager? clientManager = state.isHostAndClientMode
-          ? state.clientNetworkManager
-          : state.networkManager;
-
-      if (clientManager != null && !clientManager.isHost) {
-        // 确保是客户端管理器
-        clientManager.sendMessage(
-            jsonString); // 调用 ScoreNetworkManager 的 sendMessage (内部调用 WsClient.send)
-        Log.i(
-            '${state.isHostAndClientMode ? "组合模式客户端" : "纯客户端"} 发送消息: $jsonString');
+      // 客户端模式，发送消息给主机
+      if (manager != null && !manager.isHost) {
+        manager.sendMessage(jsonString);
+        Log.i('客户端发送消息: $jsonString');
       } else {
         Log.w('无法发送 JSON 消息：客户端管理器未初始化或已断开');
       }
@@ -654,8 +569,8 @@ class LanNotifier extends StateNotifier<LanState> {
       return;
     }
 
-    if (!state.isHost || state.isHostAndClientMode) {
-      Log.w('广播消息仅在纯主机模式下可用');
+    if (!state.isHost) {
+      Log.w('广播消息仅在主机模式下可用');
       return;
     }
 
@@ -701,7 +616,7 @@ class LanNotifier extends StateNotifier<LanState> {
     _stopDiscoveryBroadcast();
 
     // 修复：如果是客户端模式，清理临时数据
-    final wasClientMode = state.isConnected && !state.isHost && !state.isHostAndClientMode;
+    final wasClientMode = state.isConnected && !state.isHost;
     if (wasClientMode) {
       Log.i('客户端断开连接，清理临时数据');
       _ref.read(scoreProvider.notifier).clearClientModeData();
@@ -710,15 +625,8 @@ class LanNotifier extends StateNotifier<LanState> {
     }
 
     Log.d("正在处理网络管理器...");
-    // Dispose the Host manager first if it exists
-    if (state.networkManager != null && state.networkManager!.isHost) {
-      await state.networkManager?.dispose();
-    }
-    // Dispose the Client manager if it exists (either main or clientNetworkManager)
-    if (state.clientNetworkManager != null &&
-        !state.clientNetworkManager!.isHost) {
-      await state.clientNetworkManager?.dispose();
-    } else if (state.networkManager != null && !state.networkManager!.isHost) {
+    // 释放网络管理器
+    if (state.networkManager != null) {
       await state.networkManager?.dispose();
     }
 
@@ -726,9 +634,7 @@ class LanNotifier extends StateNotifier<LanState> {
     if (mounted) {
       state = state.copyWith(
         clearNetworkManager: true,
-        clearClientNetworkManager: true,
         isConnected: false,
-        isHostAndClientMode: false,
         isHost: false,
         connectionStatus: '未连接',
         receivedMessages: [],

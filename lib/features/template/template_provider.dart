@@ -43,7 +43,7 @@ class Templates extends _$Templates {
   Future<List<BaseTemplate>> build() async {
     // 修复：检查是否为客户端模式，如果是且已有缓存数据，则不重新加载数据库
     final lanState = ref.read(lanProvider);
-    final isClientMode = lanState.isConnected && !lanState.isHost && !lanState.isHostAndClientMode;
+    final isClientMode = lanState.isConnected && !lanState.isHost;
 
     Log.d('TemplatesProvider.build() 被调用 - 客户端模式: $isClientMode');
 
@@ -123,11 +123,11 @@ class Templates extends _$Templates {
     });
   }
 
-  /// 检查当前是否为纯客户端模式（连接到主机但不是主机）
+  /// 检查当前是否为客户端模式（连接到主机但不是主机）
   bool _isClientMode() {
     final lanState = ref.read(lanProvider);
-    // 纯客户端模式：已连接但不是主机，且不是主机+客户端组合模式
-    return lanState.isConnected && !lanState.isHost && !lanState.isHostAndClientMode;
+    // 客户端模式：已连接但不是主机
+    return lanState.isConnected && !lanState.isHost;
   }
 
   // 新增：保存或更新从网络接收的模板，保留原始TID

@@ -180,11 +180,11 @@ class Score extends _$Score {
     _broadcastResetGame();
   }
 
-  /// 检查当前是否为纯客户端模式（连接到主机但不是主机）
+  /// 检查当前是否为客户端模式（连接到主机但不是主机）
   bool _isClientMode() {
     final lanState = ref.read(lanProvider);
-    // 纯客户端模式：已连接但不是主机，且不是主机+客户端组合模式
-    return lanState.isConnected && !lanState.isHost && !lanState.isHostAndClientMode;
+    // 客户端模式：已连接但不是主机
+    return lanState.isConnected && !lanState.isHost;
   }
 
   /// 清理客户端模式下的临时数据（当断开连接时调用）
@@ -302,7 +302,7 @@ class Score extends _$Score {
 
     updateHighlight();
     final lanState = ref.read(lanProvider);
-    if (lanState.isHost && !lanState.isHostAndClientMode) {
+    if (lanState.isHost) {
       _broadcastPlayerInfo(validatedPlayers);
       _broadcastSyncState(newSession);
     }
@@ -448,7 +448,7 @@ class Score extends _$Score {
     }
 
     final lanState = ref.read(lanProvider);
-    if (lanState.isHost && !lanState.isHostAndClientMode) {
+    if (lanState.isHost) {
       _broadcastSyncRoundData(updatedSession.sid, roundIndex, playerScoresMap,
           playerExtendedDataMap);
       _broadcastSyncState(updatedSession);
@@ -565,7 +565,7 @@ class Score extends _$Score {
     ));
     updateHighlight();
     final lanState = ref.read(lanProvider);
-    if (lanState.isHost && !lanState.isHostAndClientMode) {
+    if (lanState.isHost) {
       _broadcastPlayerInfo(sessionPlayers);
       _broadcastSyncState(session);
     }
@@ -624,7 +624,7 @@ class Score extends _$Score {
   void _broadcastSyncState(GameSession session) {
     final lanNotifier = ref.read(lanProvider.notifier);
     final lanState = ref.read(lanProvider);
-    if (!lanState.isHost || lanState.isHostAndClientMode) {
+    if (!lanState.isHost) {
       return;
     }
 
@@ -642,7 +642,7 @@ class Score extends _$Score {
       Map<String, Map<String, dynamic>?> playerExtendedDataMap) {
     final lanNotifier = ref.read(lanProvider.notifier);
     final lanState = ref.read(lanProvider);
-    if (!lanState.isHost || lanState.isHostAndClientMode) return;
+    if (!lanState.isHost) return;
 
     Log.i('ScoreNotifier 广播轮次数据同步: Session $sessionId, Round $roundIndex');
     final data = {
@@ -659,7 +659,7 @@ class Score extends _$Score {
   void _broadcastNewRoundPayload(NewRoundPayload payload) {
     final lanNotifier = ref.read(lanProvider.notifier);
     final lanState = ref.read(lanProvider);
-    if (!lanState.isHost || lanState.isHostAndClientMode) return;
+    if (!lanState.isHost) return;
 
     Log.i('ScoreNotifier 广播新回合开始: ${payload.newRoundIndex}');
     final message = SyncMessage(type: "new_round", data: payload.toJson());
@@ -670,7 +670,7 @@ class Score extends _$Score {
   void _broadcastResetGame() {
     final lanNotifier = ref.read(lanProvider.notifier);
     final lanState = ref.read(lanProvider);
-    if (!lanState.isHost || lanState.isHostAndClientMode) return;
+    if (!lanState.isHost) return;
 
     Log.i('ScoreNotifier 广播游戏重置');
     final payload = ResetGamePayload();
@@ -682,7 +682,7 @@ class Score extends _$Score {
   void _broadcastPlayerInfo(List<PlayerInfo> players) {
     final lanNotifier = ref.read(lanProvider.notifier);
     final lanState = ref.read(lanProvider);
-    if (!lanState.isHost || lanState.isHostAndClientMode) return;
+    if (!lanState.isHost) return;
 
     Log.i('ScoreNotifier 广播玩家信息: ${players.length} 个玩家');
 
@@ -927,7 +927,7 @@ class Score extends _$Score {
   void broadcastTemplateInfo(BaseTemplate template) {
     final lanNotifier = ref.read(lanProvider.notifier);
     final lanState = ref.read(lanProvider);
-    if (!lanState.isHost || lanState.isHostAndClientMode) return;
+    if (!lanState.isHost) return;
     final map = template.toJson();
     map['players'] = template.players.map((e) => e.toJson()).toList();
     final message = SyncMessage(type: "template_info", data: map);

@@ -6,7 +6,7 @@ part of 'score_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$scoreHash() => r'384a46e9790c7891bcfbfabda92e87be6e406ab0';
+String _$scoreHash() => r'ba0b3afcb0c77cad29296c201ed3ea97fa865887';
 
 /// See also [Score].
 @ProviderFor(Score)

@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/utils/log.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sqflite/sqflite.dart';
+
+part 'player_provider.g.dart';
 
 
 class PlayerState {
@@ -40,7 +42,8 @@ class PlayerState {
   }
 }
 
-class PlayerNotifier extends Notifier<PlayerState> {
+@riverpod
+class Player extends _$Player {
   final _dbHelper = DatabaseHelper.instance;
   Timer? _searchDebounceTimer;
   String _lastSearchQuery = '';
@@ -323,7 +326,4 @@ class PlayerNotifier extends Notifier<PlayerState> {
   }
 }
 
-// 创建 provider
-final playerProvider = NotifierProvider<PlayerNotifier, PlayerState>(() {
-  return PlayerNotifier();
-});
+
