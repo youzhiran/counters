@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:counters/app/config.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
@@ -163,7 +164,24 @@ class LanNotifier extends StateNotifier<LanState> {
             if (data is Map<String, dynamic>) {
               final payload = SyncStatePayload.fromJson(data);
               Log.i('收到全量同步状态');
+
+              // 修复：在应用同步状态后，检查是否需要补充玩家信息
               _ref.read(scoreProvider.notifier).applySyncState(payload.session);
+
+              // 检查玩家信息是否为空，如果为空则尝试从模板中获取
+              final currentState = _ref.read(scoreProvider).valueOrNull;
+              if (currentState != null && currentState.players.isEmpty) {
+                Log.w('同步状态后玩家信息为空，尝试从模板中获取玩家信息');
+                final templatesAsync = _ref.read(templatesProvider);
+                final templates = templatesAsync.valueOrNull;
+                if (templates != null) {
+                  final template = templates.firstWhereOrNull((t) => t.tid == payload.session.templateId);
+                  if (template != null && template.players.isNotEmpty) {
+                    Log.i('从模板中补充玩家信息: ${template.players.length} 个玩家');
+                    _ref.read(scoreProvider.notifier).applyPlayerInfo(template.players);
+                  }
+                }
+              }
             } else {
               Log.w('收到无效的 sync_state 消息负载类型: ${data.runtimeType}');
             }
@@ -215,7 +233,10 @@ class LanNotifier extends StateNotifier<LanState> {
               // 修复：先应用玩家信息到 ScoreNotifier，确保后续的 sync_state 能正确使用玩家信息
               if (players.isNotEmpty) {
                 Log.i("应用模板中的玩家信息到 ScoreNotifier: ${players.length} 个玩家");
+                Log.i("玩家详情: ${players.map((p) => '${p.name}(${p.pid})').join(', ')}");
                 _ref.read(scoreProvider.notifier).applyPlayerInfo(players);
+              } else {
+                Log.w("模板中没有玩家信息，这可能导致后续的同步问题");
               }
 
               // 使用 templatesProvider.notifier 的新方法来保存或更新模板
@@ -433,16 +454,21 @@ class LanNotifier extends StateNotifier<LanState> {
             .getTemplate(requestedTemplateId);
         if (template != null) {
           // 注意：我们需要将 BaseTemplate 转换回 Map<String, dynamic>
-          // 假设 BaseTemplate 有 toJson 或 toMapWithPlayers 方法
+          // 修复：确保包含完整的玩家信息
           try {
-            // BaseTemplate 需要一个方法来序列化自己和玩家列表
-            // 假设有一个 toMap() 方法可以做到这一点
+            // 获取模板的基础数据
             final templateData = template.toMap();
+
+            // 修复：确保玩家信息被正确包含
+            templateData['players'] = template.players.map((player) => player.toJson()).toList();
+
+            Log.i('发送模板信息，包含 ${template.players.length} 个玩家: ${template.players.map((p) => p.name).join(", ")}');
+
             final templateMessage =
                 SyncMessage(type: "template_info", data: templateData);
             final templateJsonString = jsonEncode(templateMessage.toJson());
             state.networkManager?.sendToClient(client, templateJsonString);
-            Log.i('已发送 template_info 给客户端');
+            Log.i('已发送 template_info 给客户端，玩家数量: ${template.players.length}');
           } catch (e) {
             Log.e('序列化或发送 template_info 失败: $e');
             // 即使模板发送失败，也尝试发送状态

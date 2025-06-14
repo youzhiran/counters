@@ -694,6 +694,12 @@ class Score extends _$Score {
     final currentState = state.valueOrNull;
     final existingPlayers = currentState?.players ?? [];
 
+    // 修复：确保玩家信息不会丢失
+    Log.i('applySyncState: 当前玩家数量: ${existingPlayers.length}, 会话中玩家数量: ${session.scores.length}');
+
+    // 如果当前状态中有玩家信息，优先保留
+    final playersToUse = existingPlayers.isNotEmpty ? existingPlayers : <PlayerInfo>[];
+
     // 修复：直接更新状态，避免触发 Provider 重建导致从 DAO 重新加载空状态
     final newState = currentState?.copyWith(
           currentSession: session,
@@ -701,19 +707,21 @@ class Score extends _$Score {
           isInitialized: true,
           currentHighlight: null,
           showGameEndDialog: false,
-          // players 列表通过 copyWith 保留
+          players: playersToUse, // 明确设置玩家信息
         ) ??
         ScoreState(
           currentSession: session,
           currentRound: _calculateCurrentRound(session),
           isInitialized: true,
-          players: existingPlayers,
+          players: playersToUse, // 明确设置玩家信息
           showGameEndDialog: false,
           currentHighlight: null,
         );
 
     // 使用 AsyncData 包装新状态，确保不触发重建
     state = AsyncData(newState);
+
+    Log.i('applySyncState 完成: 最终玩家数量: ${newState.players.length}');
     updateHighlight();
 
     // 客户端收到同步状态后，保存会话到本地 DAO，以便后续启动或重建时能加载

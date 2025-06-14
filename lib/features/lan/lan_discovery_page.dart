@@ -71,9 +71,9 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       final jsonString = jsonEncode(requestMessage.toJson());
       lanNotifier.sendJsonMessage(jsonString);
 
-      // 4. 修复：使用轮询等待会话状态同步（而不是模板同步）
+      // 4. 修复：使用轮询等待会话状态和玩家信息同步
       const pollInterval = Duration(milliseconds: 500); // 轮询间隔
-      const timeoutDuration = Duration(seconds: 10); // 超时时间
+      const timeoutDuration = Duration(seconds: 15); // 增加超时时间到15秒
       final stopwatch = Stopwatch()..start();
       bool sessionSynced = false;
 
@@ -84,16 +84,26 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
 
         if (scoreAsync is AsyncData) {
           final scoreState = scoreAsync.value;
-          // 检查是否有会话状态且模板ID匹配
-          if (scoreState != null &&
-              scoreState.currentSession != null &&
-              scoreState.currentSession!.templateId == host.baseTid &&
-              scoreState.players.isNotEmpty) {
-            Log.i('_connectToHost 轮询: 会话状态已成功同步（模板: ${host.baseTid}）!');
-            sessionSynced = true;
-            break; // 会话已同步，退出循环
+          // 修复：更详细的同步状态检查
+          if (scoreState != null) {
+            final hasSession = scoreState.currentSession != null;
+            final templateMatches = hasSession && scoreState.currentSession!.templateId == host.baseTid;
+            final hasPlayers = scoreState.players.isNotEmpty;
+            final hasScores = hasSession && scoreState.currentSession!.scores.isNotEmpty;
+
+            Log.d('_connectToHost 轮询详情: hasSession=$hasSession, templateMatches=$templateMatches, hasPlayers=$hasPlayers, hasScores=$hasScores');
+            Log.d('_connectToHost 轮询详情: 玩家数量=${scoreState.players.length}, 分数数量=${scoreState.currentSession?.scores.length ?? 0}');
+
+            // 检查是否有会话状态、模板ID匹配、且有玩家信息
+            if (hasSession && templateMatches && hasPlayers && hasScores) {
+              Log.i('_connectToHost 轮询: 会话状态和玩家信息已成功同步（模板: ${host.baseTid}）!');
+              sessionSynced = true;
+              break; // 会话已同步，退出循环
+            } else {
+              Log.d('_connectToHost 轮询: 同步尚未完成 - 会话:$hasSession, 模板匹配:$templateMatches, 玩家:$hasPlayers, 分数:$hasScores');
+            }
           } else {
-            Log.d('_connectToHost 轮询: 会话状态尚未同步或玩家列表为空。');
+            Log.d('_connectToHost 轮询: scoreState 为空');
           }
         } else if (scoreAsync is AsyncError) {
           Log.e(
