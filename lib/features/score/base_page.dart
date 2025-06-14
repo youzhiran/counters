@@ -11,6 +11,7 @@ import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/lan_test_page.dart';
+import 'package:counters/features/lan/widgets/lan_status_dialog.dart';
 import 'package:counters/features/score/counter/config.dart';
 import 'package:counters/features/score/landlords/config.dart';
 import 'package:counters/features/score/mahjong/config.dart';
@@ -21,7 +22,6 @@ import 'package:counters/features/score/widgets/score_chart_bottom_sheet.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 
 abstract class BaseSessionPage extends ConsumerStatefulWidget {
   final String templateId;
@@ -162,7 +162,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                       icon: ScaleTransition(
                         scale: _broadcastScaleAnimation,
                         child: Icon(
-                          lanState.isHost ? Icons.wifi_tethering : Icons.wifi,
+                          _getLanIcon(lanState),
                           color: lanState.isConnected
                               ? Colors.green
                               : Colors.orange,
@@ -331,7 +331,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       lanNotifier.disposeManager();
       AppSnackBar.show('已断开连接');
     } else {
-      lanNotifier.startHost(8080, template.tid, templateName: template.templateName).then((_) {
+      lanNotifier
+          .startHost(8080, template.tid, templateName: template.templateName)
+          .then((_) {
         AppSnackBar.show('主机已启动，等待客户端连接');
       }).catchError((error) {
         AppSnackBar.error('启动主机失败: $error');
@@ -340,94 +342,18 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   void showLanStatus(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('局域网状态'),
-        content: Consumer(
-          builder: (context, ref, child) {
-            final currentLanState = ref.watch(lanProvider);
-            String currentStatusText = '';
-            if (currentLanState.isHost) {
-              currentStatusText = '主机模式\n';
-              currentStatusText += 'IP地址: ${currentLanState.localIp}\n';
-              currentStatusText += '端口: 8080\n';
-              currentStatusText += '连接状态: ${currentLanState.connectionStatus}';
-            } else if (currentLanState.isConnected) {
-              currentStatusText = '客户端模式\n';
-              currentStatusText += 'IP地址: ${currentLanState.localIp}\n';
-              currentStatusText +=
-                  '已连接到主机地址: ${currentLanState.connectionStatus}';
-            } else {
-              currentStatusText = '未连接';
-            }
+    showLanStatusDialog();
+  }
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(currentStatusText),
-                SizedBox(height: 16),
-                if (currentLanState.isHost) ...[
-                  Text('已连接客户端:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  if (currentLanState.connectedClientIps.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Text('  无', style: TextStyle(color: Colors.grey)),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0, left: 8.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: currentLanState.connectedClientIps
-                            .map((ip) => Text('  - $ip'))
-                            .toList(),
-                      ),
-                    ),
-                  SizedBox(height: 16),
-                ],
-                if (currentLanState.isHost)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('广播状态：'),
-                      Switch(
-                        value: currentLanState.isBroadcasting,
-                        onChanged: (value) {
-                          ref
-                              .read(lanProvider.notifier)
-                              .setBroadcastState(value);
-                          AppSnackBar.show(value ? '广播已开启' : '广播已关闭');
-                        },
-                      ),
-                    ],
-                  ),
-                SizedBox(height: 16),
-                if (currentLanState.isHost || currentLanState.isConnected)
-                  ElevatedButton(
-                    onPressed: () {
-                      globalState.navigatorKey.currentState?.pop();
-                      ref.read(lanProvider.notifier).disposeManager();
-                      AppSnackBar.show(
-                          currentLanState.isHost ? '已停止主机' : '已断开连接');
-                    },
-                    child: Text(currentLanState.isHost ? '停止主机' : '断开连接'),
-                  ),
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => globalState.navigatorKey.currentState?.pop(),
-            child: Text('关闭'),
-          ),
-        ],
-      ),
-    );
+  /// 根据LAN状态获取对应的图标
+  IconData _getLanIcon(LanState lanState) {
+    if (lanState.isHost) {
+      // 主机模式：根据广播状态显示不同图标
+      return lanState.isBroadcasting ? Icons.wifi_tethering : Icons.dns;
+    } else {
+      // 客户端模式：显示wifi图标
+      return Icons.wifi;
+    }
   }
 
   Widget buildGameBody(
@@ -489,12 +415,14 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     style: TextStyle(
                         color:
                             result.hasFailures ? Colors.red : Colors.orange)),
-                ...result.losers.map((s) => Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
+                ...result.losers.map((s) =>
+                    Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
                 SizedBox(height: 16),
               ],
               Text('${result.hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
                   style: TextStyle(color: Colors.green)),
-              ...result.winners.map((s) => Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
+              ...result.winners.map((s) =>
+                  Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
               if (result.hasFailures) ...[
                 SizedBox(height: 16),
                 Text('💡 游戏结束，但仍可继续计分，每回合结束将再次检查计分',

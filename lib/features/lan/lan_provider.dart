@@ -35,6 +35,7 @@ class LanState {
   final bool isBroadcasting; // 新增：是否正在广播
   final List<String> connectedClientIps; // 新增：存储已连接客户端 IP
   final String interfaceName; // 新增：本机网络接口名称
+  final int serverPort; // 新增：服务器端口号
 
   const LanState({
     this.isLoading = false,
@@ -47,6 +48,7 @@ class LanState {
     this.isBroadcasting = false, // 新增：默认不广播
     this.connectedClientIps = const [], // 新增：默认空列表
     this.interfaceName = '', // 新增：默认空字符串
+    this.serverPort = 0, // 新增：默认端口为0
   });
 
   LanState copyWith({
@@ -61,6 +63,7 @@ class LanState {
     List<String>? connectedClientIps, // 新增
     bool clearNetworkManager = false,
     String? interfaceName, // 新增
+    int? serverPort, // 新增
   }) {
     return LanState(
       isLoading: isLoading ?? this.isLoading,
@@ -75,6 +78,7 @@ class LanState {
       // 新增
       connectedClientIps: connectedClientIps ?? this.connectedClientIps, // 新增
       interfaceName: interfaceName ?? this.interfaceName, // 新增
+      serverPort: serverPort ?? this.serverPort, // 新增
     );
   }
 }
@@ -408,6 +412,7 @@ class LanNotifier extends StateNotifier<LanState> {
         connectedClientIps: [],
         // 清空客户端列表
         isBroadcasting: true, // 主机启动时默认开启广播
+        serverPort: port, // 新增：设置服务器端口
       );
       await _startDiscoveryBroadcast(port, baseTid);
       Log.i('主机模式已成功启动在端口 $port');
@@ -640,6 +645,7 @@ class LanNotifier extends StateNotifier<LanState> {
         isHost: false,
         connectionStatus: '未连接',
         receivedMessages: [],
+        serverPort: 0, // 重置端口
       );
     }
   }
