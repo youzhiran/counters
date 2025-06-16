@@ -88,8 +88,10 @@ class VerboseLogNotifier extends StateNotifier<bool> {
   void _updateLogLevel(bool enableVerbose) {
     if (enableVerbose) {
       Log.setLevel(Level.trace); // 启用verbose时使用trace级别
+      Log.i('日志级别已设置为 Trace (包含 Verbose 日志)');
     } else {
       Log.setLevel(Level.debug); // 禁用verbose时使用debug级别
+      Log.i('日志级别已设置为 Debug (不包含 Verbose 日志)');
     }
   }
 }

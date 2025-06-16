@@ -244,9 +244,7 @@ class LanTestPage extends ConsumerWidget {
                                     String logText = appLogs[index];
                                     Color? logColor;
                                     const double smallFontSize = 11.0;
-                                    // 判断日志级别并设置颜色，更健壮的方式是 LogHelper 输出时就包含级别标识
-                                    // 或者使用正则表达式或startsWith等方式
-                                    // 这里简单判断前缀
+                                    // 判断日志级别并设置颜色
                                     if (logText.startsWith('[E]') ||
                                         logText.startsWith('[WTF]')) {
                                       logColor = Colors.red;
@@ -254,6 +252,10 @@ class LanTestPage extends ConsumerWidget {
                                       logColor = Colors.orange;
                                     } else if (logText.startsWith('[I]')) {
                                       logColor = Colors.blue;
+                                    } else if (logText.startsWith('[D]')) {
+                                      logColor = Colors.green;
+                                    } else if (logText.startsWith('[V]')) {
+                                      logColor = Colors.grey;
                                     }
                                     TextStyle textStyle = TextStyle(
                                         color: logColor ??

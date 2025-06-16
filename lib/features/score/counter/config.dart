@@ -44,7 +44,8 @@ class _CounterConfigPageState extends BaseConfigPageState<CounterConfigPage> {
 
   @override
   Widget buildOtherSettings() {
-    return _buildOtherList();
+    return SizedBox.shrink();
+    // return _buildOtherList();
   }
 
   @override
@@ -102,26 +103,26 @@ class _CounterConfigPageState extends BaseConfigPageState<CounterConfigPage> {
       '• 本模板不会记录计分轮次和走势\n'
       '• 点击单个格子可+1分，长按可设置分数';
 
-  Widget _buildOtherList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8, top: 16),
-          child: Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
-        ),
-        SwitchListTile(
-          contentPadding: const EdgeInsets.only(left: 16, right: 16),
-          title: const Text('待配置选项'),
-          subtitle: const Text('待配置选项说明'),
-          value: _allowNegative,
-          onChanged: (bool value) {
-            setState(() {
-              _allowNegative = value;
-            });
-          },
-        ),
-      ],
-    );
-  }
+  // Widget _buildOtherList() {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.stretch,
+  //     children: [
+  //       Padding(
+  //         padding: const EdgeInsets.only(bottom: 8, top: 16),
+  //         child: Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
+  //       ),
+  //       SwitchListTile(
+  //         contentPadding: const EdgeInsets.only(left: 16, right: 16),
+  //         title: const Text('待配置选项'),
+  //         subtitle: const Text('待配置选项说明'),
+  //         value: _allowNegative,
+  //         onChanged: (bool value) {
+  //           setState(() {
+  //             _allowNegative = value;
+  //           });
+  //         },
+  //       ),
+  //     ],
+  //   );
+  // }
 }

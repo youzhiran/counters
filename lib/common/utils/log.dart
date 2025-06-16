@@ -89,96 +89,102 @@ class Log {
 
   // --- 修改日志方法以包含位置信息 ---
 
+  /// 检查当前日志级别是否允许输出指定级别的日志
+  static bool _shouldLog(Level level) {
+    return level.index >= _level.index;
+  }
+
+  /// 通用日志处理方法
+  static void _log(Level level, String message, String streamPrefix, {Color? color}) {
+    if (!_shouldLog(level)) return;
+
+    final location = _getCallerLocation();
+    final colorStr = color != null ? ' 颜色: ${_colorToString(color)}' : '';
+    final logMessage = '$message $location$colorStr';
+
+    // 根据级别调用相应的logger方法
+    switch (level) {
+      case Level.trace:
+        logger.t(logMessage);
+        break;
+      case Level.debug:
+        logger.d(logMessage);
+        break;
+      case Level.info:
+        logger.i(logMessage);
+        break;
+      case Level.warning:
+        logger.w(logMessage);
+        break;
+      case Level.error:
+        logger.e(logMessage);
+        break;
+      case Level.fatal:
+        logger.f(logMessage);
+        break;
+      default:
+        logger.d(logMessage);
+    }
+
+    // 添加到流（不包含颜色信息）
+    _logStreamController.add('[$streamPrefix] $message $location');
+  }
+
   /// Verbose日志（最详细级别）
   static void v(String message) {
-    final location = _getCallerLocation();
-    final logMessage = '$message $location'; // 将位置信息添加到消息后
-    logger.t(logMessage); // 使用trace级别作为verbose
-    _logStreamController.add('[V] $logMessage'); // 流信息也包含位置
+    _log(Level.trace, message, 'V'); // 使用trace级别作为verbose
   }
 
   /// 调试日志
   static void d(String message) {
-    final location = _getCallerLocation();
-    final logMessage = '$message $location'; // 将位置信息添加到消息后
-    logger.d(logMessage);
-    _logStreamController.add('[D] $logMessage'); // 流信息也包含位置
+    _log(Level.debug, message, 'D');
   }
 
   /// 信息日志
   static void i(String message) {
-    final location = _getCallerLocation();
-    final logMessage = '$message $location';
-    logger.i(logMessage);
-    _logStreamController.add('[I] $logMessage');
+    _log(Level.info, message, 'I');
   }
 
   /// 警告日志
   static void w(String message) {
-    final location = _getCallerLocation();
-    final logMessage = '$message $location';
-    logger.w(logMessage);
-    _logStreamController.add('[W] $logMessage');
+    _log(Level.warning, message, 'W');
   }
 
   /// 错误日志
   static void e(String message) {
-    final location = _getCallerLocation();
-    final logMessage = '$message $location';
-    logger.e(logMessage);
-    _logStreamController.add('[E] $logMessage');
+    _log(Level.error, message, 'E');
   }
 
   /// 严重错误日志
   static void wtf(String message) {
-    final location = _getCallerLocation();
-    final logMessage = '$message $location';
-    logger.f(logMessage); // logger 的 fatal 对应 wtf
-    _logStreamController.add('[WTF] $logMessage');
+    _log(Level.fatal, message, 'WTF');
   }
 
-  // --- 带颜色的日志方法也需要修改 ---
+  // --- 带颜色的日志方法 ---
 
   /// 带颜色的Verbose日志（仅控制台支持）
   static void verbose(String message, {Color? color}) {
-    final location = _getCallerLocation();
-    final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
-    // 使用trace级别作为verbose
-    logger.t('$message $location $colorStr');
-    _logStreamController.add('[V] $message $location'); // 流中不带颜色信息
+    _log(Level.trace, message, 'V', color: color); // 使用trace级别作为verbose
   }
 
   /// 带颜色的调试日志（仅控制台支持）
   static void debug(String message, {Color? color}) {
-    final location = _getCallerLocation();
-    final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
-    // 注意：logger 的 d 方法只接受一个参数，我们将位置信息合并到消息中
-    logger.d('$message $location $colorStr');
-    _logStreamController.add('[D] $message $location'); // 流中不带颜色信息
+    _log(Level.debug, message, 'D', color: color);
   }
 
   /// 带颜色的信息日志（仅控制台支持）
   static void info(String message, {Color? color}) {
-    final location = _getCallerLocation();
-    final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
-    logger.i('$message $location $colorStr');
-    _logStreamController.add('[I] $message $location');
+    _log(Level.info, message, 'I', color: color);
   }
 
   /// 带颜色的警告日志（仅控制台支持）
   static void warn(String message, {Color? color}) {
-    final location = _getCallerLocation();
-    final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
-    logger.w('$message $location $colorStr');
-    _logStreamController.add('[W] $message $location');
+    _log(Level.warning, message, 'W', color: color);
   }
 
   /// 带颜色的错误日志（仅控制台支持）
   static void error(String message, {Color? color}) {
-    final location = _getCallerLocation();
-    final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
-    logger.e('$message $location $colorStr');
-    _logStreamController.add('[E] $message $location');
+    _log(Level.error, message, 'E', color: color);
   }
 
   /// 将颜色对象转换为字符串表示

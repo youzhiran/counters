@@ -641,20 +641,24 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   void _testLogLevels() {
     // 先输出当前日志级别信息
     final verboseEnabled = ref.read(verboseLogProvider);
+    Log.i('=== 日志级别测试开始 ===');
     Log.i('当前Verbose日志状态: ${verboseEnabled ? '启用' : '禁用'}');
+    Log.i('当前日志级别: ${verboseEnabled ? 'Trace (包含Verbose)' : 'Debug (不包含Verbose)'}');
 
     // 输出各级别日志
-    Log.v('这是Verbose级别日志 - 最详细的调试信息');
-    Log.d('这是Debug级别日志 - 调试信息');
-    Log.i('这是Info级别日志 - 一般信息');
-    Log.w('这是Warning级别日志 - 警告信息');
-    Log.e('这是Error级别日志 - 错误信息');
+    Log.v('这是Verbose级别日志 - 最详细的调试信息 ${verboseEnabled ? '(应该显示)' : '(应该被过滤)'}');
+    Log.d('这是Debug级别日志 - 调试信息 (应该显示)');
+    Log.i('这是Info级别日志 - 一般信息 (应该显示)');
+    Log.w('这是Warning级别日志 - 警告信息 (应该显示)');
+    Log.e('这是Error级别日志 - 错误信息 (应该显示)');
 
     // 也测试带颜色的verbose日志
-    Log.verbose('这是带颜色的Verbose日志', color: Colors.grey);
+    Log.verbose('这是带颜色的Verbose日志 ${verboseEnabled ? '(应该显示)' : '(应该被过滤)'}', color: Colors.grey);
+
+    Log.i('=== 日志级别测试结束 ===');
 
     GlobalMsgManager.showMessage(
-        '已输出各级别日志到控制台，请查看控制台输出\n当前Verbose: ${verboseEnabled ? '启用' : '禁用'}');
+        '已输出各级别日志，请查看程序日志页面\n当前Verbose: ${verboseEnabled ? '启用' : '禁用'}');
   }
 
   void _resetDatabase() {
