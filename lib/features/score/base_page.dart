@@ -7,7 +7,7 @@ import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/lan_test_page.dart';
@@ -164,7 +164,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                 if (confirmed == true) {
                   // 停止主机服务
                   await ref.read(lanProvider.notifier).disposeManager();
-                  AppSnackBar.show('已停止主机服务');
+                  ref.showSuccess('已停止主机服务');
                   if (mounted) {
                     globalState.navigatorKey.currentState?.pop();
                   }
@@ -224,7 +224,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                               configPage = CounterConfigPage(
                                   oriTemplate: template, isReadOnly: true);
                             } else {
-                              AppSnackBar.warn(
+                              ref.showWarning(
                                   '该模板类型暂不支持查看设置: ${template.runtimeType}');
                               return;
                             }
@@ -355,17 +355,17 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
 
     // 检查客户端模式限制
     if (lanState.isClientMode) {
-      AppSnackBar.show('客户端模式下无法开启局域网联机');
+      ref.showMessage('客户端模式下无法开启局域网联机');
       return;
     }
 
     if (lanState.isHost) {
       lanNotifier.disposeManager();
-      AppSnackBar.show('已停止主机');
+      ref.showSuccess('已停止主机');
     } else if (lanState.isConnected) {
       // 修复：客户端断开连接时返回到带有底部导航栏的主界面
       lanNotifier.disposeManager();
-      AppSnackBar.show('已断开连接');
+      ref.showSuccess('已断开连接');
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/main',
         (route) => false,
@@ -374,9 +374,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       lanNotifier
           .startHost(8080, template.tid, templateName: template.templateName)
           .then((_) {
-        AppSnackBar.show('主机已启动，等待客户端连接');
+        ref.showSuccess('主机已启动，等待客户端连接');
       }).catchError((error) {
-        AppSnackBar.error('启动主机失败: $error');
+        ref.showError('启动主机失败: $error');
       });
     }
   }
@@ -489,7 +489,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
               if (template != null) {
                 ref.read(scoreProvider.notifier).startNewGame(template);
               } else {
-                AppSnackBar.warn('模板加载失败，请重试');
+                ref.showWarning('模板加载失败，请重试');
               }
             },
             child: Text('重置'),
@@ -584,7 +584,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       if (canAddNewRound) {
         scoreNotifier.addNewRound();
       } else {
-        AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
+        GlobalMsgManager.showMessage('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
         return;
       }
     }

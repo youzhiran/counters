@@ -7,10 +7,10 @@ import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/optimized_list.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/player_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/common/widgets/template_card.dart';
 import 'package:counters/features/history/history_page.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
@@ -329,7 +329,7 @@ class HomePage extends ConsumerWidget {
               globalState.navigatorKey.currentState?.pop();
               scoreNotifier.resetGame(hasScores);
               lanNotifier.disposeManager();
-              AppSnackBar.show('已结束当前游戏计分');
+              ref.showSuccess('已结束当前游戏计分');
             },
             child: Text('确认结束', style: TextStyle(color: Colors.red)),
           ),
@@ -425,7 +425,7 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
         } else if (template is CounterTemplate) {
           return CounterSessionPage(templateId: widget.templateId);
         }
-        Future.microtask(() => AppSnackBar.error('未知的模板类型'));
+        Future.microtask(() => GlobalMsgManager.showError('未知的模板类型'));
         return const HomePage();
       },
     );

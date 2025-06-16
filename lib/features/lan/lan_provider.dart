@@ -10,7 +10,7 @@ import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/template_utils.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/network_manager.dart';
 // 引入 Score Provider 和 消息 Payload 类
@@ -99,15 +99,20 @@ class LanState {
           clearNetworkManager ? null : networkManager ?? this.networkManager,
       isBroadcasting: isBroadcasting ?? this.isBroadcasting,
       // 新增
-      connectedClientIps: connectedClientIps ?? this.connectedClientIps, // 新增
-      interfaceName: interfaceName ?? this.interfaceName, // 新增
-      serverPort: serverPort ?? this.serverPort, // 新增
+      connectedClientIps: connectedClientIps ?? this.connectedClientIps,
+      // 新增
+      interfaceName: interfaceName ?? this.interfaceName,
+      // 新增
+      serverPort: serverPort ?? this.serverPort,
+      // 新增
       // 新增：客户端模式相关状态
       isClientMode: isClientMode ?? this.isClientMode,
       isReconnecting: isReconnecting ?? this.isReconnecting,
       reconnectAttempts: reconnectAttempts ?? this.reconnectAttempts,
       maxReconnectAttempts: maxReconnectAttempts ?? this.maxReconnectAttempts,
-      disconnectReason: clearDisconnectReason ? null : (disconnectReason ?? this.disconnectReason),
+      disconnectReason: clearDisconnectReason
+          ? null
+          : (disconnectReason ?? this.disconnectReason),
       hostIp: clearHostIp ? null : (hostIp ?? this.hostIp),
     );
   }
@@ -135,6 +140,7 @@ class Lan extends _$Lan {
 
   // 提供访问控制器的方法（用于UI）
   TextEditingController getHostIpController() => _hostIpController;
+
   TextEditingController getMessageController() => _messageController;
 
   // 使用当前输入的主机IP连接
@@ -143,7 +149,7 @@ class Lan extends _$Lan {
     if (hostIp.isNotEmpty) {
       await connectToHost(hostIp, port);
     } else {
-      AppSnackBar.show('请输入主机IP地址');
+      GlobalMsgManager.showMessage('请输入主机IP地址');
     }
   }
 
@@ -214,10 +220,13 @@ class Lan extends _$Lan {
                 final templatesAsync = ref.read(templatesProvider);
                 final templates = templatesAsync.valueOrNull;
                 if (templates != null) {
-                  final template = templates.firstWhereOrNull((t) => t.tid == payload.session.templateId);
+                  final template = templates.firstWhereOrNull(
+                      (t) => t.tid == payload.session.templateId);
                   if (template != null && template.players.isNotEmpty) {
                     Log.i('从模板中补充玩家信息: ${template.players.length} 个玩家');
-                    ref.read(scoreProvider.notifier).applyPlayerInfo(template.players);
+                    ref
+                        .read(scoreProvider.notifier)
+                        .applyPlayerInfo(template.players);
                   }
                 }
               }
@@ -272,7 +281,8 @@ class Lan extends _$Lan {
               // 修复：先应用玩家信息到 ScoreNotifier，确保后续的 sync_state 能正确使用玩家信息
               if (players.isNotEmpty) {
                 Log.i("应用模板中的玩家信息到 ScoreNotifier: ${players.length} 个玩家");
-                Log.i("玩家详情: ${players.map((p) => '${p.name}(${p.pid})').join(', ')}");
+                Log.i(
+                    "玩家详情: ${players.map((p) => '${p.name}(${p.pid})').join(', ')}");
                 ref.read(scoreProvider.notifier).applyPlayerInfo(players);
               } else {
                 Log.w("模板中没有玩家信息，这可能导致后续的同步问题");
@@ -360,7 +370,8 @@ class Lan extends _$Lan {
                 ref.read(scoreProvider.notifier).applyPlayerInfo(players);
               } catch (e) {
                 // 使用统一的错误处理器
-                ErrorHandler.handle(e, StackTrace.current, prefix: '解析player_info列表失败');
+                ErrorHandler.handle(e, StackTrace.current,
+                    prefix: '解析player_info列表失败');
               }
             } else {
               Log.w('收到无效的 player_info 消息负载类型: ${data.runtimeType}');
@@ -403,7 +414,9 @@ class Lan extends _$Lan {
         '_handleConnectionChanged: $statusMessage (isConnected: $isConnected)');
 
     // 检测重连状态和重连次数
-    final isReconnecting = statusMessage.contains('重连中') || statusMessage.contains('正在尝试重连') || statusMessage.startsWith('重连尝试:');
+    final isReconnecting = statusMessage.contains('重连中') ||
+        statusMessage.contains('正在尝试重连') ||
+        statusMessage.startsWith('重连尝试:');
     int reconnectAttempts = state.reconnectAttempts;
 
     // 如果连接成功，重置重连次数
@@ -418,10 +431,12 @@ class Lan extends _$Lan {
     // 构建显示用的状态消息，包含正确的重连次数
     String displayStatusMessage = statusMessage;
     if (isReconnecting && state.isClientMode) {
-      displayStatusMessage = '正在重连... ($reconnectAttempts/${state.maxReconnectAttempts})';
+      displayStatusMessage =
+          '正在重连... ($reconnectAttempts/${state.maxReconnectAttempts})';
     } else if (statusMessage.startsWith('重连尝试:')) {
       // 将特殊的重连消息转换为用户友好的显示
-      displayStatusMessage = '正在重连... ($reconnectAttempts/${state.maxReconnectAttempts})';
+      displayStatusMessage =
+          '正在重连... ($reconnectAttempts/${state.maxReconnectAttempts})';
     }
 
     state = state.copyWith(
@@ -434,9 +449,9 @@ class Lan extends _$Lan {
     // 如果连接断开且处于客户端模式，显示相应提示
     if (!isConnected && state.isClientMode && !isReconnecting) {
       if (statusMessage.contains('重连失败')) {
-        AppSnackBar.error('连接断开，重连失败。您可以尝试手动重连或退出客户端模式。');
+        GlobalMsgManager.showError('连接断开，重连失败。您可以尝试手动重连或退出客户端模式。');
       } else if (!statusMessage.contains('已断开连接')) {
-        AppSnackBar.warn('与主机的连接已断开，正在尝试重连...');
+        GlobalMsgManager.showWarn('与主机的连接已断开，正在尝试重连...');
       }
     }
   }
@@ -444,7 +459,7 @@ class Lan extends _$Lan {
   // 处理主机主动断开连接
   void _handleHostDisconnect(String reason) {
     Log.i('处理主机断开连接: $reason');
-    AppSnackBar.error(reason);
+    GlobalMsgManager.showError(reason);
 
     // 清理连接但保持客户端模式状态
     state = state.copyWith(
@@ -495,7 +510,8 @@ class Lan extends _$Lan {
   // 新增：处理服务器错误的回调
   void _handleServerError(String error) {
     // 使用统一的错误处理器
-    ErrorHandler.handle(Exception(error), StackTrace.current, prefix: 'LAN服务器运行时错误');
+    ErrorHandler.handle(Exception(error), StackTrace.current,
+        prefix: 'LAN服务器运行时错误');
 
     // 更新状态显示错误信息
     state = state.copyWith(
@@ -506,7 +522,8 @@ class Lan extends _$Lan {
   // 新增：处理启动失败的回调
   void _handleStartupError(String error) {
     // 使用统一的错误处理器
-    ErrorHandler.handle(Exception(error), StackTrace.current, prefix: 'LAN服务器启动失败');
+    ErrorHandler.handle(Exception(error), StackTrace.current,
+        prefix: 'LAN服务器启动失败');
 
     // 更新状态
     state = state.copyWith(
@@ -517,7 +534,8 @@ class Lan extends _$Lan {
   }
 
   /// 修改 startHost 方法以传递回调和模板名称
-  Future<void> startHost(int port, String baseTid, {String? templateName}) async {
+  Future<void> startHost(int port, String baseTid,
+      {String? templateName}) async {
     Log.i('尝试启动主机模式...');
     disposeManager(); // 确保旧的管理器已清理
     state = state.copyWith(isLoading: true, isHost: true, isConnected: false);
@@ -527,10 +545,14 @@ class Lan extends _$Lan {
     try {
       final manager = await ScoreNetworkManager.createHost(
         port,
-        onMessageReceived: _handleClientMessage, // 处理客户端消息的回调
-        onClientConnected: _handleClientConnected, // 新增：传递连接回调
-        onClientDisconnected: _handleClientDisconnected, // 新增：传递断开回调
-        onServerError: _handleServerError, // 新增：服务器错误回调
+        onMessageReceived: _handleClientMessage,
+        // 处理客户端消息的回调
+        onClientConnected: _handleClientConnected,
+        // 新增：传递连接回调
+        onClientDisconnected: _handleClientDisconnected,
+        // 新增：传递断开回调
+        onServerError: _handleServerError,
+        // 新增：服务器错误回调
         onStartupError: _handleStartupError, // 新增：启动失败回调
       );
       state = state.copyWith(
@@ -540,7 +562,8 @@ class Lan extends _$Lan {
         // 初始状态
         connectedClientIps: [],
         // 清空客户端列表
-        isBroadcasting: true, // 主机启动时默认开启广播
+        isBroadcasting: true,
+        // 主机启动时默认开启广播
         serverPort: port, // 新增：设置服务器端口
       );
       await _startDiscoveryBroadcast(port, baseTid);
@@ -581,9 +604,11 @@ class Lan extends _$Lan {
             final templateData = template.toMap();
 
             // 修复：确保玩家信息被正确包含
-            templateData['players'] = template.players.map((player) => player.toJson()).toList();
+            templateData['players'] =
+                template.players.map((player) => player.toJson()).toList();
 
-            Log.i('发送模板信息，包含 ${template.players.length} 个玩家: ${template.players.map((p) => p.name).join(", ")}');
+            Log.i(
+                '发送模板信息，包含 ${template.players.length} 个玩家: ${template.players.map((p) => p.name).join(", ")}');
 
             final templateMessage =
                 SyncMessage(type: "template_info", data: templateData);
@@ -592,7 +617,8 @@ class Lan extends _$Lan {
             Log.i('已发送 template_info 给客户端，玩家数量: ${template.players.length}');
           } catch (e) {
             // 使用统一的错误处理器
-            ErrorHandler.handle(e, StackTrace.current, prefix: '序列化或发送template_info失败');
+            ErrorHandler.handle(e, StackTrace.current,
+                prefix: '序列化或发送template_info失败');
             // 即使模板发送失败，也尝试发送状态
           }
         } else {
@@ -634,15 +660,19 @@ class Lan extends _$Lan {
   Future<void> connectToHost(String hostIp, int port) async {
     await disposeManager();
     state = state.copyWith(
-        isLoading: true,
-        isHost: false,
-        isConnected: false,
-        isClientMode: true, // 设置为客户端模式
-        hostIp: hostIp, // 记录主机IP用于重连
-        connectionStatus: '连接中...',
-        clearDisconnectReason: true, // 清除之前的断开原因
-        reconnectAttempts: 0, // 重置重连次数
-        isReconnecting: false,
+      isLoading: true,
+      isHost: false,
+      isConnected: false,
+      isClientMode: true,
+      // 设置为客户端模式
+      hostIp: hostIp,
+      // 记录主机IP用于重连
+      connectionStatus: '连接中...',
+      clearDisconnectReason: true,
+      // 清除之前的断开原因
+      reconnectAttempts: 0,
+      // 重置重连次数
+      isReconnecting: false,
     );
     try {
       // === 修复点 2：使用 ScoreNetworkManager.createClient 静态方法创建管理器 ===
@@ -654,9 +684,7 @@ class Lan extends _$Lan {
       );
 
       state = state.copyWith(
-          isLoading: false,
-          networkManager: manager,
-          receivedMessages: []);
+          isLoading: false, networkManager: manager, receivedMessages: []);
 
       // Client 连接成功后，确保 ScoreNotifier 知道当前处于客户端模式
       // 由于 ScoreNotifier 会通过 ref.read(lanProvider) 检查状态，
@@ -669,8 +697,6 @@ class Lan extends _$Lan {
       state = state.copyWith(isLoading: false);
     }
   }
-
-
 
   /// 发送 JSON 格式的消息。
   void sendJsonMessage(String jsonString) {
@@ -694,7 +720,7 @@ class Lan extends _$Lan {
       }
     } else {
       Log.w('无法发送 JSON 消息：未连接');
-      AppSnackBar.show("无法发送消息：未连接");
+      GlobalMsgManager.showMessage("无法发送消息：未连接");
     }
   }
 
@@ -752,17 +778,17 @@ class Lan extends _$Lan {
   /// 手动重连到主机
   Future<void> manualReconnect() async {
     if (!state.isClientMode || state.hostIp == null) {
-      AppSnackBar.warn('无法重连：不在客户端模式或缺少主机信息');
+      GlobalMsgManager.showWarn('无法重连：不在客户端模式或缺少主机信息');
       return;
     }
 
     if (state.isConnected) {
-      AppSnackBar.show('当前已连接，无需重连');
+      GlobalMsgManager.showMessage('当前已连接，无需重连');
       return;
     }
 
     Log.i('开始手动重连到主机: ${state.hostIp}');
-    AppSnackBar.show('正在尝试重连...');
+    GlobalMsgManager.showMessage('正在尝试重连...');
 
     // 如果有现有的网络管理器，先清理
     if (state.networkManager != null) {
@@ -817,7 +843,7 @@ class Lan extends _$Lan {
       connectionStatus: '未连接',
     );
 
-    AppSnackBar.show('已退出客户端模式');
+    GlobalMsgManager.showMessage('已退出客户端模式');
   }
 
   /// 清理并释放所有网络资源。
@@ -826,7 +852,9 @@ class Lan extends _$Lan {
     _stopDiscoveryBroadcast();
 
     // 如果是主机模式且有连接的客户端，发送断开通知
-    if (state.isHost && state.connectedClientIps.isNotEmpty && state.networkManager != null) {
+    if (state.isHost &&
+        state.connectedClientIps.isNotEmpty &&
+        state.networkManager != null) {
       Log.i('主机断开连接，向 ${state.connectedClientIps.length} 个客户端发送断开通知');
       try {
         final disconnectMessage = SyncMessage(
@@ -870,7 +898,8 @@ class Lan extends _$Lan {
       isHost: false,
       connectionStatus: wasClientMode ? '客户端模式（已断开连接）' : '未连接',
       receivedMessages: [],
-      serverPort: wasHost ? 0 : state.serverPort, // 主机模式重置端口，客户端模式保留端口用于重连
+      serverPort: wasHost ? 0 : state.serverPort,
+      // 主机模式重置端口，客户端模式保留端口用于重连
       connectedClientIps: [], // 清空客户端列表
     );
   }

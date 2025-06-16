@@ -12,7 +12,7 @@ import 'package:counters/common/model/player_score.dart';
 import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 // 引入 LAN Provider 和 消息 Payload 类
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/player/player_provider.dart';
@@ -192,7 +192,7 @@ class Score extends _$Score {
   /// 如果不是客户端模式，返回false（表示可以继续操作）
   bool _checkAndHandleClientRestriction() {
     if (_isClientMode()) {
-      AppSnackBar.show('仅主机可以进行计分操作');
+      GlobalMsgManager.showMessage('仅主机可以进行计分操作');
       return true;
     }
     return false;
@@ -369,11 +369,11 @@ class Score extends _$Score {
     if (newScore > 2147483647) {
       Log.w('分数过大，已限制为最大值: $playerId');
       newScore = 2147483647; // 限制为 int 的最大值
-      AppSnackBar.warn('分数过大，已限制为最大值');
+      GlobalMsgManager.showWarn('分数过大，已限制为最大值');
     } else if (newScore < -2147483648) {
       Log.w('分数过小，已限制为最小值: $playerId');
       newScore = -2147483648; // 限制为 int 的最小值
-      AppSnackBar.warn('分数过小，已限制为最小值');
+      GlobalMsgManager.showWarn('分数过小，已限制为最小值');
     }
 
     final playerScoresMap = {playerId: newScore};
@@ -507,7 +507,7 @@ class Score extends _$Score {
 
       if (!isPreviousRoundComplete) {
         Log.w('无法开始新回合，前一个回合尚未填写完整分数');
-        AppSnackBar.warn('无法开始新回合，请先完成当前轮计分');
+        GlobalMsgManager.showWarn('无法开始新回合，请先完成当前轮计分');
         return;
       }
     }
@@ -545,7 +545,9 @@ class Score extends _$Score {
     final currentState = state.valueOrNull;
 
     // 修复：客户端模式下不保存历史记录到本地数据库
-    if (saveToHistory && currentState?.currentSession != null && !_isClientMode()) {
+    if (saveToHistory &&
+        currentState?.currentSession != null &&
+        !_isClientMode()) {
       final sessionToSave = currentState!.currentSession!;
       final completedSession = sessionToSave.copyWith(
         isCompleted: true,
@@ -764,10 +766,12 @@ class Score extends _$Score {
     final existingPlayers = currentState?.players ?? [];
 
     // 修复：确保玩家信息不会丢失
-    Log.i('applySyncState: 当前玩家数量: ${existingPlayers.length}, 会话中玩家数量: ${session.scores.length}');
+    Log.i(
+        'applySyncState: 当前玩家数量: ${existingPlayers.length}, 会话中玩家数量: ${session.scores.length}');
 
     // 如果当前状态中有玩家信息，优先保留
-    final playersToUse = existingPlayers.isNotEmpty ? existingPlayers : <PlayerInfo>[];
+    final playersToUse =
+        existingPlayers.isNotEmpty ? existingPlayers : <PlayerInfo>[];
 
     // 修复：直接更新状态，避免触发 Provider 重建导致从 DAO 重新加载空状态
     final newState = currentState?.copyWith(
@@ -782,7 +786,8 @@ class Score extends _$Score {
           currentSession: session,
           currentRound: _calculateCurrentRound(session),
           isInitialized: true,
-          players: playersToUse, // 明确设置玩家信息
+          players: playersToUse,
+          // 明确设置玩家信息
           showGameEndDialog: false,
           currentHighlight: null,
         );
@@ -974,7 +979,8 @@ class Score extends _$Score {
 
       // 修复：使用 ref.read 而不是 ref.watch，避免在模板更新时触发重建
       final templatesAsync = ref.read(templatesProvider);
-      final templates = templatesAsync.valueOrNull ?? await ref.read(templatesProvider.future);
+      final templates = templatesAsync.valueOrNull ??
+          await ref.read(templatesProvider.future);
 
       Log.d('ScoreNotifier: 从Provider获取到 ${templates?.length ?? 0} 个模板');
       return templates;
@@ -1015,7 +1021,8 @@ class ScoreEditService {
         initialValue: currentScore,
         supportDecimal: supportDecimal,
         decimalMultiplier: decimalMultiplier,
-        round: roundIndex + 1, // 修复轮次显示：从1开始计数而不是0开始
+        round: roundIndex + 1,
+        // 修复轮次显示：从1开始计数而不是0开始
         onConfirm: (newValue) {
           ref
               .read(scoreProvider.notifier)

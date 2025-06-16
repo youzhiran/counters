@@ -5,7 +5,7 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/ip_display_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/score/score_provider.dart';
@@ -85,7 +85,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       if (!lanState.isConnected) {
         if (!mounted) return;
         globalState.navigatorKey.currentState?.pop(); // 关闭加载对话框
-        AppSnackBar.error('连接失败，请重试');
+        ref.showError('连接失败，请重试');
         return;
       }
 
@@ -111,12 +111,16 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
           // 修复：更详细的同步状态检查
           if (scoreState != null) {
             final hasSession = scoreState.currentSession != null;
-            final templateMatches = hasSession && scoreState.currentSession!.templateId == host.baseTid;
+            final templateMatches = hasSession &&
+                scoreState.currentSession!.templateId == host.baseTid;
             final hasPlayers = scoreState.players.isNotEmpty;
-            final hasScores = hasSession && scoreState.currentSession!.scores.isNotEmpty;
+            final hasScores =
+                hasSession && scoreState.currentSession!.scores.isNotEmpty;
 
-            Log.d('_connectToHost 轮询详情: hasSession=$hasSession, templateMatches=$templateMatches, hasPlayers=$hasPlayers, hasScores=$hasScores');
-            Log.d('_connectToHost 轮询详情: 玩家数量=${scoreState.players.length}, 分数数量=${scoreState.currentSession?.scores.length ?? 0}');
+            Log.d(
+                '_connectToHost 轮询详情: hasSession=$hasSession, templateMatches=$templateMatches, hasPlayers=$hasPlayers, hasScores=$hasScores');
+            Log.d(
+                '_connectToHost 轮询详情: 玩家数量=${scoreState.players.length}, 分数数量=${scoreState.currentSession?.scores.length ?? 0}');
 
             // 检查是否有会话状态、模板ID匹配、且有玩家信息
             if (hasSession && templateMatches && hasPlayers && hasScores) {
@@ -124,7 +128,8 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
               sessionSynced = true;
               break; // 会话已同步，退出循环
             } else {
-              Log.d('_connectToHost 轮询: 同步尚未完成 - 会话:$hasSession, 模板匹配:$templateMatches, 玩家:$hasPlayers, 分数:$hasScores');
+              Log.d(
+                  '_connectToHost 轮询: 同步尚未完成 - 会话:$hasSession, 模板匹配:$templateMatches, 玩家:$hasPlayers, 分数:$hasScores');
             }
           } else {
             Log.d('_connectToHost 轮询: scoreState 为空');
@@ -145,7 +150,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       if (!sessionSynced) {
         if (!mounted) return;
         globalState.navigatorKey.currentState?.pop(); // 关闭加载对话框
-        AppSnackBar.error('会话状态同步超时或失败，请重试');
+        ref.showError('会话状态同步超时或失败，请重试');
         // 新增：断开连接
         lanNotifier.disposeManager();
         return;
@@ -170,7 +175,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       Log.e('连接或同步时出错. Error: $e\nStackTrace: $s'); // 记录错误和堆栈
       if (mounted) {
         globalState.navigatorKey.currentState?.pop(); // 确保出错时关闭对话框
-        AppSnackBar.error('连接或同步时出错: $e');
+        ref.showError('连接或同步时出错: $e');
       }
     }
   }
@@ -201,15 +206,15 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
               Text(
                 '客户端模式下无法发现局域网游戏',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                      color: Theme.of(context).colorScheme.error,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 '请先退出客户端模式或断开当前连接',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
               const SizedBox(height: 24),
               OutlinedButton.icon(
@@ -280,8 +285,8 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
                     // 主机图标
                     title: Text(host.hostName),
                     // 显示主机名
-                    subtitle:
-                        Text('${host.ip}:${host.port} (模板: ${_getTemplateName(host)})'),
+                    subtitle: Text(
+                        '${host.ip}:${host.port} (模板: ${_getTemplateName(host)})'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _connectToHost(host), // 点击连接
                   );

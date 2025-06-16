@@ -5,7 +5,7 @@ import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -264,12 +264,12 @@ class BaseScoreEditDialogState extends ConsumerState<BaseScoreEditDialog> {
       // 小数处理
       final value = double.tryParse(inputText);
       if (value == null) {
-        AppSnackBar.show('请输入有效的数字');
+        GlobalMsgManager.showMessage('请输入有效的数字');
         return;
       }
 
       if (!isAllowNegative && value < 0) {
-        AppSnackBar.warn('当前模板设置不允许输入负数！');
+        GlobalMsgManager.showWarn('当前模板设置不允许输入负数！');
         return;
       }
 
@@ -282,7 +282,7 @@ class BaseScoreEditDialogState extends ConsumerState<BaseScoreEditDialog> {
       final value = int.tryParse(inputText) ?? 0;
 
       if (!isAllowNegative && value < 0) {
-        AppSnackBar.warn('当前模板设置不允许输入负数！');
+        GlobalMsgManager.showWarn('当前模板设置不允许输入负数！');
         return;
       }
 

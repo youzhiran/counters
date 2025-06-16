@@ -1,6 +1,6 @@
 import 'package:counters/app/state.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/player_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 
 class AddPlayersPage extends StatefulWidget {
@@ -43,7 +43,7 @@ class _AddPlayersPageState extends State<AddPlayersPage> {
     if (hasValidPlayers) {
       globalState.navigatorKey.currentState?.pop();
     } else {
-      AppSnackBar.warn('请至少输入一个有效的玩家名称');
+      GlobalMsgManager.showWarn('请至少输入一个有效的玩家名称');
     }
   }
 

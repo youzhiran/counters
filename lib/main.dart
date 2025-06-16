@@ -117,7 +117,7 @@ class _MyAppState extends ConsumerState<MyApp> {
           container.read(verboseLogProvider);
 
           // 设置全局消息管理器容器
-          GlobalMessageManager.setContainer(container);
+          GlobalMsgManager.setContainer(container);
         } catch (e) {
           ErrorHandler.handle(e, StackTrace.current, prefix: '主题初始化失败');
         }

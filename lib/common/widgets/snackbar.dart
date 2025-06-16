@@ -106,10 +106,10 @@ class AppSnackBar {
 
 // // 使用示例
 // /* 1. 基础蓝色样式 */
-// AppSnackBar.show('已结束当前游戏计分');
+// GlobalMsgManager.showMessage('已结束当前游戏计分');
 //
 // /* 2. 带参数的标准蓝色样式 */
-// AppSnackBar.show('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
+// GlobalMsgManager.showMessage('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
 //
 // /* 3. 错误红色样式 */
 // AppSnackBar.error('打开失败: ${e.toString()}');

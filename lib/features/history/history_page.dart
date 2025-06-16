@@ -4,7 +4,7 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
 import 'package:counters/common/widgets/history_session_item.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:counters/home_page.dart';
@@ -163,7 +163,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   void _clearAllHistory(WidgetRef ref) async {
     await ref.read(scoreProvider.notifier).clearAllHistory();
     // No need to pop dialog, as it's a page now
-    AppSnackBar.show('已清除所有历史记录');
+    ref.showSuccess('已清除所有历史记录');
     setState(() {}); // Refresh the page to show empty state
   }
 

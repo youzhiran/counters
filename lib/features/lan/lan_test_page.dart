@@ -1,7 +1,7 @@
 import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/widgets/ip_display_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/widgets/lan_status_button.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +46,7 @@ class LanTestPage extends ConsumerWidget {
             onPressed: () {
               lanNotifier.clearMessages();
               logNotifier.clearLogs();
-              AppSnackBar.show('日志和消息已清空');
+              GlobalMsgManager.showMessage('日志和消息已清空');
             },
           ),
           // 停止/断开连接按钮
@@ -57,7 +57,7 @@ class LanTestPage extends ConsumerWidget {
               onPressed: () async {
                 try {
                   await lanNotifier.disposeManager();
-                  AppSnackBar.show(lanState.isHost ? '主机已停止' : '连接已断开');
+                  GlobalMsgManager.showMessage(lanState.isHost ? '主机已停止' : '连接已断开');
                 } catch (e) {
                   ErrorHandler.handle(e, StackTrace.current, prefix: '停止连接失败');
                 }

@@ -1,4 +1,4 @@
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For Clipboard
 
@@ -30,7 +30,7 @@ class IpDisplayWidget extends StatelessWidget {
                 label: const Text('复制IP'),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: localIp));
-                  AppSnackBar.show('IP地址已复制');
+                  GlobalMsgManager.showMessage('IP地址已复制');
                 },
               ),
               const SizedBox(width: 8),

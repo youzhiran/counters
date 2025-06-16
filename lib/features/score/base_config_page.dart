@@ -3,7 +3,6 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/player_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/player/player_select_dialog.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -144,7 +143,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     final newTargetScore = int.tryParse(targetScoreController.text);
 
     if (newPlayerCount == null || newTargetScore == null) {
-      AppSnackBar.warn('玩家数量和目标分数必须为有效数字');
+      ref.showWarning('玩家数量和目标分数必须为有效数字');
       return false;
     }
 
@@ -153,14 +152,14 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
 
     // 检查玩家数量是否匹配
     if (players.length != playerCount) {
-      AppSnackBar.warn('请添加/删除足够的玩家（${players.length}/$playerCount）');
+      ref.showWarning('请添加/删除足够的玩家（${players.length}/$playerCount）');
       return false;
     }
 
     if (_playerCountError != null ||
         _targetScoreError != null ||
         _templateNameError != null) {
-      AppSnackBar.warn('请修正输入错误');
+      ref.showWarning('请修正输入错误');
       return false;
     }
     return true;
@@ -189,7 +188,6 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     final provider = ref.read(scoreProvider.notifier);
     final isExists = provider.checkSessionExists(tid);
     if (await isExists) {
-      AppSnackBar.warn('当前模板已有关联计分记录，保存时需清除该记录');
       ref.showWarning('当前模板已有关联计分记录，保存时需清除该记录');
       setState(() {
         hasHistory = true;
@@ -444,11 +442,11 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                         int.tryParse(playerCountController.text);
                     if (currentEnteredPlayerCount == null ||
                         _playerCountError != null) {
-                      AppSnackBar.warn('请先设置有效的玩家数量');
+                      ref.showWarning('请先设置有效的玩家数量');
                       return;
                     }
                     if (players.length >= currentEnteredPlayerCount) {
-                      AppSnackBar.show('已达到玩家数量上限');
+                      ref.showMessage('已达到玩家数量上限');
                       return;
                     }
 
@@ -468,7 +466,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                             nameControllers
                                 .add(TextEditingController(text: player.name));
                           } else {
-                            AppSnackBar.show('已达到玩家数量上限，部分玩家未添加');
+                            ref.showMessage('已达到玩家数量上限，部分玩家未添加');
                             break;
                           }
                         }

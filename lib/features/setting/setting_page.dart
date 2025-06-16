@@ -7,9 +7,9 @@ import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/setting_list_tile.dart';
-import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/dev/animation_demo_page.dart';
 import 'package:counters/features/dev/performance_demo.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
@@ -321,7 +321,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
           try {
             await targetDir.delete(recursive: true);
             await targetDir.create(recursive: true);
-            AppSnackBar.show('已清空目标目录');
+            GlobalMsgManager.showMessage('已清空目标目录');
           } catch (e) {
             ErrorHandler.handle(e, StackTrace.current, prefix: '清空目标目录失败');
             return false;
@@ -366,7 +366,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
 
       // 检查目录是否可写
       if (!await DataManager.isDirWritable(selectedDirectory)) {
-        AppSnackBar.show('所选目录无写入权限，请选择其他目录');
+        ref.showMessage('所选目录无写入权限，请选择其他目录');
         return;
       }
 
@@ -388,9 +388,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
           _dataStoragePath = selectedDirectory;
         });
 
-        AppSnackBar.show('数据迁移完成');
+        ref.showSuccess('数据迁移完成');
       } else {
-        AppSnackBar.error('数据迁移失败，请手动迁移数据');
+        ref.showError('数据迁移失败，请手动迁移数据');
       }
     }
   }
@@ -403,13 +403,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
 
     // 检查是否已经是默认目录
     if (!_isCustomPath || _dataStoragePath == defaultDir) {
-      AppSnackBar.show('当前已经是默认存储位置');
+      GlobalMsgManager.showMessage('当前已经是默认存储位置');
       return;
     }
 
     // 检查目录是否可写
     if (!await DataManager.isDirWritable(defaultDir)) {
-      AppSnackBar.show('所选目录无写入权限，请选择其他目录');
+      GlobalMsgManager.showMessage('所选目录无写入权限，请选择其他目录');
       return;
     }
 
@@ -431,9 +431,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
         _dataStoragePath = defaultDir;
       });
 
-      AppSnackBar.show('数据迁移完成');
+      ref.showSuccess('数据迁移完成');
     } else {
-      AppSnackBar.error('数据迁移失败，请手动迁移数据');
+      ref.showError('数据迁移失败，请手动迁移数据');
     }
   }
 
@@ -531,7 +531,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     if (result && url != null) {
       globalState.openUrl(url!, '点击前往唤起群组应用');
     } else {
-      AppSnackBar.show('获取群组链接失败');
+      GlobalMsgManager.showMessage('获取群组链接失败');
     }
   }
 
@@ -550,7 +550,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       if (_versionClickCount >= _clicksToShowDev && !_showDevOptions) {
         _showDevOptions = true;
         _saveDevOptions(true); // 保存状态
-        AppSnackBar.show('已启用开发者选项。本功能仅限调试使用，请慎重操作！');
+        GlobalMsgManager.showMessage('已启用开发者选项。本功能仅限调试使用，请慎重操作！');
       }
     });
 
@@ -570,7 +570,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       _showDevOptions = false;
     });
     await _saveDevOptions(false); // 保存状态
-    AppSnackBar.show('已隐藏开发者选项');
+    GlobalMsgManager.showMessage('已隐藏开发者选项');
   }
 
   // 添加保存开发者选项状态方法
@@ -594,7 +594,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     setState(() {
       _enableProviderLogger = value;
     });
-    AppSnackBar.show('设置已保存，重启应用后生效');
+    GlobalMsgManager.showMessage('设置已保存，重启应用后生效');
   }
 
   // 加载桌面模式设置
@@ -612,7 +612,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     setState(() {
       _enableDesktopMode = value;
     });
-    AppSnackBar.show('设置已保存，重启应用后生效');
+    GlobalMsgManager.showMessage('设置已保存，重启应用后生效');
   }
 
   // 加载Verbose日志设置
@@ -634,7 +634,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     // 同时更新Provider中的状态
     ref.read(verboseLogProvider.notifier).setVerboseLogEnabled(value);
 
-    AppSnackBar.show('Verbose日志已${value ? '启用' : '禁用'}');
+    GlobalMsgManager.showMessage('Verbose日志已${value ? '启用' : '禁用'}');
   }
 
   // 测试日志级别
@@ -653,7 +653,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     // 也测试带颜色的verbose日志
     Log.verbose('这是带颜色的Verbose日志', color: Colors.grey);
 
-    AppSnackBar.show('已输出各级别日志到控制台，请查看控制台输出\n当前Verbose: ${verboseEnabled ? '启用' : '禁用'}');
+    GlobalMsgManager.showMessage(
+        '已输出各级别日志到控制台，请查看控制台输出\n当前Verbose: ${verboseEnabled ? '启用' : '禁用'}');
   }
 
   void _resetDatabase() {

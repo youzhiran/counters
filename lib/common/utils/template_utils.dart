@@ -5,7 +5,7 @@ import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/score/counter/counter_page.dart';
 import 'package:counters/features/score/landlords/landlords_page.dart';
 import 'package:counters/features/score/mahjong/mahjong_page.dart';
@@ -43,7 +43,7 @@ class TemplateUtils {
       case CounterTemplate _:
         return CounterSessionPage(templateId: template.tid);
       default:
-        Future.microtask(() => AppSnackBar.error('未知的模板类型'));
+        Future.microtask(() => GlobalMsgManager.showError('未知的模板类型'));
         return null; // 返回 null 表示未知模板类型
     }
   }

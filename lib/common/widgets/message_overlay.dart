@@ -19,6 +19,7 @@ class MessageOverlay extends ConsumerStatefulWidget {
 
 class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   OverlayEntry? _overlayEntry;
+  bool _isHiding = false;
 
   @override
   void dispose() {
@@ -45,32 +46,51 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
 
   void _showMessage(AppMessage message) {
     try {
+      // 如果正在隐藏，等待完成后再显示新消息
+      if (_isHiding) {
+        Future.delayed(const Duration(milliseconds: 450), () {
+          if (mounted) {
+            _showMessage(message);
+          }
+        });
+        return;
+      }
+
       _hideMessage(); // 先移除现有的消息
 
-      _overlayEntry = OverlayEntry(
-        builder: (context) => Positioned(
-          top: MediaQuery.of(context).padding.top + 16,
-          left: 16,
-          right: 16,
-          child: Material(
-            color: Colors.transparent,
-            child: SafeArea(
-              child: _MessageCard(
-                message: message,
-                onDismiss: () {
-                  ref.read(messageManagerProvider.notifier).clearCurrentMessage();
-                },
+      // 稍微延迟以确保前一个消息完全移除
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (!mounted) return;
+
+        _overlayEntry = OverlayEntry(
+          builder: (context) => Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            right: 16,
+            child: Material(
+              color: Colors.transparent,
+              child: SafeArea(
+                child: _MessageCard(
+                  message: message,
+                  onDismiss: () {
+                    ref.read(messageManagerProvider.notifier).clearCurrentMessage();
+                  },
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
 
-      // 使用 Overlay 在最顶层显示消息
-      final overlay = Overlay.of(context, rootOverlay: true);
-      overlay.insert(_overlayEntry!);
-
-      Log.v('MessageOverlay: 成功显示消息 - ${message.content}');
+        try {
+          // 使用 Overlay 在最顶层显示消息
+          final overlay = Overlay.of(context, rootOverlay: true);
+          overlay.insert(_overlayEntry!);
+          Log.v('MessageOverlay: 成功显示消息 - ${message.content}');
+        } catch (e) {
+          Log.e('MessageOverlay: 插入Overlay失败 - $e');
+          _overlayEntry = null;
+        }
+      });
     } catch (e, stackTrace) {
       Log.e('MessageOverlay: 显示消息失败 - $e');
       Log.e('StackTrace: $stackTrace');
@@ -79,13 +99,27 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   }
 
   void _hideMessage() {
+    if (_isHiding || _overlayEntry == null) return;
+
     try {
-      _overlayEntry?.remove();
-      _overlayEntry = null;
-      Log.v('MessageOverlay: 成功隐藏消息');
+      _isHiding = true;
+      // 延迟移除，给退出动画时间
+      Future.delayed(const Duration(milliseconds: 400), () {
+        try {
+          _overlayEntry?.remove();
+          _overlayEntry = null;
+          _isHiding = false;
+          Log.v('MessageOverlay: 成功隐藏消息');
+        } catch (e) {
+          Log.e('MessageOverlay: 延迟隐藏消息失败 - $e');
+          _overlayEntry = null;
+          _isHiding = false;
+        }
+      });
     } catch (e) {
       Log.e('MessageOverlay: 隐藏消息失败 - $e');
-      _overlayEntry = null; // 确保清理状态
+      _overlayEntry = null;
+      _isHiding = false;
     }
   }
 
@@ -93,15 +127,11 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   Widget build(BuildContext context) {
     // 监听消息状态变化
     ref.listen<MessageState>(messageManagerProvider, (previous, next) {
-      Log.v('MessageOverlay: 监听到消息状态变化');
-      Log.v('Previous message: ${previous?.currentMessage?.content}');
-      Log.v('Next message: ${next.currentMessage?.content}');
+      Log.v('MessageOverlay: 状态变化 ${previous?.currentMessage?.content} -> ${next.currentMessage?.content}');
 
       if (next.currentMessage != null) {
-        Log.v('MessageOverlay: 准备显示新消息');
         _showMessage(next.currentMessage!);
       } else {
-        Log.v('MessageOverlay: 准备隐藏消息');
         _hideMessage();
       }
     });
@@ -129,12 +159,13 @@ class _MessageCardState extends State<_MessageCard>
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
+  bool _isExiting = false;
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
 
@@ -143,7 +174,7 @@ class _MessageCardState extends State<_MessageCard>
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeOutBack,
+      curve: Interval(0.0, 1.0, curve: _isExiting ? Curves.easeInBack : Curves.easeOutBack),
     ));
 
     _fadeAnimation = Tween<double>(
@@ -151,7 +182,7 @@ class _MessageCardState extends State<_MessageCard>
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeOut,
+      curve: Interval(0.0, 1.0, curve: _isExiting ? Curves.easeIn : Curves.easeOut),
     ));
 
     _animationController.forward();
@@ -190,8 +221,36 @@ class _MessageCardState extends State<_MessageCard>
   }
 
   void _dismiss() async {
-    await _animationController.reverse();
-    widget.onDismiss();
+    if (_isExiting) return; // 防止重复调用
+
+    setState(() {
+      _isExiting = true;
+    });
+
+    // 重新创建退出动画
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0, -1),
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInBack,
+    ));
+
+    _fadeAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    ));
+
+    // 重置动画控制器并播放退出动画
+    _animationController.reset();
+    await _animationController.forward();
+
+    if (mounted) {
+      widget.onDismiss();
+    }
   }
 
   @override
@@ -253,7 +312,7 @@ class _MessageCardState extends State<_MessageCard>
 }
 
 /// 全局消息显示工具类
-class GlobalMessageManager {
+class GlobalMsgManager {
   static ProviderContainer? _container;
 
   /// 设置全局容器
@@ -261,112 +320,117 @@ class GlobalMessageManager {
     _container = container;
   }
 
-  /// 显示成功消息（全局方法，不依赖于特定的 WidgetRef）
-  static void showSuccess(String content) {
+  /// 通用消息显示方法
+  static void _showMessage(String content, MessageType type, String typeName) {
     try {
-      Log.v('GlobalMessageManager: 尝试显示成功消息 - $content');
       if (_container != null) {
-        _container!.read(messageManagerProvider.notifier).showSuccess(content);
-        Log.v('GlobalMessageManager: 成功消息显示完成');
+        switch (type) {
+          case MessageType.success:
+            _container!.read(messageManagerProvider.notifier).showSuccess(content);
+            Log.i('GlobalMsgManager: 显示$typeName消息 - $content');
+            break;
+          case MessageType.error:
+            _container!.read(messageManagerProvider.notifier).showError(content);
+            Log.e('GlobalMsgManager: 显示$typeName消息 - $content');
+            break;
+          case MessageType.warning:
+            _container!.read(messageManagerProvider.notifier).showWarning(content);
+            Log.w('GlobalMsgManager: 显示$typeName消息 - $content');
+            break;
+          case MessageType.info:
+            _container!.read(messageManagerProvider.notifier).showMessage(content, type: type);
+            Log.i('GlobalMsgManager: 显示$typeName消息 - $content');
+            break;
+        }
       } else {
-        Log.v('GlobalMessageManager: 容器未设置，无法显示消息');
+        Log.w('GlobalMsgManager: 容器未设置，无法显示消息');
       }
     } catch (e, stackTrace) {
-      Log.v('GlobalMessageManager: 显示消息失败 - $e');
-      Log.v('StackTrace: $stackTrace');
+      Log.e('GlobalMsgManager: 显示消息失败 - $e');
+      Log.e('StackTrace: $stackTrace');
     }
+  }
+
+  ///
+  static void showMessage(String content) {
+    _showMessage(content, MessageType.info, '信息');
+  }
+
+
+  /// 显示成功消息
+  static void showSuccess(String content) {
+    _showMessage(content, MessageType.success, '成功');
   }
 
   /// 显示错误消息
   static void showError(String content) {
-    try {
-      Log.v('GlobalMessageManager: 尝试显示错误消息 - $content');
-      if (_container != null) {
-        _container!.read(messageManagerProvider.notifier).showError(content);
-        Log.v('GlobalMessageManager: 错误消息显示完成');
-      } else {
-        Log.v('GlobalMessageManager: 容器未设置，无法显示消息');
-      }
-    } catch (e, stackTrace) {
-      Log.v('GlobalMessageManager: 显示消息失败 - $e');
-      Log.v('StackTrace: $stackTrace');
-    }
+    _showMessage(content, MessageType.error, '错误');
   }
 
   /// 显示警告消息
-  static void showWarning(String content) {
-    try {
-      Log.v('GlobalMessageManager: 尝试显示警告消息 - $content');
-      if (_container != null) {
-        _container!.read(messageManagerProvider.notifier).showWarning(content);
-        Log.v('GlobalMessageManager: 警告消息显示完成');
-      } else {
-        Log.v('GlobalMessageManager: 容器未设置，无法显示消息');
-      }
-    } catch (e, stackTrace) {
-      Log.v('GlobalMessageManager: 显示消息失败 - $e');
-      Log.v('StackTrace: $stackTrace');
-    }
+  static void showWarn(String content) {
+    _showMessage(content, MessageType.warning, '警告');
   }
 }
 
 /// 消息管理器的便捷扩展
 extension MessageManagerExtension on WidgetRef {
-  /// 显示消息
-  void showMessage(String content, {MessageType type = MessageType.info}) {
-    Log.v('MessageManagerExtension: 显示消息 - $content (类型: $type)');
+  /// 通用消息显示方法
+  void _showMessageWithFallback(String content, MessageType type, String typeName) {
     try {
       read(messageManagerProvider.notifier).showMessage(content, type: type);
+      // 根据消息类型使用相应的日志级别
+      switch (type) {
+        case MessageType.success:
+          Log.i('Extension: 显示$typeName消息 - $content');
+          break;
+        case MessageType.error:
+          Log.e('Extension: 显示$typeName消息 - $content');
+          break;
+        case MessageType.warning:
+          Log.w('Extension: 显示$typeName消息 - $content');
+          break;
+        case MessageType.info:
+          Log.i('Extension: 显示$typeName消息 - $content');
+          break;
+      }
     } catch (e) {
-      Log.e('MessageManagerExtension: 显示消息失败，尝试使用全局方法 - $e');
+      Log.e('Extension: 显示$typeName消息失败，使用全局方法 - $e');
       // 备用方案：使用全局方法
       switch (type) {
         case MessageType.success:
-          GlobalMessageManager.showSuccess(content);
+          GlobalMsgManager.showSuccess(content);
           break;
         case MessageType.error:
-          GlobalMessageManager.showError(content);
+          GlobalMsgManager.showError(content);
           break;
         case MessageType.warning:
-          GlobalMessageManager.showWarning(content);
+          GlobalMsgManager.showWarn(content);
           break;
         case MessageType.info:
-          GlobalMessageManager.showSuccess(content); // 默认使用成功样式
+          GlobalMsgManager.showSuccess(content); // 默认使用成功样式
           break;
       }
     }
   }
 
+  /// 显示消息
+  void showMessage(String content, {MessageType type = MessageType.info}) {
+    _showMessageWithFallback(content, type, '信息');
+  }
+
   /// 显示成功消息
   void showSuccess(String content) {
-    Log.i('MessageManagerExtension: 显示成功消息 - $content');
-    try {
-      read(messageManagerProvider.notifier).showSuccess(content);
-    } catch (e) {
-      Log.e('MessageManagerExtension: 显示成功消息失败，尝试使用全局方法 - $e');
-      GlobalMessageManager.showSuccess(content);
-    }
+    _showMessageWithFallback(content, MessageType.success, '成功');
   }
 
   /// 显示警告消息
   void showWarning(String content) {
-    Log.w('MessageManagerExtension: 显示警告消息 - $content');
-    try {
-      read(messageManagerProvider.notifier).showWarning(content);
-    } catch (e) {
-      Log.e('MessageManagerExtension: 显示警告消息失败，尝试使用全局方法 - $e');
-      GlobalMessageManager.showWarning(content);
-    }
+    _showMessageWithFallback(content, MessageType.warning, '警告');
   }
 
   /// 显示错误消息
   void showError(String content) {
-    Log.e('MessageManagerExtension: 显示错误消息 - $content');
-    try {
-      read(messageManagerProvider.notifier).showError(content);
-    } catch (e) {
-      Log.e('MessageManagerExtension: 显示错误消息失败，尝试使用全局方法 - $e');
-      GlobalMessageManager.showError(content);
-    }
+    _showMessageWithFallback(content, MessageType.error, '错误');
   }
 }

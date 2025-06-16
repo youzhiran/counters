@@ -2,7 +2,7 @@
 
 import 'package:counters/app/state.dart';
 import 'package:counters/common/utils/log.dart';
-import 'package:counters/common/widgets/snackbar.dart'; // 确保这个导入是正确的
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -52,7 +52,8 @@ class ErrorHandler {
                                   Clipboard.setData(
                                       ClipboardData(text: errorText));
                                   globalState.navigatorKey.currentState?.pop();
-                                  AppSnackBar.show('已复制到剪贴板');
+                                  // 使用全局消息管理器显示成功消息
+                                  GlobalMsgManager.showSuccess('已复制到剪贴板');
                                 },
                               ),
                               TextButton(

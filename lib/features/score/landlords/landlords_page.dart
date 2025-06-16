@@ -5,8 +5,8 @@ import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/player_score.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/player_widget.dart';
-import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/score/base_page.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -445,7 +445,7 @@ class _LandlordsSessionPageState
       setState(() {
         _springUsed.updateAll((key, value) => false);
       });
-      AppSnackBar.warn('每局游戏最多只能有一个「春天」，请重新选择');
+      ref.showWarning('每局游戏最多只能有一个「春天」，请重新选择');
       return false;
     }
 
@@ -466,7 +466,7 @@ class _LandlordsSessionPageState
       });
       if (hasInvalidCombination) {
         setState(() {}); // 触发界面刷新
-        AppSnackBar.warn('春天时其他玩家不能有火箭和炸弹，已自动清除');
+        ref.showWarning('春天时其他玩家不能有火箭和炸弹，已自动清除');
         return false;
       }
 
@@ -477,7 +477,7 @@ class _LandlordsSessionPageState
         setState(() {
           _landlordWin = isSpringPlayerLandlord;
         });
-        AppSnackBar.warn('春天方必定为胜利方，已自动调整胜负结果');
+        ref.showWarning('春天方必定为胜利方，已自动调整胜负结果');
         return false;
       }
     }

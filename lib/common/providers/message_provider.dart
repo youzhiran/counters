@@ -22,7 +22,7 @@ class AppMessage {
     required this.content,
     required this.type,
     required this.timestamp,
-    this.duration = const Duration(seconds: 2),
+    this.duration = const Duration(seconds: 4),
   });
 
   AppMessage copyWith({
@@ -77,7 +77,7 @@ class MessageManager extends _$MessageManager {
       content: content,
       type: type,
       timestamp: DateTime.now(),
-      duration: duration ?? const Duration(seconds: 2),
+      duration: duration ?? _getDefaultDuration(type),
     );
 
     final newMessages = [...state.messages, message];
@@ -115,7 +115,7 @@ class MessageManager extends _$MessageManager {
 
   /// 显示错误消息
   void showError(String content, {Duration? duration}) {
-    showMessage(content, type: MessageType.error, duration: duration ?? const Duration(seconds: 4));
+    showMessage(content, type: MessageType.error, duration: duration ?? _getDefaultDuration(MessageType.error));
   }
 
   /// 清除当前消息
@@ -126,5 +126,19 @@ class MessageManager extends _$MessageManager {
   /// 清除所有消息
   void clearAllMessages() {
     state = const MessageState();
+  }
+
+  /// 获取消息类型对应的默认持续时间
+  Duration _getDefaultDuration(MessageType type) {
+    switch (type) {
+      case MessageType.success:
+        return const Duration(seconds: 4);
+      case MessageType.warning:
+        return const Duration(seconds: 5);
+      case MessageType.error:
+        return const Duration(seconds: 6);
+      case MessageType.info:
+        return const Duration(seconds: 4);
+    }
   }
 }
