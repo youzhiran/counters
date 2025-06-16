@@ -20,7 +20,6 @@ import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:counters/features/score/widgets/score_chart_bottom_sheet.dart';
 import 'package:counters/features/template/template_provider.dart';
-import 'package:counters/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,7 +31,6 @@ abstract class BaseSessionPage extends ConsumerStatefulWidget {
 
 abstract class BaseSessionPageState<T extends BaseSessionPage>
     extends ConsumerState<T> {
-
   @override
   Widget build(BuildContext context) {
     final template =
@@ -120,8 +118,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   ref.invalidate(scoreProvider);
                   if (mounted && context.mounted) {
                     // 修复：客户端断开连接时返回到带有底部导航栏的主界面
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/main',
                       (route) => false,
                     );
                   }
@@ -133,7 +131,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                 String actionText;
 
                 if (lanState.connectedClientIps.isNotEmpty) {
-                  dialogContent = '离开此页面将停止主机服务，所有连接的客户端（${lanState.connectedClientIps.length}个）将断开连接，确定要离开吗？';
+                  dialogContent =
+                      '离开此页面将停止主机服务，所有连接的客户端（${lanState.connectedClientIps.length}个）将断开连接，确定要离开吗？';
                   actionText = '确认离开';
                 } else {
                   dialogContent = '离开此页面将停止主机服务，确定要离开吗？';
@@ -250,7 +249,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const LanDiscoveryPage()),
+                                  builder: (context) =>
+                                      const LanDiscoveryPage()),
                             );
                             break;
                           case 'lan_test':
@@ -279,15 +279,22 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                         ),
                         PopupMenuItem<String>(
                           value: 'lan_conn',
-                          enabled: !lanState.isConnected && !lanState.isClientMode,
+                          enabled:
+                              !lanState.isConnected && !lanState.isClientMode,
                           child: Row(
                             children: [
                               Icon(Icons.wifi,
-                                  color: (!lanState.isConnected && !lanState.isClientMode) ? null : Colors.grey),
+                                  color: (!lanState.isConnected &&
+                                          !lanState.isClientMode)
+                                      ? null
+                                      : Colors.grey),
                               SizedBox(width: 8),
                               Text(lanState.isHost ? '停止主机' : '开启局域网联机',
                                   style: TextStyle(
-                                      color: (!lanState.isConnected && !lanState.isClientMode) ? null : Colors.grey)),
+                                      color: (!lanState.isConnected &&
+                                              !lanState.isClientMode)
+                                          ? null
+                                          : Colors.grey)),
                             ],
                           ),
                         ),
@@ -297,11 +304,17 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                           child: Row(
                             children: [
                               Icon(Icons.search,
-                                  color: (!lanState.isHost && !lanState.isClientMode) ? null : Colors.grey),
+                                  color: (!lanState.isHost &&
+                                          !lanState.isClientMode)
+                                      ? null
+                                      : Colors.grey),
                               SizedBox(width: 8),
                               Text('发现局域网游戏',
                                   style: TextStyle(
-                                      color: (!lanState.isHost && !lanState.isClientMode) ? null : Colors.grey)),
+                                      color: (!lanState.isHost &&
+                                              !lanState.isClientMode)
+                                          ? null
+                                          : Colors.grey)),
                             ],
                           ),
                         ),
@@ -353,8 +366,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       // 修复：客户端断开连接时返回到带有底部导航栏的主界面
       lanNotifier.disposeManager();
       AppSnackBar.show('已断开连接');
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/main',
         (route) => false,
       );
     } else {
@@ -367,8 +380,6 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       });
     }
   }
-
-
 
   Widget buildGameBody(
       BuildContext context, BaseTemplate template, GameSession session);

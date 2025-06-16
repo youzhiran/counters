@@ -8,6 +8,8 @@ import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/umeng.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/features/dev/message_debug_page.dart';
 import 'package:counters/features/lan/lan_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
@@ -61,26 +63,54 @@ void main() async {
   // 初始化全局状态
   await globalState.init();
 
-  // 创建容器并初始化主题提供者
-  final container = ProviderContainer();
-  await container.read(themeProvider.notifier).init();
-
   // 获取Provider调试设置
   final prefs = await SharedPreferences.getInstance();
   final enableProviderLogger = prefs.getBool('enable_provider_logger') ?? false;
 
-  runApp(ProviderScope(
-    observers:
-        enableProviderLogger ? [PLogger()] : null, // 根据设置决定是否启用Provider调试
-    child: const MyApp(),
-  ));
+  // 创建 ProviderScope，不再使用废弃的 parent 参数
+  runApp(
+    ProviderScope(
+      observers: enableProviderLogger ? [PLogger()] : null, // 根据设置决定是否启用Provider调试
+      child: const MyApp(),
+    ),
+  );
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 在应用启动后初始化主题提供者和全局消息管理器
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!_isInitialized) {
+        _isInitialized = true;
+        try {
+          // 获取 ProviderScope 的容器
+          final container = ProviderScope.containerOf(context);
+
+          // 初始化主题提供者
+          await container.read(themeProvider.notifier).init();
+
+          // 设置全局消息管理器容器
+          GlobalMessageManager.setContainer(container);
+        } catch (e) {
+          ErrorHandler.handle(e, StackTrace.current, prefix: '主题初始化失败');
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // 监听主题状态变化
     final themeState = ref.watch(themeProvider);
 
@@ -88,10 +118,6 @@ class MyApp extends ConsumerWidget {
       navigatorKey: globalState.navigatorKey,
       scaffoldMessengerKey: globalState.scaffoldMessengerKey,
       title: '桌游计分器',
-      // theme: _buildTheme(themeState.themeColor, Brightness.light,ref)
-      //     .useSystemChineseFont(Brightness.light),
-      // darkTheme: _buildTheme(themeState.themeColor, Brightness.dark,ref)
-      //     .useSystemChineseFont(Brightness.dark),
       theme: _buildTheme(themeState.themeColor, Brightness.light, ref),
       darkTheme: _buildTheme(themeState.themeColor, Brightness.dark, ref),
       themeMode: themeState.themeMode,
@@ -101,12 +127,20 @@ class MyApp extends ConsumerWidget {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             UmengUtil.initWithPrivacy(context);
           });
-          return const MainTabsScreen();
+          return const MessageOverlay(
+            child: MainTabsScreen(),
+          );
         },
       ),
       routes: {
-        '/templates': (context) => const MainTabsScreen(initialIndex: 2),
-        '/lan_test': (context) => const LanTestPage(), // 添加测试页面路由
+        '/templates': (context) =>
+            const MessageOverlay(child: MainTabsScreen(initialIndex: 2)),
+        '/main': (context) => const MessageOverlay(child: MainTabsScreen()),
+        // 添加主页面路由
+        '/lan_test': (context) => const LanTestPage(),
+        // 添加测试页面路由
+        '/message_debug': (context) => const MessageDebugPage(),
+        // 添加消息调试页面
         '/poker50_session': (context) => Scaffold(
               // 为子页面包裹Scaffold
               appBar: AppBar(
@@ -132,26 +166,6 @@ class MyApp extends ConsumerWidget {
               ),
             ),
       },
-    );
-  }
-
-  /// 显示开发阶段提示对话框
-  Future<void> showDevAlert() async {
-    await globalState.showCommonDialog(
-      child: AlertDialog(
-        title: const Text('提示'),
-        content: const Text('本程序仍处于积极开发阶段，程序更新不考虑数据兼容性。'
-            '\n\n如遇到异常，请尝试以下方法：'
-            '\n1. 在系统设置中清除本程序数据'
-            '\n2. 在程序设置中重置数据库'
-            '\n3. 重新安装程序'),
-        actions: [
-          TextButton(
-            child: const Text('我知道了'),
-            onPressed: () => globalState.navigatorKey.currentState?.pop(),
-          ),
-        ],
-      ),
     );
   }
 
@@ -316,11 +330,13 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
       });
 
       // 执行页面切换动画
-      _pageController.animateToPage(
+      _pageController
+          .animateToPage(
         index,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-      ).then((_) {
+      )
+          .then((_) {
         // 动画完成后重置标志
         if (mounted) {
           setState(() {
@@ -374,8 +390,8 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
                   if (!_isAnimating) {
                     setState(() {
                       _selectedIndex = index;
-                      PageStorage.of(context)
-                          .writeState(context, index, identifier: 'mainTabsPage');
+                      PageStorage.of(context).writeState(context, index,
+                          identifier: 'mainTabsPage');
                     });
                   }
                 },

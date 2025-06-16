@@ -1,64 +1,119 @@
 import 'package:counters/app/state.dart';
-import 'package:counters/common/widgets/snackbar.dart';
+import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/lan/lan_provider.dart';
-import 'package:counters/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 显示LAN状态对话框
+/// 显示LAN状态Bottom Sheet
 void showLanStatusDialog() {
-  globalState.showCommonDialog(
-    child: const LanStatusDialog(),
+  final context = globalState.navigatorKey.currentContext;
+  if (context == null) return;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    useSafeArea: true,
+    // 确保不遮挡状态栏区域
+    builder: (BuildContext context) {
+      return const LanStatusBottomSheet();
+    },
   );
 }
 
-class LanStatusDialog extends ConsumerWidget {
-  const LanStatusDialog({super.key});
+class LanStatusBottomSheet extends ConsumerWidget {
+  const LanStatusBottomSheet({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lanState = ref.watch(lanProvider);
 
-    return AlertDialog(
-      title: Row(
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+      ),
+      child: Column(
         children: [
-          Icon(Icons.wifi_tethering,
-               color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('局域网状态'),
+          // 拖拽手柄
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant
+                  .withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // 标题区域
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.wifi_tethering,
+                    color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                const Text(
+                  '局域网状态',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  tooltip: '关闭',
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          // 内容区域
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 连接状态卡片
+                  _StatusCard(lanState: lanState),
+                  const SizedBox(height: 12),
+
+                  // 网络信息卡片
+                  _NetworkInfoCard(lanState: lanState),
+                  const SizedBox(height: 12),
+
+                  // 主机模式特有信息
+                  if (lanState.isHost) ...[
+                    _HostInfoCard(lanState: lanState),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // 操作按钮
+                  _ActionButtons(lanState: lanState),
+
+                  // 底部安全区域
+                  SizedBox(height: MediaQuery.of(context).padding.bottom),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 连接状态卡片
-            _StatusCard(lanState: lanState),
-            const SizedBox(height: 12),
-
-            // 网络信息卡片
-            _NetworkInfoCard(lanState: lanState),
-            const SizedBox(height: 12),
-
-            // 主机模式特有信息
-            if (lanState.isHost) ...[
-              _HostInfoCard(lanState: lanState),
-              const SizedBox(height: 12),
-            ],
-
-            // 操作按钮
-            _ActionButtons(lanState: lanState),
-          ],
-        ),
-      ),
-      actions: [
-        OutlinedButton(
-          onPressed: () => globalState.navigatorKey.currentState?.pop(),
-          child: const Text('关闭'),
-        ),
-      ],
     );
   }
 }
@@ -70,12 +125,16 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (statusIcon, statusColor, statusText, statusDescription) = _getStatusInfo();
+    final (statusIcon, statusColor, statusText, statusDescription) =
+        _getStatusInfo();
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: statusColor.withValues(alpha: 0.3),
@@ -99,17 +158,17 @@ class _StatusCard extends StatelessWidget {
               children: [
                 Text(
                   statusText,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   statusDescription,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
               ],
             ),
@@ -185,13 +244,13 @@ class _NetworkInfoCard extends ConsumerWidget {
           Row(
             children: [
               Icon(Icons.info_outline,
-                   color: Theme.of(context).colorScheme.primary, size: 16),
+                  color: Theme.of(context).colorScheme.primary, size: 16),
               const SizedBox(width: 6),
               Text(
                 '网络信息',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
             ],
           ),
@@ -212,7 +271,9 @@ class _NetworkInfoCard extends ConsumerWidget {
             _InfoRow(
               icon: Icons.router,
               label: '服务端口',
-              value: lanState.serverPort > 0 ? lanState.serverPort.toString() : '8080',
+              value: lanState.serverPort > 0
+                  ? lanState.serverPort.toString()
+                  : '8080',
             ),
           // 客户端模式显示主机信息
           if (lanState.isClientMode && !lanState.isHost) ...[
@@ -240,13 +301,9 @@ class _NetworkInfoCard extends ConsumerWidget {
       ),
     );
   }
-
-
-
-
 }
 
-class _InfoRow extends StatelessWidget {
+class _InfoRow extends ConsumerWidget {
   final IconData icon;
   final String label;
   final String value;
@@ -260,31 +317,31 @@ class _InfoRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Icon(icon, size: 14, 
-               color: Theme.of(context).colorScheme.onSurfaceVariant),
+          Icon(icon,
+              size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
           Text(
             '$label: ',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           Expanded(
             child: Text(
               value,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ),
           if (canCopy && _canCopyValue(value))
             InkWell(
-              onTap: () => _copyToClipboard(value),
+              onTap: () => _copyToClipboard(context, value, ref),
               borderRadius: BorderRadius.circular(4),
               child: Padding(
                 padding: const EdgeInsets.all(4),
@@ -301,15 +358,34 @@ class _InfoRow extends StatelessWidget {
   }
 
   bool _canCopyValue(String value) {
-    return value.isNotEmpty && 
-           value != '获取中...' && 
-           value != '获取失败' &&
-           value != '未知';
+    return value.isNotEmpty &&
+        value != '获取中...' &&
+        value != '获取失败' &&
+        value != '未知';
   }
 
-  void _copyToClipboard(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    AppSnackBar.show('已复制: $text');
+  void _copyToClipboard(BuildContext context, String text, WidgetRef ref) {
+    try {
+      Log.d('LAN Status Dialog: 准备复制文本到剪贴板 - $text');
+      Clipboard.setData(ClipboardData(text: text));
+      Log.d('LAN Status Dialog: 剪贴板设置成功，准备显示成功消息');
+
+      // 使用 Riverpod 消息系统，不会被 Bottom Sheet 遮挡
+      ref.showSuccess('已复制: $text');
+      Log.d('LAN Status Dialog: ref.showSuccess 调用完成');
+    } catch (e, stackTrace) {
+      Log.d('LAN Status Dialog: 复制到剪贴板失败 - $e');
+      Log.d('StackTrace: $stackTrace');
+
+      // 备用方案：使用 ScaffoldMessenger
+      try {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已复制: $text')),
+        );
+      } catch (e2) {
+        Log.d('LAN Status Dialog: ScaffoldMessenger 也失败了 - $e2');
+      }
+    }
   }
 }
 
@@ -334,49 +410,53 @@ class _HostInfoCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.people_outline, 
-                   color: Theme.of(context).colorScheme.primary, size: 16),
+              Icon(Icons.people_outline,
+                  color: Theme.of(context).colorScheme.primary, size: 16),
               const SizedBox(width: 6),
               Text(
                 '连接管理',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          
+
           // 已连接客户端
           Row(
             children: [
-              Icon(Icons.devices, size: 14, 
-                   color: Theme.of(context).colorScheme.onSurfaceVariant),
+              Icon(Icons.devices,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(width: 6),
               Text(
                 '已连接客户端: ',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
               Text(
                 '${lanState.connectedClientIps.length}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: lanState.connectedClientIps.isEmpty 
-                      ? Theme.of(context).colorScheme.onSurfaceVariant
-                      : Theme.of(context).colorScheme.primary,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: lanState.connectedClientIps.isEmpty
+                          ? Theme.of(context).colorScheme.onSurfaceVariant
+                          : Theme.of(context).colorScheme.primary,
+                    ),
               ),
             ],
           ),
-          
+
           if (lanState.connectedClientIps.isNotEmpty) ...[
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Column(
@@ -386,10 +466,13 @@ class _HostInfoCard extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 1),
                           child: Row(
                             children: [
-                              Icon(Icons.smartphone, size: 12,
-                                   color: Theme.of(context).colorScheme.primary),
+                              Icon(Icons.smartphone,
+                                  size: 12,
+                                  color: Theme.of(context).colorScheme.primary),
                               const SizedBox(width: 6),
-                              Text(ip, style: Theme.of(context).textTheme.bodySmall),
+                              Text(ip,
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium),
                             ],
                           ),
                         ))
@@ -397,24 +480,28 @@ class _HostInfoCard extends ConsumerWidget {
               ),
             ),
           ],
-          
+
           const SizedBox(height: 10),
-          
+
           // 广播控制
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                color: Theme.of(context)
+                    .colorScheme
+                    .outline
+                    .withValues(alpha: 0.2),
               ),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               children: [
-                Icon(Icons.broadcast_on_personal, size: 16,
-                     color: lanState.isBroadcasting 
-                         ? Theme.of(context).colorScheme.primary
-                         : Theme.of(context).colorScheme.onSurfaceVariant),
+                Icon(Icons.broadcast_on_personal,
+                    size: 16,
+                    color: lanState.isBroadcasting
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -422,16 +509,18 @@ class _HostInfoCard extends ConsumerWidget {
                     children: [
                       Text(
                         '服务发现广播',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                       ),
                       Text(
                         lanState.isBroadcasting ? '正在广播，其他设备可发现此主机' : '已停止广播',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 11,
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontSize: 12,
+                            ),
                       ),
                     ],
                   ),
@@ -442,7 +531,14 @@ class _HostInfoCard extends ConsumerWidget {
                     value: lanState.isBroadcasting,
                     onChanged: (value) {
                       ref.read(lanProvider.notifier).setBroadcastState(value);
-                      AppSnackBar.show(value ? '广播已开启' : '广播已关闭');
+                      // 使用 Riverpod 消息系统，不会被 Bottom Sheet 遮挡
+                      try {
+                        Log.d('LAN Status Dialog: 准备显示广播状态消息');
+                        ref.showSuccess(value ? '广播已开启' : '广播已关闭');
+                        Log.d('LAN Status Dialog: 广播状态消息显示完成');
+                      } catch (e) {
+                        Log.d('LAN Status Dialog: 显示广播状态消息失败 - $e');
+                      }
                     },
                   ),
                 ),
@@ -475,9 +571,16 @@ class _ActionButtons extends ConsumerWidget {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () {
-                globalState.navigatorKey.currentState?.pop();
+                Navigator.pop(context);
                 ref.read(lanProvider.notifier).disposeManager();
-                AppSnackBar.show('已停止主机');
+                // 使用 Riverpod 消息系统，不会被 Bottom Sheet 遮挡
+                try {
+                  Log.d('LAN Status Dialog: 准备显示停止主机消息');
+                  ref.showSuccess('已停止主机');
+                  Log.d('LAN Status Dialog: 停止主机消息显示完成');
+                } catch (e) {
+                  Log.d('LAN Status Dialog: 显示停止主机消息失败 - $e');
+                }
               },
               icon: const Icon(Icons.stop),
               label: const Text('停止主机'),
@@ -498,13 +601,13 @@ class _ActionButtons extends ConsumerWidget {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () async {
-                  globalState.navigatorKey.currentState?.pop();
+                  Navigator.pop(context);
                   // 修复：使用exitClientMode完全退出客户端模式
                   await ref.read(lanProvider.notifier).exitClientMode();
                   // 修复：断开连接后导航到带有底部导航栏的主界面
                   if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/main',
                       (route) => false,
                     );
                   }
@@ -524,10 +627,12 @@ class _ActionButtons extends ConsumerWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: lanState.isReconnecting ? null : () {
-                      globalState.navigatorKey.currentState?.pop();
-                      ref.read(lanProvider.notifier).manualReconnect();
-                    },
+                    onPressed: lanState.isReconnecting
+                        ? null
+                        : () {
+                            Navigator.pop(context);
+                            ref.read(lanProvider.notifier).manualReconnect();
+                          },
                     icon: lanState.isReconnecting
                         ? const SizedBox(
                             width: 16,
@@ -545,12 +650,12 @@ class _ActionButtons extends ConsumerWidget {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () async {
-                      globalState.navigatorKey.currentState?.pop();
+                      Navigator.pop(context);
                       await ref.read(lanProvider.notifier).exitClientMode();
                       // 修复：退出客户端模式后导航到带有底部导航栏的主界面
                       if (context.mounted) {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (context) => const MainTabsScreen()),
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                          '/main',
                           (route) => false,
                         );
                       }

@@ -390,7 +390,8 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
           if (isClientMode) {
             // 客户端模式下，模板可能还在同步中，等待一下但不要重新加载
             Log.w('客户端模式：等待模板同步，模板ID: ${widget.templateId}');
-            if (_retryCount < 10) { // 增加重试次数但不重新加载
+            if (_retryCount < 10) {
+              // 增加重试次数但不重新加载
               _retryCount++;
               Future.delayed(Duration(milliseconds: 500), () {
                 if (mounted) {

@@ -189,6 +189,14 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     onTap: _hideDevOptions,
                   ),
                   SettingListTile(
+                    icon: Icons.message,
+                    title: '消息系统调试',
+                    subtitle: '测试消息显示系统',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/message_debug');
+                    },
+                  ),
+                  SettingListTile(
                     icon: Icons.animation,
                     title: '页面动画演示',
                     subtitle: '查看各种页面切换动画效果',
@@ -211,7 +219,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   SettingSwitchListTile(
                     icon: Icons.article,
                     title: '启用 Provider 调试日志',
-                    subtitle: '重启应用后生效',
+                    subtitle: '重启应用后生效，仅在控制台输出',
                     value: _enableProviderLogger,
                     onChanged: _saveProviderLoggerSetting,
                   ),
