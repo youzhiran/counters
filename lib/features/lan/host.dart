@@ -104,6 +104,12 @@ class WsHost {
               case "client_command":
                 Log.i('收到客户端 ($clientIp) 命令: ${syncMessage.data}');
                 break;
+              case "ping":
+                Log.v('收到客户端 ($clientIp) ping消息: ${syncMessage.data}');
+                break;
+              case "pong":
+                Log.v('收到客户端 ($clientIp) pong响应: ${syncMessage.data}');
+                break;
               default:
                 Log.i('收到客户端 ($clientIp) 未知消息类型: ${syncMessage.type}');
                 break;

@@ -13,6 +13,7 @@ import 'package:counters/common/utils/template_utils.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/network_manager.dart';
+import 'package:counters/features/lan/ping_provider.dart';
 // 引入 Score Provider 和 消息 Payload 类
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -38,6 +39,7 @@ class LanState {
 
   // 新增：客户端模式状态管理
   final bool isClientMode; // 是否处于客户端模式（即使断开连接也保持）
+  final bool isConnecting; // 是否正在建立连接（用于防止误导性警告）
   final bool isReconnecting; // 是否正在重连
   final int reconnectAttempts; // 当前重连尝试次数
   final int maxReconnectAttempts; // 最大重连次数
@@ -58,6 +60,7 @@ class LanState {
     this.serverPort = 0, // 新增：默认端口为0
     // 新增：客户端模式相关状态
     this.isClientMode = false, // 默认不是客户端模式
+    this.isConnecting = false, // 默认不在连接建立中
     this.isReconnecting = false, // 默认不在重连
     this.reconnectAttempts = 0, // 默认重连次数为0
     this.maxReconnectAttempts = 5, // 默认最大重连次数为5
@@ -80,6 +83,7 @@ class LanState {
     int? serverPort, // 新增
     // 新增：客户端模式相关参数
     bool? isClientMode,
+    bool? isConnecting,
     bool? isReconnecting,
     int? reconnectAttempts,
     int? maxReconnectAttempts,
@@ -107,6 +111,7 @@ class LanState {
       // 新增
       // 新增：客户端模式相关状态
       isClientMode: isClientMode ?? this.isClientMode,
+      isConnecting: isConnecting ?? this.isConnecting,
       isReconnecting: isReconnecting ?? this.isReconnecting,
       reconnectAttempts: reconnectAttempts ?? this.reconnectAttempts,
       maxReconnectAttempts: maxReconnectAttempts ?? this.maxReconnectAttempts,
@@ -390,12 +395,34 @@ class Lan extends _$Lan {
             _handleHostDisconnect(reason);
             break;
 
+          case "ping":
+            // 处理ping消息，发送pong响应
+            if (data is Map<String, dynamic>) {
+              final pingMessage = PingMessage.fromJson(data);
+              final pongMessage = PingMessage(
+                type: 'pong',
+                timestamp: DateTime.now().millisecondsSinceEpoch,
+                id: pingMessage.id,
+              );
+              state.networkManager?.sendMessage(jsonEncode(pongMessage.toJson()));
+              Log.v('响应ping消息: ${pingMessage.id}');
+            }
+            break;
+
+          case "pong":
+            // 处理pong响应
+            if (data is Map<String, dynamic>) {
+              ref.read(pingProvider.notifier).handlePingResponse(data);
+            }
+            break;
+
           default:
             Log.w('收到未知消息类型: $type');
             break;
         }
       } else {
-        Log.d('主机收到来自客户端的消息 (未处理为命令): $type');
+        // 主机模式下的消息已经在 _handleClientMessage 中处理
+        Log.d('主机收到来自客户端的消息，已转发到 _handleClientMessage 处理: $type');
       }
     } catch (e) {
       // 使用统一的错误处理器
@@ -447,7 +474,8 @@ class Lan extends _$Lan {
     );
 
     // 如果连接断开且处于客户端模式，显示相应提示
-    if (!isConnected && state.isClientMode && !isReconnecting) {
+    // 修复：添加 !state.isConnecting 检查，防止在连接建立过程中显示误导性警告
+    if (!isConnected && state.isClientMode && !isReconnecting && !state.isConnecting) {
       if (statusMessage.contains('重连失败')) {
         GlobalMsgManager.showError('连接断开，重连失败。您可以尝试手动重连或退出客户端模式。');
       } else if (!statusMessage.contains('已断开连接')) {
@@ -466,6 +494,7 @@ class Lan extends _$Lan {
       isConnected: false,
       connectionStatus: '主机已断开连接',
       disconnectReason: reason,
+      isConnecting: false,  // 修复：清除连接建立中状态
       isReconnecting: false,
       reconnectAttempts: 0,
     );
@@ -582,15 +611,16 @@ class Lan extends _$Lan {
       final jsonMap = jsonDecode(message) as Map<String, dynamic>;
       final receivedMessage = SyncMessage.fromJson(jsonMap);
 
-      if (receivedMessage.type == "request_sync_state") {
-        final requestedTemplateId =
-            receivedMessage.data?['templateId'] as String?;
-        Log.i('客户端请求同步状态，请求的模板ID: $requestedTemplateId');
+      switch (receivedMessage.type) {
+        case "request_sync_state":
+          final requestedTemplateId =
+              receivedMessage.data?['templateId'] as String?;
+          Log.i('客户端请求同步状态，请求的模板ID: $requestedTemplateId');
 
-        if (requestedTemplateId == null) {
-          Log.w('客户端请求同步状态，但未提供 templateId');
-          return; // 或者发送错误消息给客户端？
-        }
+          if (requestedTemplateId == null) {
+            Log.w('客户端请求同步状态，但未提供 templateId');
+            return; // 或者发送错误消息给客户端？
+          }
 
         // 1. 发送模板信息 (template_info)
         final template = ref
@@ -648,8 +678,35 @@ class Lan extends _$Lan {
         } else {
           Log.w('无法获取当前分数状态以发送 sync_state');
         }
+        break;
+
+      case "ping":
+        // 主机收到客户端ping，发送pong响应
+        if (receivedMessage.data is Map<String, dynamic>) {
+          final pingMessage = PingMessage.fromJson(receivedMessage.data as Map<String, dynamic>);
+          final pongMessage = PingMessage(
+            type: 'pong',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            id: pingMessage.id,
+          );
+          // 包装在SyncMessage中发送
+          final syncMessage = SyncMessage(type: 'pong', data: pongMessage.toJson());
+          state.networkManager?.sendToClient(client, jsonEncode(syncMessage.toJson()));
+          Log.v('主机响应客户端ping: ${pingMessage.id}');
+        }
+        break;
+
+      case "pong":
+        // 主机收到客户端pong响应
+        if (receivedMessage.data is Map<String, dynamic>) {
+          ref.read(pingProvider.notifier).handlePingResponse(receivedMessage.data as Map<String, dynamic>);
+        }
+        break;
+
+      default:
+        Log.d('主机收到客户端未知消息类型: ${receivedMessage.type}');
+        break;
       }
-      // 可以添加对其他客户端消息类型的处理
     } catch (e) {
       // 使用统一的错误处理器
       ErrorHandler.handle(e, StackTrace.current, prefix: '处理客户端消息时出错');
@@ -665,6 +722,8 @@ class Lan extends _$Lan {
       isConnected: false,
       isClientMode: true,
       // 设置为客户端模式
+      isConnecting: true,
+      // 修复：设置连接建立中状态，防止误导性警告
       hostIp: hostIp,
       // 记录主机IP用于重连
       connectionStatus: '连接中...',
@@ -684,7 +743,11 @@ class Lan extends _$Lan {
       );
 
       state = state.copyWith(
-          isLoading: false, networkManager: manager, receivedMessages: []);
+          isLoading: false,
+          networkManager: manager,
+          receivedMessages: [],
+          isConnecting: false,  // 修复：清除连接建立中状态
+      );
 
       // Client 连接成功后，确保 ScoreNotifier 知道当前处于客户端模式
       // 由于 ScoreNotifier 会通过 ref.read(lanProvider) 检查状态，
@@ -694,7 +757,10 @@ class Lan extends _$Lan {
       // 使用统一的错误处理器
       ErrorHandler.handle(e, StackTrace.current, prefix: '连接主机失败');
       _handleConnectionChanged(false, '连接主机失败: $e'); // 确保状态更新
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(
+        isLoading: false,
+        isConnecting: false,  // 修复：确保清除连接建立中状态
+      );
     }
   }
 
@@ -799,6 +865,7 @@ class Lan extends _$Lan {
     // 修复：手动重连时递增重连计数器
     final newAttempts = state.reconnectAttempts + 1;
     state = state.copyWith(
+      isConnecting: true,  // 修复：设置连接建立中状态
       isReconnecting: true,
       reconnectAttempts: newAttempts,
       connectionStatus: '正在重连... ($newAttempts/${state.maxReconnectAttempts})',
@@ -816,10 +883,14 @@ class Lan extends _$Lan {
       state = state.copyWith(
         networkManager: manager,
         clearDisconnectReason: true,
+        isConnecting: false,  // 修复：清除连接建立中状态
       );
     } catch (e) {
       // 使用统一的错误处理器
       ErrorHandler.handle(e, StackTrace.current, prefix: '手动重连失败');
+      state = state.copyWith(
+        isConnecting: false,  // 修复：确保清除连接建立中状态
+      );
     }
   }
 
@@ -836,6 +907,7 @@ class Lan extends _$Lan {
 
     state = state.copyWith(
       isClientMode: false,
+      isConnecting: false,  // 修复：清除连接建立中状态
       isReconnecting: false,
       reconnectAttempts: 0,
       clearDisconnectReason: true,

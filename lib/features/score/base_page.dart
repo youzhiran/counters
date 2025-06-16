@@ -177,12 +177,14 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                 }
               }
             },
-            child: Scaffold(
-              appBar: AppBar(
-                title: Text(template.templateName),
-                actions: [
-                  // 显示LAN状态图标：主机模式、已连接的客户端、或处于客户端模式（包括重连状态）
-                  const LanStatusButton(),
+            child: Stack(
+              children: [
+                Scaffold(
+                  appBar: AppBar(
+                    title: Text(template.templateName),
+                    actions: [
+                      // 显示LAN状态图标：主机模式、已连接的客户端、或处于客户端模式（包括重连状态）
+                      const LanStatusButton(),
                   IconButton(
                     icon: Icon(Icons.sports_score),
                     tooltip: '当前游戏情况',
@@ -344,7 +346,11 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                 ],
               ),
               body: buildGameBody(context, template, session),
-            ));
+            ),
+            // 在联机状态下显示ping值
+            // const PingWidget(),
+          ],
+        ));
       },
     );
   }

@@ -1,24 +1,24 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'lan_provider.dart';
+part of 'ping_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$lanHash() => r'990424ec27c1b8404b3349d3998c5d0247ce2bc1';
+String _$pingHash() => r'29bd2bad2ae8011abfe8bd14cc51341bc122380c';
 
-/// See also [Lan].
-@ProviderFor(Lan)
-final lanProvider = NotifierProvider<Lan, LanState>.internal(
-  Lan.new,
-  name: r'lanProvider',
+/// See also [Ping].
+@ProviderFor(Ping)
+final pingProvider = NotifierProvider<Ping, PingState>.internal(
+  Ping.new,
+  name: r'pingProvider',
   debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$lanHash,
+      const bool.fromEnvironment('dart.vm.product') ? null : _$pingHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$Lan = Notifier<LanState>;
+typedef _$Ping = Notifier<PingState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
