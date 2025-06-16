@@ -70,7 +70,7 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
       final overlay = Overlay.of(context, rootOverlay: true);
       overlay.insert(_overlayEntry!);
 
-      Log.d('MessageOverlay: 成功显示消息 - ${message.content}');
+      Log.v('MessageOverlay: 成功显示消息 - ${message.content}');
     } catch (e, stackTrace) {
       Log.e('MessageOverlay: 显示消息失败 - $e');
       Log.e('StackTrace: $stackTrace');
@@ -82,7 +82,7 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
     try {
       _overlayEntry?.remove();
       _overlayEntry = null;
-      Log.d('MessageOverlay: 成功隐藏消息');
+      Log.v('MessageOverlay: 成功隐藏消息');
     } catch (e) {
       Log.e('MessageOverlay: 隐藏消息失败 - $e');
       _overlayEntry = null; // 确保清理状态
@@ -93,15 +93,15 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   Widget build(BuildContext context) {
     // 监听消息状态变化
     ref.listen<MessageState>(messageManagerProvider, (previous, next) {
-      Log.d('MessageOverlay: 监听到消息状态变化');
-      Log.d('Previous message: ${previous?.currentMessage?.content}');
-      Log.d('Next message: ${next.currentMessage?.content}');
+      Log.v('MessageOverlay: 监听到消息状态变化');
+      Log.v('Previous message: ${previous?.currentMessage?.content}');
+      Log.v('Next message: ${next.currentMessage?.content}');
 
       if (next.currentMessage != null) {
-        Log.d('MessageOverlay: 准备显示新消息');
+        Log.v('MessageOverlay: 准备显示新消息');
         _showMessage(next.currentMessage!);
       } else {
-        Log.d('MessageOverlay: 准备隐藏消息');
+        Log.v('MessageOverlay: 准备隐藏消息');
         _hideMessage();
       }
     });
@@ -264,48 +264,48 @@ class GlobalMessageManager {
   /// 显示成功消息（全局方法，不依赖于特定的 WidgetRef）
   static void showSuccess(String content) {
     try {
-      Log.d('GlobalMessageManager: 尝试显示成功消息 - $content');
+      Log.v('GlobalMessageManager: 尝试显示成功消息 - $content');
       if (_container != null) {
         _container!.read(messageManagerProvider.notifier).showSuccess(content);
-        Log.d('GlobalMessageManager: 成功消息显示完成');
+        Log.v('GlobalMessageManager: 成功消息显示完成');
       } else {
-        Log.d('GlobalMessageManager: 容器未设置，无法显示消息');
+        Log.v('GlobalMessageManager: 容器未设置，无法显示消息');
       }
     } catch (e, stackTrace) {
-      Log.d('GlobalMessageManager: 显示消息失败 - $e');
-      Log.d('StackTrace: $stackTrace');
+      Log.v('GlobalMessageManager: 显示消息失败 - $e');
+      Log.v('StackTrace: $stackTrace');
     }
   }
 
   /// 显示错误消息
   static void showError(String content) {
     try {
-      Log.d('GlobalMessageManager: 尝试显示错误消息 - $content');
+      Log.v('GlobalMessageManager: 尝试显示错误消息 - $content');
       if (_container != null) {
         _container!.read(messageManagerProvider.notifier).showError(content);
-        Log.d('GlobalMessageManager: 错误消息显示完成');
+        Log.v('GlobalMessageManager: 错误消息显示完成');
       } else {
-        Log.d('GlobalMessageManager: 容器未设置，无法显示消息');
+        Log.v('GlobalMessageManager: 容器未设置，无法显示消息');
       }
     } catch (e, stackTrace) {
-      Log.d('GlobalMessageManager: 显示消息失败 - $e');
-      Log.d('StackTrace: $stackTrace');
+      Log.v('GlobalMessageManager: 显示消息失败 - $e');
+      Log.v('StackTrace: $stackTrace');
     }
   }
 
   /// 显示警告消息
   static void showWarning(String content) {
     try {
-      Log.d('GlobalMessageManager: 尝试显示警告消息 - $content');
+      Log.v('GlobalMessageManager: 尝试显示警告消息 - $content');
       if (_container != null) {
         _container!.read(messageManagerProvider.notifier).showWarning(content);
-        Log.d('GlobalMessageManager: 警告消息显示完成');
+        Log.v('GlobalMessageManager: 警告消息显示完成');
       } else {
-        Log.d('GlobalMessageManager: 容器未设置，无法显示消息');
+        Log.v('GlobalMessageManager: 容器未设置，无法显示消息');
       }
     } catch (e, stackTrace) {
-      Log.d('GlobalMessageManager: 显示消息失败 - $e');
-      Log.d('StackTrace: $stackTrace');
+      Log.v('GlobalMessageManager: 显示消息失败 - $e');
+      Log.v('StackTrace: $stackTrace');
     }
   }
 }
@@ -314,7 +314,7 @@ class GlobalMessageManager {
 extension MessageManagerExtension on WidgetRef {
   /// 显示消息
   void showMessage(String content, {MessageType type = MessageType.info}) {
-    Log.d('MessageManagerExtension: 显示消息 - $content (类型: $type)');
+    Log.v('MessageManagerExtension: 显示消息 - $content (类型: $type)');
     try {
       read(messageManagerProvider.notifier).showMessage(content, type: type);
     } catch (e) {

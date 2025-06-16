@@ -17,17 +17,30 @@ class Log {
   static Level _level = Level.debug;
 
   // 日志实例
-  static final Logger _logger = Logger(
-    printer: PrettyPrinter(
-      methodCount: 0,
-      errorMethodCount: 5,
-      lineLength: 120,
-      colors: true,
-      printEmojis: false,
-      noBoxingByDefault: true,
-    ),
-    level: _level,
-  );
+  static Logger? _logger;
+
+  // 获取Logger实例，如果未初始化则先初始化
+  static Logger get logger {
+    if (_logger == null) {
+      _initLogger();
+    }
+    return _logger!;
+  }
+
+  // 初始化Logger
+  static void _initLogger() {
+    _logger = Logger(
+      printer: PrettyPrinter(
+        methodCount: 0,
+        errorMethodCount: 5,
+        lineLength: 120,
+        colors: true,
+        printEmojis: false,
+        noBoxingByDefault: true,
+      ),
+      level: _level,
+    );
+  }
 
   // 日志流控制器
   static final _logStreamController = StreamController<String>.broadcast();
@@ -38,9 +51,8 @@ class Log {
   /// 设置日志级别
   static void setLevel(Level level) {
     _level = level;
-    // 注意: logger 本身可能需要重新配置或提供方法来更新级别，
-    // 这里的 _level 变量可能只影响了 logger 初始化时的级别。
-    // 如果 logger 包支持动态修改级别，需要调用相应方法。
+    // 重新初始化Logger以应用新的级别
+    _initLogger();
   }
 
   /// 辅助方法：获取调用者的位置信息
@@ -77,11 +89,19 @@ class Log {
 
   // --- 修改日志方法以包含位置信息 ---
 
+  /// Verbose日志（最详细级别）
+  static void v(String message) {
+    final location = _getCallerLocation();
+    final logMessage = '$message $location'; // 将位置信息添加到消息后
+    logger.t(logMessage); // 使用trace级别作为verbose
+    _logStreamController.add('[V] $logMessage'); // 流信息也包含位置
+  }
+
   /// 调试日志
   static void d(String message) {
     final location = _getCallerLocation();
     final logMessage = '$message $location'; // 将位置信息添加到消息后
-    _logger.d(logMessage);
+    logger.d(logMessage);
     _logStreamController.add('[D] $logMessage'); // 流信息也包含位置
   }
 
@@ -89,7 +109,7 @@ class Log {
   static void i(String message) {
     final location = _getCallerLocation();
     final logMessage = '$message $location';
-    _logger.i(logMessage);
+    logger.i(logMessage);
     _logStreamController.add('[I] $logMessage');
   }
 
@@ -97,7 +117,7 @@ class Log {
   static void w(String message) {
     final location = _getCallerLocation();
     final logMessage = '$message $location';
-    _logger.w(logMessage);
+    logger.w(logMessage);
     _logStreamController.add('[W] $logMessage');
   }
 
@@ -105,7 +125,7 @@ class Log {
   static void e(String message) {
     final location = _getCallerLocation();
     final logMessage = '$message $location';
-    _logger.e(logMessage);
+    logger.e(logMessage);
     _logStreamController.add('[E] $logMessage');
   }
 
@@ -113,18 +133,27 @@ class Log {
   static void wtf(String message) {
     final location = _getCallerLocation();
     final logMessage = '$message $location';
-    _logger.f(logMessage); // logger 的 fatal 对应 wtf
+    logger.f(logMessage); // logger 的 fatal 对应 wtf
     _logStreamController.add('[WTF] $logMessage');
   }
 
   // --- 带颜色的日志方法也需要修改 ---
+
+  /// 带颜色的Verbose日志（仅控制台支持）
+  static void verbose(String message, {Color? color}) {
+    final location = _getCallerLocation();
+    final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
+    // 使用trace级别作为verbose
+    logger.t('$message $location $colorStr');
+    _logStreamController.add('[V] $message $location'); // 流中不带颜色信息
+  }
 
   /// 带颜色的调试日志（仅控制台支持）
   static void debug(String message, {Color? color}) {
     final location = _getCallerLocation();
     final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
     // 注意：logger 的 d 方法只接受一个参数，我们将位置信息合并到消息中
-    _logger.d('$message $location $colorStr');
+    logger.d('$message $location $colorStr');
     _logStreamController.add('[D] $message $location'); // 流中不带颜色信息
   }
 
@@ -132,7 +161,7 @@ class Log {
   static void info(String message, {Color? color}) {
     final location = _getCallerLocation();
     final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
-    _logger.i('$message $location $colorStr');
+    logger.i('$message $location $colorStr');
     _logStreamController.add('[I] $message $location');
   }
 
@@ -140,7 +169,7 @@ class Log {
   static void warn(String message, {Color? color}) {
     final location = _getCallerLocation();
     final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
-    _logger.w('$message $location $colorStr');
+    logger.w('$message $location $colorStr');
     _logStreamController.add('[W] $message $location');
   }
 
@@ -148,7 +177,7 @@ class Log {
   static void error(String message, {Color? color}) {
     final location = _getCallerLocation();
     final colorStr = color != null ? '颜色: ${_colorToString(color)}' : '';
-    _logger.e('$message $location $colorStr');
+    logger.e('$message $location $colorStr');
     _logStreamController.add('[E] $message $location');
   }
 
@@ -174,22 +203,24 @@ class PLogger extends ProviderObserver {
     final stackTrace = StackTrace.current;
     final providerName = provider.name ?? provider.runtimeType;
 
-    // 使用 Log._logger 实例直接打印，避免通过 Log.d() 等方法触发 _logStreamController
-    Log._logger.d('---------------START--------------');
-    Log._logger.d('Provider "$providerName" 已修改:');
-    Log._logger.d('- Previous value: $previousValue');
-    Log._logger.d('- New value: $newValue');
-    Log._logger.d('- 修改堆栈:');
+    // 使用 Log.logger 实例直接打印，避免通过 Log.d() 等方法触发 _logStreamController
+    Log.logger.d('---------------START--------------');
+    Log.logger.d('Provider "$providerName" 已修改:');
+    Log.logger.d('- Previous value: $previousValue');
+    Log.logger.d('- New value: $newValue');
+    Log.logger.d('- 修改堆栈:');
 
     // 拆分堆栈逐行打印
     stackTrace.toString().split('\n').forEach((line) {
-      Log._logger.d(line); // 直接使用 _logger 实例打印每一行
+      Log.logger.d(line); // 直接使用 logger 实例打印每一行
     });
-    Log._logger.d('---------------END--------------');
+    Log.logger.d('---------------END--------------');
   }
 }
 
 // 使用示例:
+// Log.v('详细信息'); // Verbose级别（最详细）
+// Log.verbose('详细信息', color: Colors.grey);
 // Log.d('调试信息');
 // Log.debug('调试信息', color: Colors.blue);
 // Log.i('信息消息');
@@ -200,4 +231,6 @@ class PLogger extends ProviderObserver {
 // Log.error('错误信息', color: Colors.red);
 //
 // 设置日志级别:
+// Log.setLevel(Level.trace); // 显示所有级别的日志（包括verbose）
+// Log.setLevel(Level.debug); // 显示debug及以上级别的日志
 // Log.setLevel(Level.warning); // 只显示警告及以上级别的日志

@@ -71,7 +71,7 @@ class MessageManager extends _$MessageManager {
 
   /// 显示消息
   void showMessage(String content, {MessageType type = MessageType.info, Duration? duration}) {
-    Log.d('MessageManager: 准备显示消息 - $content (类型: $type)');
+    Log.v('MessageManager: 准备显示消息 - $content (类型: $type)');
 
     final message = AppMessage(
       content: content,
@@ -92,12 +92,12 @@ class MessageManager extends _$MessageManager {
       currentMessage: message,
     );
 
-    Log.d('MessageManager: 消息状态已更新，当前消息: ${state.currentMessage?.content}');
+    Log.v('MessageManager: 消息状态已更新，当前消息: ${state.currentMessage?.content}');
 
     // 自动清除当前消息
     Future.delayed(message.duration, () {
       if (state.currentMessage == message) {
-        Log.d('MessageManager: 自动清除消息 - ${message.content}');
+        Log.v('MessageManager: 自动清除消息 - ${message.content}');
         state = state.copyWith(currentMessage: null);
       }
     });

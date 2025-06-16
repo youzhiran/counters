@@ -1,6 +1,7 @@
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
 import 'package:counters/features/player/player_select_dialog.dart';
@@ -189,6 +190,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     final isExists = provider.checkSessionExists(tid);
     if (await isExists) {
       AppSnackBar.warn('当前模板已有关联计分记录，保存时需清除该记录');
+      ref.showWarning('当前模板已有关联计分记录，保存时需清除该记录');
       setState(() {
         hasHistory = true;
       });

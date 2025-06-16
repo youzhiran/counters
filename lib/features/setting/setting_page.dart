@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
+import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
@@ -36,8 +37,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   static const String _keyIsCustomPath = 'is_custom_path';
   bool _enableProviderLogger = false;
   bool _enableDesktopMode = false;
+  bool _enableVerboseLog = false;
   static const String _keyEnableProviderLogger = 'enable_provider_logger';
   static const String _keyEnableDesktopMode = 'enable_desktop_mode';
+  static const String _keyEnableVerboseLog = 'enable_verbose_log';
 
   // 添加计数器和显示状态
   int _versionClickCount = 0;
@@ -64,6 +67,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     _loadStorageSettings();
     _loadProviderLoggerSetting();
     _loadDesktopModeSetting();
+    _loadVerboseLogSetting();
   }
 
   @override
@@ -222,6 +226,19 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     subtitle: '重启应用后生效，仅在控制台输出',
                     value: _enableProviderLogger,
                     onChanged: _saveProviderLoggerSetting,
+                  ),
+                  SettingSwitchListTile(
+                    icon: Icons.bug_report,
+                    title: '启用 Verbose 级别日志',
+                    subtitle: '显示最详细的日志信息，包括UI组件调试信息',
+                    value: _enableVerboseLog,
+                    onChanged: _saveVerboseLogSetting,
+                  ),
+                  SettingListTile(
+                    icon: Icons.science,
+                    title: '测试日志级别',
+                    subtitle: '测试各个级别的日志输出',
+                    onTap: _testLogLevels,
                   ),
                 ],
               ],
@@ -596,6 +613,47 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       _enableDesktopMode = value;
     });
     AppSnackBar.show('设置已保存，重启应用后生效');
+  }
+
+  // 加载Verbose日志设置
+  Future<void> _loadVerboseLogSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _enableVerboseLog = prefs.getBool(_keyEnableVerboseLog) ?? false;
+    });
+  }
+
+  // 保存Verbose日志设置
+  Future<void> _saveVerboseLogSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyEnableVerboseLog, value);
+    setState(() {
+      _enableVerboseLog = value;
+    });
+
+    // 同时更新Provider中的状态
+    ref.read(verboseLogProvider.notifier).setVerboseLogEnabled(value);
+
+    AppSnackBar.show('Verbose日志已${value ? '启用' : '禁用'}');
+  }
+
+  // 测试日志级别
+  void _testLogLevels() {
+    // 先输出当前日志级别信息
+    final verboseEnabled = ref.read(verboseLogProvider);
+    Log.i('当前Verbose日志状态: ${verboseEnabled ? '启用' : '禁用'}');
+
+    // 输出各级别日志
+    Log.v('这是Verbose级别日志 - 最详细的调试信息');
+    Log.d('这是Debug级别日志 - 调试信息');
+    Log.i('这是Info级别日志 - 一般信息');
+    Log.w('这是Warning级别日志 - 警告信息');
+    Log.e('这是Error级别日志 - 错误信息');
+
+    // 也测试带颜色的verbose日志
+    Log.verbose('这是带颜色的Verbose日志', color: Colors.grey);
+
+    AppSnackBar.show('已输出各级别日志到控制台，请查看控制台输出\n当前Verbose: ${verboseEnabled ? '启用' : '禁用'}');
   }
 
   void _resetDatabase() {

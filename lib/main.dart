@@ -5,6 +5,7 @@ import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/poker50.dart';
+import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/umeng.dart';
@@ -20,6 +21,7 @@ import 'package:counters/home_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
@@ -62,9 +64,20 @@ void main() async {
   // 初始化全局状态
   await globalState.init();
 
-  // 获取Provider调试设置
+  // 获取Provider调试设置和Verbose日志设置
   final prefs = await SharedPreferences.getInstance();
   final enableProviderLogger = prefs.getBool('enable_provider_logger') ?? false;
+  final enableVerboseLog = prefs.getBool('enable_verbose_log') ?? false;
+
+  // 根据设置初始化日志级别
+  if (enableVerboseLog) {
+    Log.setLevel(Level.trace); // 启用verbose时使用trace级别
+    Log.i('应用启动: Verbose日志已启用');
+    Log.v('这是一条测试Verbose日志');
+  } else {
+    Log.setLevel(Level.debug); // 禁用verbose时使用debug级别
+    Log.i('应用启动: Verbose日志已禁用');
+  }
 
   // 创建 ProviderScope，不再使用废弃的 parent 参数
   runApp(
@@ -99,6 +112,9 @@ class _MyAppState extends ConsumerState<MyApp> {
 
           // 初始化主题提供者
           await container.read(themeProvider.notifier).init();
+
+          // 初始化verbose日志Provider（这会加载设置并应用日志级别）
+          container.read(verboseLogProvider);
 
           // 设置全局消息管理器容器
           GlobalMessageManager.setContainer(container);

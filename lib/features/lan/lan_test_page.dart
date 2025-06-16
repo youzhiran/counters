@@ -1,4 +1,4 @@
-import 'package:counters/common/log_provider.dart';
+import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/widgets/ip_display_widget.dart';
 import 'package:counters/common/widgets/snackbar.dart';
