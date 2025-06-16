@@ -1,5 +1,5 @@
-import 'package:counters/common/performance/player_performance_test.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/features/dev/player_performance_test.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

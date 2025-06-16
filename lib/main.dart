@@ -13,7 +13,6 @@ import 'package:counters/features/dev/message_debug_page.dart';
 import 'package:counters/features/lan/lan_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
-import 'package:counters/features/score/poker50/poker50_page.dart';
 import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/template/template_page.dart';
@@ -70,7 +69,8 @@ void main() async {
   // 创建 ProviderScope，不再使用废弃的 parent 参数
   runApp(
     ProviderScope(
-      observers: enableProviderLogger ? [PLogger()] : null, // 根据设置决定是否启用Provider调试
+      observers: enableProviderLogger ? [PLogger()] : null,
+      // 根据设置决定是否启用Provider调试
       child: const MyApp(),
     ),
   );
@@ -135,23 +135,12 @@ class _MyAppState extends ConsumerState<MyApp> {
       routes: {
         '/templates': (context) =>
             const MessageOverlay(child: MainTabsScreen(initialIndex: 2)),
-        '/main': (context) => const MessageOverlay(child: MainTabsScreen()),
         // 添加主页面路由
-        '/lan_test': (context) => const LanTestPage(),
+        '/main': (context) => const MessageOverlay(child: MainTabsScreen()),
         // 添加测试页面路由
-        '/message_debug': (context) => const MessageDebugPage(),
+        '/lan_test': (context) => const LanTestPage(),
         // 添加消息调试页面
-        '/poker50_session': (context) => Scaffold(
-              // 为子页面包裹Scaffold
-              appBar: AppBar(
-                title: const Text('游戏进行中'),
-                leading: BackButton(), // 自动显示返回按钮
-              ),
-              body: Poker50SessionPage(
-                templateId:
-                    ModalRoute.of(context)!.settings.arguments as String,
-              ),
-            ),
+        '/message_debug': (context) => const MessageDebugPage(),
         '/template/config': (context) => Scaffold(
               appBar: AppBar(
                 title: const Text('模板配置'),

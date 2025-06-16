@@ -3,14 +3,14 @@ import 'dart:io';
 import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
-import 'package:counters/common/performance/performance_demo.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/setting_list_tile.dart';
 import 'package:counters/common/widgets/snackbar.dart';
-import 'package:counters/features/demo/animation_demo_page.dart';
+import 'package:counters/features/dev/animation_demo_page.dart';
+import 'package:counters/features/dev/performance_demo.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/theme_provider.dart';
