@@ -3,3 +3,4 @@
 - UI组件：MessageOverlay，showCommonDialog
 - 项目使用了riverpod
 - 测试交给用户
+- 有开发者设置页面

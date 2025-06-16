@@ -43,7 +43,7 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text('当前消息: ${messageState.currentMessage?.content ?? "无"}'),
+                    Text('活跃消息数: ${messageState.activeMessages.length}'),
                     Text('消息历史数量: ${messageState.messages.length}'),
                     Text('消息计数器: $_messageCount'),
                   ],
@@ -96,7 +96,26 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               },
               child: const Text('显示普通消息'),
             ),
-            
+            const SizedBox(height: 8),
+
+            // 测试淡出动画的按钮
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                _messageCount++;
+                // 显示一个短时间的消息来测试淡出动画
+                ref.read(messageManagerProvider.notifier).showMessage(
+                  '测试淡出动画 #$_messageCount',
+                  type: MessageType.info,
+                  duration: const Duration(seconds: 2), // 2秒后自动淡出
+                );
+              },
+              child: const Text('测试淡出动画 (2秒)'),
+            ),
+
             const SizedBox(height: 20),
             
             // Bottom Sheet 测试
@@ -176,12 +195,12 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
             // 清理按钮
             OutlinedButton(
               onPressed: () {
-                ref.read(messageManagerProvider.notifier).clearAllMessages();
+                ref.read(messageManagerProvider.notifier).clearAllActiveMessages();
                 setState(() {
                   _messageCount = 0;
                 });
               },
-              child: const Text('清除所有消息'),
+              child: const Text('清除所有活跃消息'),
             ),
 
             const SizedBox(height: 12),

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 消息覆盖层组件
-/// 用于在应用顶层显示消息，不会被 Bottom Sheet 等组件遮挡
+/// 用于在应用顶层显示消息，支持多消息垂直堆叠显示
 class MessageOverlay extends ConsumerStatefulWidget {
   final Widget child;
 
@@ -18,12 +18,15 @@ class MessageOverlay extends ConsumerStatefulWidget {
 }
 
 class _MessageOverlayState extends ConsumerState<MessageOverlay> {
-  OverlayEntry? _overlayEntry;
-  bool _isHiding = false;
+  final Map<String, OverlayEntry> _overlayEntries = {}; // 管理多个OverlayEntry
+  final Map<String, GlobalKey> _messageKeys = {}; // 用于测量消息高度
+  final Map<String, GlobalKey<_MessageCardState>> _messageCardKeys = {}; // 用于控制消息卡片动画
+  static const double _messageSpacing = 8.0; // 消息间距
+  static const double _topPadding = 16.0; // 顶部间距
 
   @override
   void dispose() {
-    _hideMessage();
+    _hideAllMessages();
     super.dispose();
   }
 
@@ -32,94 +35,182 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
     super.didChangeDependencies();
     // 确保在依赖变化时重新建立监听
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndShowCurrentMessage();
+      _syncActiveMessages();
     });
   }
 
-  void _checkAndShowCurrentMessage() {
-    // 检查是否有当前消息需要显示
-    final currentMessage = ref.read(messageManagerProvider).currentMessage;
-    if (currentMessage != null && _overlayEntry == null) {
-      _showMessage(currentMessage);
+  /// 同步活跃消息显示
+  void _syncActiveMessages() {
+    final activeMessages = ref.read(messageManagerProvider).activeMessages;
+
+    // 移除不再活跃的消息
+    final currentIds = _overlayEntries.keys.toSet();
+    final activeIds = activeMessages.map((msg) => msg.id).toSet();
+
+    for (final id in currentIds) {
+      if (!activeIds.contains(id)) {
+        _hideMessage(id);
+      }
+    }
+
+    // 检查消息状态变化，触发退出动画
+    for (final message in activeMessages) {
+      if (message.status == MessageStatus.exiting) {
+        _triggerMessageExit(message.id);
+      } else if (!_overlayEntries.containsKey(message.id)) {
+        _showMessage(message);
+      }
     }
   }
 
+  /// 触发消息退出动画
+  void _triggerMessageExit(String messageId) {
+    final messageCardKey = _messageCardKeys[messageId];
+    if (messageCardKey?.currentState != null) {
+      Log.v('MessageOverlay: 触发消息退出动画 - ID: $messageId');
+      messageCardKey!.currentState!.startExitAnimation();
+    }
+  }
+
+  /// 显示单个消息
   void _showMessage(AppMessage message) {
     try {
-      // 如果正在隐藏，等待完成后再显示新消息
-      if (_isHiding) {
-        Future.delayed(const Duration(milliseconds: 450), () {
-          if (mounted) {
-            _showMessage(message);
-          }
-        });
+      if (_overlayEntries.containsKey(message.id)) {
+        Log.v('MessageOverlay: 消息已在显示中，跳过 - ${message.content}');
         return;
       }
 
-      _hideMessage(); // 先移除现有的消息
+      // 创建消息的GlobalKey用于高度测量
+      final messageKey = GlobalKey();
+      _messageKeys[message.id] = messageKey;
 
-      // 稍微延迟以确保前一个消息完全移除
-      Future.delayed(const Duration(milliseconds: 50), () {
-        if (!mounted) return;
+      // 创建消息卡片的GlobalKey用于控制动画
+      final messageCardKey = GlobalKey<_MessageCardState>();
+      _messageCardKeys[message.id] = messageCardKey;
 
-        _overlayEntry = OverlayEntry(
-          builder: (context) => Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            right: 16,
-            child: Material(
-              color: Colors.transparent,
-              child: SafeArea(
-                child: _MessageCard(
-                  message: message,
-                  onDismiss: () {
-                    ref.read(messageManagerProvider.notifier).clearCurrentMessage();
-                  },
-                ),
-              ),
-            ),
-          ),
-        );
+      final overlayEntry = OverlayEntry(
+        builder: (context) => _MessagePositioned(
+          messageId: message.id,
+          messageKey: messageKey,
+          messageCardKey: messageCardKey,
+          message: message,
+          onDismiss: () {
+            ref.read(messageManagerProvider.notifier).dismissMessage(message.id);
+          },
+          positionCalculator: () => _calculateMessagePosition(message),
+        ),
+      );
 
-        try {
-          // 使用 Overlay 在最顶层显示消息
-          final overlay = Overlay.of(context, rootOverlay: true);
-          overlay.insert(_overlayEntry!);
-          Log.v('MessageOverlay: 成功显示消息 - ${message.content}');
-        } catch (e) {
-          Log.e('MessageOverlay: 插入Overlay失败 - $e');
-          _overlayEntry = null;
-        }
-      });
+      _overlayEntries[message.id] = overlayEntry;
+
+      try {
+        // 使用 Overlay 在最顶层显示消息
+        final overlay = Overlay.of(context, rootOverlay: true);
+        overlay.insert(overlayEntry);
+        Log.v('MessageOverlay: 成功显示消息 [ID:${message.id}] - ${message.content}');
+
+        // 显示后重新计算所有消息位置
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _updateAllMessagePositions();
+        });
+      } catch (e) {
+        Log.e('MessageOverlay: 插入Overlay失败 - $e');
+        _overlayEntries.remove(message.id);
+        _messageKeys.remove(message.id);
+        _messageCardKeys.remove(message.id);
+      }
     } catch (e, stackTrace) {
       Log.e('MessageOverlay: 显示消息失败 - $e');
       Log.e('StackTrace: $stackTrace');
-      _overlayEntry = null;
     }
   }
 
-  void _hideMessage() {
-    if (_isHiding || _overlayEntry == null) return;
+  /// 隐藏指定消息
+  void _hideMessage(String messageId) {
+    final overlayEntry = _overlayEntries[messageId];
+    if (overlayEntry == null) return;
 
     try {
-      _isHiding = true;
-      // 延迟移除，给退出动画时间
-      Future.delayed(const Duration(milliseconds: 400), () {
-        try {
-          _overlayEntry?.remove();
-          _overlayEntry = null;
-          _isHiding = false;
-          Log.v('MessageOverlay: 成功隐藏消息');
-        } catch (e) {
-          Log.e('MessageOverlay: 延迟隐藏消息失败 - $e');
-          _overlayEntry = null;
-          _isHiding = false;
-        }
-      });
+      // 立即移除OverlayEntry，因为退出动画已经在_MessageCard中处理
+      overlayEntry.remove();
+      _overlayEntries.remove(messageId);
+      _messageKeys.remove(messageId);
+      _messageCardKeys.remove(messageId);
+      Log.v('MessageOverlay: 成功隐藏消息 - ID: $messageId');
+
+      // 隐藏后重新计算剩余消息位置
+      if (mounted) {
+        _updateAllMessagePositions();
+      }
     } catch (e) {
       Log.e('MessageOverlay: 隐藏消息失败 - $e');
-      _overlayEntry = null;
-      _isHiding = false;
+      _overlayEntries.remove(messageId);
+      _messageKeys.remove(messageId);
+      _messageCardKeys.remove(messageId);
+    }
+  }
+
+  /// 隐藏所有消息
+  void _hideAllMessages() {
+    for (final messageId in _overlayEntries.keys.toList()) {
+      final overlayEntry = _overlayEntries[messageId];
+      try {
+        overlayEntry?.remove();
+      } catch (e) {
+        Log.e('MessageOverlay: 移除Overlay失败 - $e');
+      }
+    }
+    _overlayEntries.clear();
+    _messageKeys.clear();
+    _messageCardKeys.clear();
+  }
+
+  /// 计算消息的垂直位置
+  double _calculateMessagePosition(AppMessage message) {
+    final activeMessages = ref.read(messageManagerProvider).activeMessages;
+    final messageIndex = activeMessages.indexWhere((msg) => msg.id == message.id);
+
+    if (messageIndex == -1) {
+      return MediaQuery.of(context).padding.top + _topPadding;
+    }
+
+    double position = MediaQuery.of(context).padding.top + _topPadding;
+
+    // 累加前面消息的高度
+    for (int i = 0; i < messageIndex; i++) {
+      final prevMessage = activeMessages[i];
+      final prevKey = _messageKeys[prevMessage.id];
+
+      if (prevKey?.currentContext != null) {
+        final renderBox = prevKey!.currentContext!.findRenderObject() as RenderBox?;
+        if (renderBox != null) {
+          position += renderBox.size.height + _messageSpacing;
+        } else {
+          // 如果无法获取实际高度，使用估算高度
+          position += 80.0 + _messageSpacing; // 估算的消息卡片高度
+        }
+      } else {
+        // 如果无法获取实际高度，使用估算高度
+        position += 80.0 + _messageSpacing;
+      }
+    }
+
+    return position;
+  }
+
+  /// 更新所有消息的位置
+  void _updateAllMessagePositions() {
+    if (!mounted) return;
+
+    final activeMessages = ref.read(messageManagerProvider).activeMessages;
+
+    for (final message in activeMessages) {
+      final overlayEntry = _overlayEntries[message.id];
+
+      if (overlayEntry != null) {
+        // 通过markNeedsBuild触发重建，_MessagePositioned会重新计算位置
+        overlayEntry.markNeedsBuild();
+      }
     }
   }
 
@@ -127,25 +218,120 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   Widget build(BuildContext context) {
     // 监听消息状态变化
     ref.listen<MessageState>(messageManagerProvider, (previous, next) {
-      Log.v('MessageOverlay: 状态变化 ${previous?.currentMessage?.content} -> ${next.currentMessage?.content}');
-
-      if (next.currentMessage != null) {
-        _showMessage(next.currentMessage!);
-      } else {
-        _hideMessage();
-      }
+      Log.v('MessageOverlay: 活跃消息变化 ${previous?.activeMessages.length ?? 0} -> ${next.activeMessages.length}');
+      _syncActiveMessages();
     });
 
     return widget.child;
   }
 }
 
+/// 消息定位组件 - 处理动态位置计算
+class _MessagePositioned extends StatefulWidget {
+  final String messageId;
+  final GlobalKey messageKey;
+  final GlobalKey<_MessageCardState> messageCardKey;
+  final AppMessage message;
+  final VoidCallback onDismiss;
+  final double Function() positionCalculator;
+
+  const _MessagePositioned({
+    required this.messageId,
+    required this.messageKey,
+    required this.messageCardKey,
+    required this.message,
+    required this.onDismiss,
+    required this.positionCalculator,
+  });
+
+  @override
+  State<_MessagePositioned> createState() => _MessagePositionedState();
+}
+
+class _MessagePositionedState extends State<_MessagePositioned>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _positionController;
+  late Animation<double> _positionAnimation;
+  double _currentTop = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _positionController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _currentTop = widget.positionCalculator();
+    _positionAnimation = Tween<double>(
+      begin: _currentTop,
+      end: _currentTop,
+    ).animate(CurvedAnimation(
+      parent: _positionController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _positionController.dispose();
+    super.dispose();
+  }
+
+  /// 更新位置
+  void updatePosition() {
+    final newTop = widget.positionCalculator();
+    if (newTop != _currentTop) {
+      _positionAnimation = Tween<double>(
+        begin: _currentTop,
+        end: newTop,
+      ).animate(CurvedAnimation(
+        parent: _positionController,
+        curve: Curves.easeInOut,
+      ));
+
+      _positionController.reset();
+      _positionController.forward();
+      _currentTop = newTop;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _positionAnimation,
+      builder: (context, child) {
+        return Positioned(
+          top: _positionAnimation.value,
+          left: 16,
+          right: 16,
+          child: Material(
+            color: Colors.transparent,
+            elevation: 1000, // 确保在最顶层
+            child: SafeArea(
+              child: _MessageCard(
+                key: widget.messageCardKey,
+                messageKey: widget.messageKey,
+                message: widget.message,
+                onDismiss: widget.onDismiss,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// 消息卡片组件
 class _MessageCard extends StatefulWidget {
+  final GlobalKey messageKey;
   final AppMessage message;
   final VoidCallback onDismiss;
 
   const _MessageCard({
+    super.key,
+    required this.messageKey,
     required this.message,
     required this.onDismiss,
   });
@@ -169,12 +355,18 @@ class _MessageCardState extends State<_MessageCard>
       vsync: this,
     );
 
+    _setupEnterAnimation();
+    _animationController.forward();
+  }
+
+  /// 设置进入动画
+  void _setupEnterAnimation() {
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Interval(0.0, 1.0, curve: _isExiting ? Curves.easeInBack : Curves.easeOutBack),
+      curve: Curves.easeOutBack,
     ));
 
     _fadeAnimation = Tween<double>(
@@ -182,10 +374,27 @@ class _MessageCardState extends State<_MessageCard>
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Interval(0.0, 1.0, curve: _isExiting ? Curves.easeIn : Curves.easeOut),
+      curve: Curves.easeOut,
+    ));
+  }
+
+  /// 设置退出动画
+  void _setupExitAnimation() {
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0, -1),
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInBack,
     ));
 
-    _animationController.forward();
+    _fadeAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    ));
   }
 
   @override
@@ -220,35 +429,30 @@ class _MessageCardState extends State<_MessageCard>
     }
   }
 
+  /// 外部调用的退出动画方法
+  void startExitAnimation() {
+    if (_isExiting) return; // 防止重复调用
+    _dismiss();
+  }
+
   void _dismiss() async {
     if (_isExiting) return; // 防止重复调用
+
+    Log.v('MessageCard [ID:${widget.message.id}]: 开始关闭动画 - ${widget.message.content}');
 
     setState(() {
       _isExiting = true;
     });
 
-    // 重新创建退出动画
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -1),
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInBack,
-    ));
-
-    _fadeAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeIn,
-    ));
+    // 设置退出动画
+    _setupExitAnimation();
 
     // 重置动画控制器并播放退出动画
     _animationController.reset();
     await _animationController.forward();
 
     if (mounted) {
+      Log.v('MessageCard [ID:${widget.message.id}]: 动画完成，触发关闭回调');
       widget.onDismiss();
     }
   }
@@ -260,6 +464,7 @@ class _MessageCardState extends State<_MessageCard>
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Material(
+          key: widget.messageKey, // 使用传入的messageKey用于高度测量
           elevation: 8,
           borderRadius: BorderRadius.circular(12),
           child: Container(
@@ -287,10 +492,12 @@ class _MessageCardState extends State<_MessageCard>
                   ),
                 ),
                 const SizedBox(width: 8),
-                GestureDetector(
+                // 使用InkWell替代GestureDetector，提供更好的触摸反馈
+                InkWell(
                   onTap: _dismiss,
+                  borderRadius: BorderRadius.circular(4),
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(8), // 增大触摸区域
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
