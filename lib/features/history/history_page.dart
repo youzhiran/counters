@@ -5,6 +5,7 @@ import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
 import 'package:counters/common/widgets/history_session_item.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:counters/home_page.dart';
@@ -175,10 +176,11 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         .getTemplateAsync(session.templateId);
 
     if (!context.mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HomePage.buildSessionPage(template, session.templateId),
+    Navigator.of(context).pushReplacement(
+      CustomPageTransitions.slideFromRight(
+        HomePage.buildSessionPage(template, session.templateId),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
       ),
     );
   }

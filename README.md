@@ -88,3 +88,7 @@ Counters 是一款用于桌游计分的 flutter 多平台计分程序，目前�
 
 ![](https://img.shields.io/github/downloads/youzhiran/counters/total)
 
+## 致谢
+
+DeepSeek、Gemini、GPT、Claude、Trae、Cursor、Augment 等 AI 模型和工具的大力支持。
+

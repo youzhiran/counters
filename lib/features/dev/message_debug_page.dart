@@ -1,5 +1,6 @@
 import 'package:counters/common/providers/message_provider.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/common/widgets/toast_message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,7 +19,7 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
   @override
   Widget build(BuildContext context) {
     final messageState = ref.watch(messageManagerProvider);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('消息系统调试'),
@@ -39,8 +40,8 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
                     Text(
                       '消息系统状态',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                     const SizedBox(height: 8),
                     Text('活跃消息数: ${messageState.activeMessages.length}'),
@@ -50,18 +51,18 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // 测试按钮
             Text(
               '测试按钮',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 12),
-            
+
             ElevatedButton(
               onPressed: () {
                 _messageCount++;
@@ -70,7 +71,7 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               child: const Text('显示成功消息'),
             ),
             const SizedBox(height: 8),
-            
+
             ElevatedButton(
               onPressed: () {
                 _messageCount++;
@@ -79,7 +80,7 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               child: const Text('显示警告消息'),
             ),
             const SizedBox(height: 8),
-            
+
             ElevatedButton(
               onPressed: () {
                 _messageCount++;
@@ -88,7 +89,7 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               child: const Text('显示错误消息'),
             ),
             const SizedBox(height: 8),
-            
+
             ElevatedButton(
               onPressed: () {
                 _messageCount++;
@@ -108,16 +109,44 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
                 _messageCount++;
                 // 显示一个短时间的消息来测试淡出动画
                 ref.read(messageManagerProvider.notifier).showMessage(
-                  '测试淡出动画 #$_messageCount',
-                  type: MessageType.info,
-                  duration: const Duration(seconds: 2), // 2秒后自动淡出
-                );
+                      '测试淡出动画 #$_messageCount',
+                      type: MessageType.info,
+                      duration: const Duration(seconds: 2), // 2秒后自动淡出
+                    );
               },
               child: const Text('测试淡出动画 (2秒)'),
             ),
+            const SizedBox(height: 8),
+
+            ElevatedButton(
+              onPressed: () {
+                _messageCount++;
+                ToastMessage.showSuccess(context, '显示Toast成功消息');
+              },
+              child: const Text('显示Toast成功消息'),
+            ),
+            const SizedBox(height: 8),
+
+            // ElevatedButton(
+            //   onPressed: () {
+            //     _messageCount++;
+            //     ToastMessage.showWarning(context, '显示Toast警告消息');
+            //   },
+            //   child: const Text('显示Toast警告消息'),
+            // ),
+            // const SizedBox(height: 8),
+            //
+            // ElevatedButton(
+            //   onPressed: () {
+            //     _messageCount++;
+            //     ToastMessage.showError(context, '显示Toast错误消息');
+            //   },
+            //   child: const Text('显示Toast错误消息'),
+            // ),
+            // const SizedBox(height: 8),
 
             const SizedBox(height: 20),
-            
+
             // Bottom Sheet 测试
             ElevatedButton(
               onPressed: () {
@@ -130,7 +159,8 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
                       height: MediaQuery.of(context).size.height * 0.6,
                       decoration: const BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(20),
@@ -147,7 +177,8 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
                             ),
                             const Text(
                               'Bottom Sheet 测试',
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 20),
                             Consumer(
@@ -157,17 +188,21 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
                                     ElevatedButton(
                                       onPressed: () {
                                         _messageCount++;
-                                        ref.showSuccess('Bottom Sheet 成功消息 #$_messageCount');
+                                        ref.showSuccess(
+                                            'Bottom Sheet 成功消息 #$_messageCount');
                                       },
-                                      child: const Text('在 Bottom Sheet 中显示成功消息'),
+                                      child:
+                                          const Text('在 Bottom Sheet 中显示成功消息'),
                                     ),
                                     const SizedBox(height: 12),
                                     ElevatedButton(
                                       onPressed: () {
                                         _messageCount++;
-                                        ref.showError('Bottom Sheet 错误消息 #$_messageCount');
+                                        ref.showError(
+                                            'Bottom Sheet 错误消息 #$_messageCount');
                                       },
-                                      child: const Text('在 Bottom Sheet 中显示错误消息'),
+                                      child:
+                                          const Text('在 Bottom Sheet 中显示错误消息'),
                                     ),
                                     const SizedBox(height: 12),
                                     ElevatedButton(
@@ -189,13 +224,15 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               },
               child: const Text('测试 Bottom Sheet 中的消息'),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // 清理按钮
             OutlinedButton(
               onPressed: () {
-                ref.read(messageManagerProvider.notifier).clearAllActiveMessages();
+                ref
+                    .read(messageManagerProvider.notifier)
+                    .clearAllActiveMessages();
                 setState(() {
                   _messageCount = 0;
                 });
@@ -213,10 +250,12 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               ),
               onPressed: () {
                 // 模拟断开重连后的消息显示
-                Navigator.of(context).pushNamedAndRemoveUntil(
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil(
                   '/main',
                   (route) => false,
-                ).then((_) {
+                )
+                    .then((_) {
                   // 延迟一下再显示消息，模拟重连后的操作
                   Future.delayed(const Duration(milliseconds: 500), () {
                     _messageCount++;
@@ -226,16 +265,16 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               },
               child: const Text('模拟断开重连测试'),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // 消息历史
             if (messageState.messages.isNotEmpty) ...[
               Text(
                 '消息历史',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               Expanded(
@@ -244,7 +283,8 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
                     padding: const EdgeInsets.all(8),
                     itemCount: messageState.messages.length,
                     itemBuilder: (context, index) {
-                      final message = messageState.messages[messageState.messages.length - 1 - index];
+                      final message = messageState
+                          .messages[messageState.messages.length - 1 - index];
                       return ListTile(
                         dense: true,
                         leading: Icon(_getMessageIcon(message.type)),
@@ -263,7 +303,7 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
       ),
     );
   }
-  
+
   IconData _getMessageIcon(MessageType type) {
     switch (type) {
       case MessageType.success:

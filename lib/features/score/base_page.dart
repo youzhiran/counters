@@ -8,6 +8,7 @@ import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/lan_test_page.dart';
@@ -185,172 +186,174 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     actions: [
                       // 显示LAN状态图标：主机模式、已连接的客户端、或处于客户端模式（包括重连状态）
                       const LanStatusButton(),
-                  IconButton(
-                    icon: Icon(Icons.sports_score),
-                    tooltip: '当前游戏情况',
-                    onPressed: () => showGameResult(context),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.stacked_line_chart),
-                    tooltip: '查看计分图表',
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (BuildContext modalContext) {
-                          return ScoreChartBottomSheet(session: session);
+                      IconButton(
+                        icon: Icon(Icons.sports_score),
+                        tooltip: '当前游戏情况',
+                        onPressed: () => showGameResult(context),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.stacked_line_chart),
+                        tooltip: '查看计分图表',
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (BuildContext modalContext) {
+                              return ScoreChartBottomSheet(session: session);
+                            },
+                          );
                         },
-                      );
-                    },
+                      ),
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_vert),
+                        tooltip: '更多操作',
+                        onSelected: (String value) {
+                          switch (value) {
+                            case 'Template_set':
+                              Widget configPage;
+                              if (template is LandlordsTemplate) {
+                                configPage = LandlordsConfigPage(
+                                    oriTemplate: template, isReadOnly: true);
+                              } else if (template is Poker50Template) {
+                                configPage = Poker50ConfigPage(
+                                    oriTemplate: template, isReadOnly: true);
+                              } else if (template is MahjongTemplate) {
+                                configPage = MahjongConfigPage(
+                                    oriTemplate: template, isReadOnly: true);
+                              } else if (template is CounterTemplate) {
+                                configPage = CounterConfigPage(
+                                    oriTemplate: template, isReadOnly: true);
+                              } else {
+                                ref.showWarning(
+                                    '该模板类型暂不支持查看设置: ${template.runtimeType}');
+                                return;
+                              }
+                              Navigator.of(context).pushWithSlide(
+                                configPage,
+                                direction: SlideDirection.fromRight,
+                                duration: const Duration(milliseconds: 300),
+                              );
+                              break;
+                            case 'reset_game':
+                              showResetConfirmation(context);
+                              break;
+                            case 'lan_debug':
+                              Navigator.of(context).pushWithSlide(
+                                const LanTestPage(),
+                                direction: SlideDirection.fromRight,
+                                duration: const Duration(milliseconds: 300),
+                              );
+                              break;
+                            case 'lan_conn':
+                              _toggleLanConnection(context, template);
+                              break;
+                            case 'lan_discovery':
+                              Navigator.of(context).pushWithSlide(
+                                const LanDiscoveryPage(),
+                                direction: SlideDirection.fromRight,
+                                duration: const Duration(milliseconds: 300),
+                              );
+                              break;
+                            case 'lan_test':
+                              Navigator.of(context).pushWithSlide(
+                                const LanTestPage(),
+                                direction: SlideDirection.fromRight,
+                                duration: const Duration(milliseconds: 300),
+                              );
+                              break;
+                            default:
+                              Log.warn('未知选项: $value');
+                              break;
+                          }
+                        },
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<String>>[
+                          PopupMenuItem<String>(
+                            value: 'lan_test',
+                            child: Row(
+                              children: [
+                                Icon(Icons.article),
+                                SizedBox(width: 8),
+                                Text('程序日志'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'lan_conn',
+                            enabled: !lanState.isConnected &&
+                                !lanState.isClientMode,
+                            child: Row(
+                              children: [
+                                Icon(
+                                    lanState.isHost
+                                        ? Icons.wifi_off
+                                        : Icons.wifi,
+                                    color: (!lanState.isConnected &&
+                                            !lanState.isClientMode)
+                                        ? null
+                                        : Colors.grey),
+                                SizedBox(width: 8),
+                                Text(lanState.isHost ? '停止主机' : '开启局域网联机',
+                                    style: TextStyle(
+                                        color: (!lanState.isConnected &&
+                                                !lanState.isClientMode)
+                                            ? null
+                                            : Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'lan_discovery',
+                            enabled:
+                                !lanState.isHost && !lanState.isClientMode,
+                            child: Row(
+                              children: [
+                                Icon(Icons.search,
+                                    color: (!lanState.isHost &&
+                                            !lanState.isClientMode)
+                                        ? null
+                                        : Colors.grey),
+                                SizedBox(width: 8),
+                                Text('发现局域网游戏',
+                                    style: TextStyle(
+                                        color: (!lanState.isHost &&
+                                                !lanState.isClientMode)
+                                            ? null
+                                            : Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'reset_game',
+                            child: Row(
+                              children: [
+                                Icon(Icons.restart_alt_rounded),
+                                SizedBox(width: 8),
+                                Text('重置游戏'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'Template_set',
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline),
+                                SizedBox(width: 8),
+                                Text('查看模板设置'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  // SizedBox不能去除，否则多次点击会报错：RenderBox was not laid out
-                  SizedBox(
-                    child: PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert),
-                      tooltip: '更多操作',
-                      onSelected: (String value) {
-                        switch (value) {
-                          case 'Template_set':
-                            Widget configPage;
-                            if (template is LandlordsTemplate) {
-                              configPage = LandlordsConfigPage(
-                                  oriTemplate: template, isReadOnly: true);
-                            } else if (template is Poker50Template) {
-                              configPage = Poker50ConfigPage(
-                                  oriTemplate: template, isReadOnly: true);
-                            } else if (template is MahjongTemplate) {
-                              configPage = MahjongConfigPage(
-                                  oriTemplate: template, isReadOnly: true);
-                            } else if (template is CounterTemplate) {
-                              configPage = CounterConfigPage(
-                                  oriTemplate: template, isReadOnly: true);
-                            } else {
-                              ref.showWarning(
-                                  '该模板类型暂不支持查看设置: ${template.runtimeType}');
-                              return;
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => configPage),
-                            );
-                            break;
-                          case 'reset_game':
-                            showResetConfirmation(context);
-                            break;
-                          case 'lan_debug':
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const LanTestPage()));
-                            break;
-                          case 'lan_conn':
-                            _toggleLanConnection(context, template);
-                            break;
-                          case 'lan_discovery':
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      const LanDiscoveryPage()),
-                            );
-                            break;
-                          case 'lan_test':
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const LanTestPage()),
-                            );
-                            break;
-                          default:
-                            Log.warn('未知选项: $value');
-                            break;
-                        }
-                      },
-                      itemBuilder: (BuildContext context) =>
-                          <PopupMenuEntry<String>>[
-                        PopupMenuItem<String>(
-                          value: 'lan_test',
-                          child: Row(
-                            children: [
-                              Icon(Icons.article),
-                              SizedBox(width: 8),
-                              Text('程序日志'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem<String>(
-                          value: 'lan_conn',
-                          enabled:
-                              !lanState.isConnected && !lanState.isClientMode,
-                          child: Row(
-                            children: [
-                              Icon(Icons.wifi,
-                                  color: (!lanState.isConnected &&
-                                          !lanState.isClientMode)
-                                      ? null
-                                      : Colors.grey),
-                              SizedBox(width: 8),
-                              Text(lanState.isHost ? '停止主机' : '开启局域网联机',
-                                  style: TextStyle(
-                                      color: (!lanState.isConnected &&
-                                              !lanState.isClientMode)
-                                          ? null
-                                          : Colors.grey)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem<String>(
-                          value: 'lan_discovery',
-                          enabled: !lanState.isHost && !lanState.isClientMode,
-                          child: Row(
-                            children: [
-                              Icon(Icons.search,
-                                  color: (!lanState.isHost &&
-                                          !lanState.isClientMode)
-                                      ? null
-                                      : Colors.grey),
-                              SizedBox(width: 8),
-                              Text('发现局域网游戏',
-                                  style: TextStyle(
-                                      color: (!lanState.isHost &&
-                                              !lanState.isClientMode)
-                                          ? null
-                                          : Colors.grey)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem<String>(
-                          value: 'reset_game',
-                          child: Row(
-                            children: [
-                              Icon(Icons.restart_alt_rounded),
-                              SizedBox(width: 8),
-                              Text('重置游戏'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem<String>(
-                          value: 'Template_set',
-                          child: Row(
-                            children: [
-                              Icon(Icons.info_outline),
-                              SizedBox(width: 8),
-                              Text('查看模板设置'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              body: buildGameBody(context, template, session),
-            ),
-            // 在联机状态下显示ping值
-            // const PingWidget(),
-          ],
-        ));
+                  body: buildGameBody(context, template, session),
+                ),
+                // 在联机状态下显示ping值
+                // const PingWidget(),
+              ],
+            ));
       },
     );
   }

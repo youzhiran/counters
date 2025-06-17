@@ -25,8 +25,28 @@ class CustomPageTransitions {
     final optimizedDuration = _getOptimizedDuration(duration);
 
     return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          RepaintBoundary(child: page),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        // 添加安全包装，确保页面在布局完成后再显示
+        return RepaintBoundary(
+          child: Builder(
+            builder: (context) {
+              // 使用 LayoutBuilder 确保页面有正确的约束
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth > 0 && constraints.maxHeight > 0) {
+                    return page;
+                  } else {
+                    // 如果约束无效，显示占位符
+                    return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                },
+              );
+            },
+          ),
+        );
+      },
       transitionDuration: optimizedDuration,
       reverseTransitionDuration: optimizedDuration,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {

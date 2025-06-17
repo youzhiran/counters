@@ -368,16 +368,20 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
   @override
   Widget build(BuildContext context) {
     final templatesAsync = ref.watch(templatesProvider);
-    return templatesAsync.when(
-      loading: () => Scaffold(
-        appBar: AppBar(title: Text('模板同步中')),
-        body: const Center(child: Text('正在同步模板信息，请稍候...')),
-      ),
-      error: (e, s) => Scaffold(
-        appBar: AppBar(title: Text('模板加载失败')),
-        body: Center(child: Text('模板加载失败: $e')),
-      ),
-      data: (templates) {
+
+    // 使用 LayoutBuilder 确保有正确的布局约束
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return templatesAsync.when(
+          loading: () => Scaffold(
+            appBar: AppBar(title: Text('模板同步中')),
+            body: const Center(child: Text('正在同步模板信息，请稍候...')),
+          ),
+          error: (e, s) => Scaffold(
+            appBar: AppBar(title: Text('模板加载失败')),
+            body: Center(child: Text('模板加载失败: $e')),
+          ),
+          data: (templates) {
         Log.d('所有模板ID: ${templates.map((t) => t.tid).join(",")}');
         Log.d('buildSessionPage 需要的 templateId: ${widget.templateId}');
         final template =
@@ -427,6 +431,8 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
         }
         Future.microtask(() => GlobalMsgManager.showError('未知的模板类型'));
         return const HomePage();
+          },
+        );
       },
     );
   }

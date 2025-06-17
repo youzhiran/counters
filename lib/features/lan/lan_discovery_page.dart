@@ -6,6 +6,7 @@ import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/ip_display_widget.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/score/score_provider.dart';
@@ -164,10 +165,11 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       await Future.delayed(Duration(milliseconds: 100));
 
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => HomePage.buildSessionPage(null, host.baseTid),
+      Navigator.of(context).pushReplacement(
+        CustomPageTransitions.slideFromRight(
+          HomePage.buildSessionPage(null, host.baseTid),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
         ),
       );
     } catch (e, s) {

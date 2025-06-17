@@ -372,7 +372,6 @@ class _InfoRow extends ConsumerWidget {
 
       // 使用 Riverpod 消息系统，不会被 Bottom Sheet 遮挡
       ref.showSuccess('已复制: $text');
-      Log.d('LAN Status Dialog: ref.showSuccess 调用完成');
     } catch (e, stackTrace) {
       Log.d('LAN Status Dialog: 复制到剪贴板失败 - $e');
       Log.d('StackTrace: $stackTrace');

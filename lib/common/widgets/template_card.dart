@@ -6,6 +6,7 @@ import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/util.dart';
+import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/score/counter/config.dart';
 import 'package:counters/features/score/landlords/config.dart';
 import 'package:counters/features/score/mahjong/config.dart';
@@ -103,7 +104,7 @@ class TemplateCard extends ConsumerWidget {
   Widget _getTemplateIcon(BuildContext context) {
     if (template is Poker50Template) {
       return SvgIconUtils.getIcon(
-        SvgIconUtils.poker_cards,
+        SvgIconUtils.pokerCards,
         size: 100,
         color: Theme.of(context).colorScheme.primary,
         opacity: 0.1,
@@ -229,11 +230,11 @@ class TemplateCard extends ConsumerWidget {
                   }
                   ref.read(scoreProvider.notifier).startNewGame(template);
                   if (!context.mounted) return;
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          HomePage.buildSessionPage(template, template.tid),
+                  Navigator.of(context).pushReplacement(
+                    CustomPageTransitions.slideFromRight(
+                      HomePage.buildSessionPage(template, template.tid),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
                     ),
                   );
                 },
@@ -259,10 +260,11 @@ class TemplateCard extends ConsumerWidget {
   // 选择模式的点击处理
   void _handleSelectionTap(BuildContext context, WidgetRef ref) {
     ref.read(scoreProvider.notifier).startNewGame(template);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HomePage.buildSessionPage(template, template.tid),
+    Navigator.of(context).pushReplacement(
+      CustomPageTransitions.slideFromRight(
+        HomePage.buildSessionPage(template, template.tid),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
       ),
     );
   }
@@ -345,24 +347,29 @@ class TemplateCard extends ConsumerWidget {
   // 导航到配置页面的方法
   void _navigateToConfigPage(
       BuildContext context, WidgetRef ref, BaseTemplate template) {
-    globalState.navigatorKey.currentState?.push(
-      MaterialPageRoute(
-        builder: (_) {
-          switch (template) {
-            case Poker50Template():
-              return Poker50ConfigPage(oriTemplate: template);
-            case LandlordsTemplate():
-              return LandlordsConfigPage(oriTemplate: template);
-            case MahjongTemplate():
-              return MahjongConfigPage(oriTemplate: template);
-            case CounterTemplate():
-              return CounterConfigPage(oriTemplate: template);
-            default:
-              Log.w('不支持的模板类型: ${template.runtimeType}');
-              return const SizedBox.shrink();
-          }
-        },
-      ),
+    Widget configPage;
+    switch (template) {
+      case Poker50Template():
+        configPage = Poker50ConfigPage(oriTemplate: template);
+        break;
+      case LandlordsTemplate():
+        configPage = LandlordsConfigPage(oriTemplate: template);
+        break;
+      case MahjongTemplate():
+        configPage = MahjongConfigPage(oriTemplate: template);
+        break;
+      case CounterTemplate():
+        configPage = CounterConfigPage(oriTemplate: template);
+        break;
+      default:
+        Log.w('不支持的模板类型: ${template.runtimeType}');
+        return;
+    }
+
+    globalState.navigatorKey.currentState?.pushWithSlide(
+      configPage,
+      direction: SlideDirection.fromRight,
+      duration: const Duration(milliseconds: 300),
     );
   }
 }

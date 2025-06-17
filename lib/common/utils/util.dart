@@ -27,7 +27,7 @@ class SvgIconUtils {
   }
 
   /// 预定义的图标名称常量
-  static const String poker_cards = 'poker_cards';
+  static const String pokerCards = 'poker_cards';
   static const String gardener = 'gardener';
   static const String mahjong = 'mahjong';
   static const String counter = 'counter';

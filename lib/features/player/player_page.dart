@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
+import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/features/player/add_players.dart';
 import 'package:counters/features/player/player_provider.dart';
@@ -186,8 +187,10 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
             bottom: 16,
             child: FloatingActionButton(
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => AddPlayersPage()),
+                Navigator.of(context).pushWithSlide(
+                  AddPlayersPage(),
+                  direction: SlideDirection.fromRight,
+                  duration: const Duration(milliseconds: 300),
                 );
               },
               child: const Icon(Icons.person_add),
