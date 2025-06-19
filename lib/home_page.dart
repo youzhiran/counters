@@ -114,7 +114,7 @@ class HomePage extends ConsumerWidget {
 
     return Scaffold(
         appBar: AppBar(
-          title: const Text('首页'),
+          title: const Text('主页'),
           automaticallyImplyLeading: false,
         ),
         body: scoreAsync.when(
