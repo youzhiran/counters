@@ -164,9 +164,14 @@ class Lan extends _$Lan {
   int _currentWsPort = 0;
   String _currentTemplateName = '';
 
+  // 修复：添加网络状态监听
+  Timer? _networkCheckTimer;
+  String _lastKnownIp = '';
+
   void dispose() {
     _hostIpController.dispose();
     _messageController.dispose();
+    _stopNetworkMonitoring();
     disposeManager();
     Log.d('LanNotifier dispose');
   }
@@ -189,6 +194,81 @@ class Lan extends _$Lan {
   Future<void> refreshLocalIp() async {
     Log.i("手动刷新本地 IP 地址...");
     await _fetchLocalIp();
+  }
+
+  /// 验证IP地址格式是否有效
+  bool _isValidIpAddress(String ip) {
+    if (ip.isEmpty || ip == '获取中...' || ip == '获取失败') {
+      return false;
+    }
+
+    try {
+      final parts = ip.split('.');
+      if (parts.length != 4) return false;
+
+      for (final part in parts) {
+        final num = int.tryParse(part);
+        if (num == null || num < 0 || num > 255) return false;
+      }
+
+      // 排除一些明显无效的IP地址
+      if (ip.startsWith('0.') || ip.startsWith('127.') || ip == '255.255.255.255') {
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+
+
+  /// 启动网络状态监听
+  void _startNetworkMonitoring() {
+    _stopNetworkMonitoring();
+    _lastKnownIp = state.localIp;
+
+    // 每30秒检查一次网络状态
+    _networkCheckTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      await _checkNetworkChanges();
+    });
+
+    Log.i('网络状态监听已启动');
+  }
+
+  /// 停止网络状态监听
+  void _stopNetworkMonitoring() {
+    _networkCheckTimer?.cancel();
+    _networkCheckTimer = null;
+    Log.d('网络状态监听已停止');
+  }
+
+  /// 检查网络变化
+  Future<void> _checkNetworkChanges() async {
+    try {
+      final ipData = await getWlanIp();
+      final currentIp = ipData?['ip'] ?? '获取失败';
+
+      if (currentIp != _lastKnownIp && currentIp != '获取失败') {
+        Log.i('检测到IP地址变化: $_lastKnownIp -> $currentIp');
+        _lastKnownIp = currentIp;
+
+        // 更新状态
+        state = state.copyWith(
+          localIp: currentIp,
+          interfaceName: ipData?['name'] ?? '',
+        );
+
+        // 如果是主机模式且正在广播，重启UDP广播
+        if (state.isHost && state.isBroadcasting) {
+          Log.i('主机模式检测到IP变化，重启UDP广播...');
+          await _startDiscoveryBroadcast(_currentWsPort, _currentBaseTid);
+        }
+      }
+    } catch (e) {
+      Log.d('网络状态检查失败: $e');
+    }
   }
 
   void _handleMessageReceived(String rawMessage) async {
@@ -571,6 +651,23 @@ class Lan extends _$Lan {
     _currentBaseTid = baseTid;
     _currentWsPort = port;
     _currentTemplateName = templateName ?? '';
+
+    // 修复：在启动主机模式前动态获取当前有效的IP地址
+    Log.i('动态获取当前IP地址...');
+    await _fetchLocalIp();
+
+    // 验证IP地址是否有效
+    if (state.localIp == '获取中...' || state.localIp == '获取失败') {
+      Log.e('无法启动主机模式：无效的本地IP地址 (${state.localIp})');
+      state = state.copyWith(
+        isLoading: false,
+        isHost: false,
+        connectionStatus: '启动失败：无法获取有效IP地址'
+      );
+      GlobalMsgManager.showError('启动失败：无法获取有效的本地IP地址，请检查网络连接');
+      return;
+    }
+
     try {
       final manager = await ScoreNetworkManager.createHost(
         port,
@@ -596,6 +693,10 @@ class Lan extends _$Lan {
         serverPort: port, // 新增：设置服务器端口
       );
       await _startDiscoveryBroadcast(port, baseTid);
+
+      // 修复：启动网络状态监听
+      _startNetworkMonitoring();
+
       Log.i('主机模式已成功启动在端口 $port');
     } catch (e) {
       Log.e('启动主机失败: $e');
@@ -921,6 +1022,7 @@ class Lan extends _$Lan {
   /// 清理并释放所有网络资源。
   Future<void> disposeManager() async {
     Log.d('Disposing network manager...');
+    _stopNetworkMonitoring();
     _stopDiscoveryBroadcast();
 
     // 如果是主机模式且有连接的客户端，发送断开通知
@@ -983,34 +1085,76 @@ class Lan extends _$Lan {
   Future<void> _startDiscoveryBroadcast(int wsPort, String baseTid) async {
     await _stopDiscoveryBroadcast();
 
-    try {
-      if (state.localIp == '获取中...' || state.localIp == '获取失败') {
-        Log.e('无法启动 UDP 广播：无效的本地 IP 地址 (${state.localIp})');
-        await _stopDiscoveryBroadcast();
-        return;
-      }
+    // 修复：添加重试机制，最多重试3次
+    int retryCount = 0;
+    const maxRetries = 3;
 
-      final localBindAddress = InternetAddress(state.localIp);
-      Log.i('尝试将 UDP 广播 Socket 绑定到: ${localBindAddress.address}');
-      _udpSocket = await RawDatagramSocket.bind(localBindAddress, 0);
-      _udpSocket?.broadcastEnabled = true;
-      Log.i('UDP 广播 Socket 绑定成功，准备发送发现信息...');
+    while (retryCount < maxRetries) {
+      try {
+        // 修复：每次重试前重新获取IP地址
+        if (retryCount > 0) {
+          Log.i('第 ${retryCount + 1} 次尝试启动UDP广播，重新获取IP地址...');
+          await _fetchLocalIp();
+          // 给网络接口一点时间稳定
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
 
-      _broadcastTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        if (state.localIp == '获取中...' || state.localIp == '获取失败') {
+          Log.e('无法启动 UDP 广播：无效的本地 IP 地址 (${state.localIp})');
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            await _stopDiscoveryBroadcast();
+            return;
+          }
+          continue;
+        }
+
+        // 修复：验证IP地址格式是否有效
+        if (!_isValidIpAddress(state.localIp)) {
+          Log.e('无法启动 UDP 广播：IP地址格式无效 (${state.localIp})');
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            await _stopDiscoveryBroadcast();
+            return;
+          }
+          continue;
+        }
+
+        final localBindAddress = InternetAddress(state.localIp);
+        Log.i('尝试将 UDP 广播 Socket 绑定到: ${localBindAddress.address}');
+        _udpSocket = await RawDatagramSocket.bind(localBindAddress, 0);
+        _udpSocket?.broadcastEnabled = true;
+        Log.i('UDP 广播 Socket 绑定成功，准备发送发现信息...');
+
+        _broadcastTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+          if (state.isBroadcasting) {
+            // 只在广播开启时发送
+            _sendDiscoveryBroadcast();
+          }
+        });
+
         if (state.isBroadcasting) {
-          // 只在广播开启时发送
+          // 立即发送一次
           _sendDiscoveryBroadcast();
         }
-      });
 
-      if (state.isBroadcasting) {
-        // 立即发送一次
-        _sendDiscoveryBroadcast();
+        // 成功启动，退出重试循环
+        break;
+
+      } catch (e) {
+        retryCount++;
+        Log.w('第 $retryCount 次启动UDP广播失败: $e');
+
+        if (retryCount >= maxRetries) {
+          // 使用统一的错误处理器
+          ErrorHandler.handle(e, StackTrace.current, prefix: '启动UDP广播失败');
+          await _stopDiscoveryBroadcast();
+          return;
+        }
+
+        // 等待一段时间后重试
+        await Future.delayed(Duration(milliseconds: 1000 * retryCount));
       }
-    } catch (e) {
-      // 使用统一的错误处理器
-      ErrorHandler.handle(e, StackTrace.current, prefix: '启动UDP广播失败');
-      await _stopDiscoveryBroadcast();
     }
   }
 

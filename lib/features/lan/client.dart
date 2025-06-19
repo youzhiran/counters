@@ -9,8 +9,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 /// 返回一个包含 'ip' 和 'name' 的 Map，如果未找到则返回 null
 Future<Map<String, String>?> getWlanIp() async {
   try {
-    String? firstIpFound;
-    String? firstInterfaceNameFound;
+    List<Map<String, String>> availableIps = [];
 
     // 遍历所有网络接口
     for (var interface in await NetworkInterface.list(
@@ -21,25 +20,45 @@ Future<Map<String, String>?> getWlanIp() async {
         final interfaceName = interface.name.toLowerCase(); // 转为小写以便比较
         Log.d('找到 IP 地址: $ip 来自接口: ${interface.name}');
 
-        // 记录找到的第一个 IP 地址和名称，作为备选
-        if (firstIpFound == null) {
-          firstIpFound = ip;
-          firstInterfaceNameFound = interface.name;
-        }
+        // 修复：验证IP地址是否有效且可用
+        if (_isValidIpAddress(ip) && await isIpAddressUsable(ip)) {
+          availableIps.add(
+              {'ip': ip, 'name': interface.name, 'nameLower': interfaceName});
 
-        // 检查接口名称是否包含 "wlan"或"wifi"
-        if (interfaceName.contains('wlan') || interfaceName.contains('wifi')) {
-          Log.i('优先选择 WLAN 接口: ${interface.name}，IP: $ip');
-          return {'ip': ip, 'name': interface.name}; // 找到 WLAN 接口，立即返回
+          // 检查接口名称是否包含 "wlan"或"wifi"，优先返回
+          if (interfaceName.contains('wlan') ||
+              interfaceName.contains('wifi')) {
+            Log.i('优先选择 WLAN 接口: ${interface.name}，IP: $ip');
+            return {'ip': ip, 'name': interface.name}; // 找到 WLAN 接口，立即返回
+          }
+        } else {
+          Log.d('跳过无效或不可用的IP地址: $ip (${interface.name})');
         }
       }
     }
 
-    // 如果循环结束仍未找到 WLAN 接口，返回找到的第一个 IP (如果有)
-    if (firstIpFound != null) {
+    // 如果没有找到WLAN接口，按优先级选择其他接口
+    if (availableIps.isNotEmpty) {
+      // 优先级排序：eth > en > 其他
+      availableIps.sort((a, b) {
+        final aName = a['nameLower']!;
+        final bName = b['nameLower']!;
+
+        // eth接口优先级最高（有线网络）
+        if (aName.startsWith('eth') && !bName.startsWith('eth')) return -1;
+        if (!aName.startsWith('eth') && bName.startsWith('eth')) return 1;
+
+        // en接口次优先级（通常是以太网）
+        if (aName.startsWith('en') && !bName.startsWith('en')) return -1;
+        if (!aName.startsWith('en') && bName.startsWith('en')) return 1;
+
+        return 0; // 其他情况保持原顺序
+      });
+
+      final selected = availableIps.first;
       Log.w(
-          '未找到名称含 "wlan/wifi" 的接口，返回第一个找到的 IP: $firstIpFound (${firstInterfaceNameFound ?? '未知接口'})');
-      return {'ip': firstIpFound, 'name': firstInterfaceNameFound ?? '未知接口'};
+          '未找到名称含 "wlan/wifi" 的接口，选择最佳可用接口: ${selected['ip']} (${selected['name']})');
+      return {'ip': selected['ip']!, 'name': selected['name']!};
     }
   } catch (e) {
     Log.e('获取本地 IP 失败: $e');
@@ -47,6 +66,46 @@ Future<Map<String, String>?> getWlanIp() async {
 
   Log.w('未能找到合适的本地 IP 地址和接口');
   return null; // 如果没有找到任何合适的 IP，返回 null
+}
+
+/// 验证IP地址格式是否有效
+bool _isValidIpAddress(String ip) {
+  if (ip.isEmpty) return false;
+
+  try {
+    final parts = ip.split('.');
+    if (parts.length != 4) return false;
+
+    for (final part in parts) {
+      final num = int.tryParse(part);
+      if (num == null || num < 0 || num > 255) return false;
+    }
+
+    // 排除一些明显无效的IP地址
+    if (ip.startsWith('0.') ||
+        ip.startsWith('127.') ||
+        ip == '255.255.255.255') {
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/// 检查IP地址是否可用（尝试绑定测试）
+Future<bool> isIpAddressUsable(String ip) async {
+  if (!_isValidIpAddress(ip)) return false;
+
+  try {
+    final testSocket = await RawDatagramSocket.bind(InternetAddress(ip), 0);
+    testSocket.close();
+    return true;
+  } catch (e) {
+    Log.d('IP地址 $ip 不可用: $e');
+    return false;
+  }
 }
 
 // 定义回调类型别名
@@ -197,7 +256,8 @@ class WsClient {
     _isReconnecting = true;
     _reconnectAttempts++;
 
-    Log.i('连接断开，将在 ${_reconnectInterval.inSeconds} 秒后尝试第 $_reconnectAttempts 次重连');
+    Log.i(
+        '连接断开，将在 ${_reconnectInterval.inSeconds} 秒后尝试第 $_reconnectAttempts 次重连');
     // 修复：发送包含重连次数的状态消息，让Provider知道当前重连次数
     onConnectionChange?.call(false, '重连尝试:$_reconnectAttempts');
 
