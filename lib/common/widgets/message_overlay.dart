@@ -20,7 +20,8 @@ class MessageOverlay extends ConsumerStatefulWidget {
 class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   final Map<String, OverlayEntry> _overlayEntries = {}; // 管理多个OverlayEntry
   final Map<String, GlobalKey> _messageKeys = {}; // 用于测量消息高度
-  final Map<String, GlobalKey<_MessageCardState>> _messageCardKeys = {}; // 用于控制消息卡片动画
+  final Map<String, GlobalKey<_MessageCardState>> _messageCardKeys =
+      {}; // 用于控制消息卡片动画
   static const double _messageSpacing = 8.0; // 消息间距
   static const double _topPadding = 16.0; // 顶部间距
 
@@ -95,7 +96,9 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
           messageCardKey: messageCardKey,
           message: message,
           onDismiss: () {
-            ref.read(messageManagerProvider.notifier).dismissMessage(message.id);
+            ref
+                .read(messageManagerProvider.notifier)
+                .dismissMessage(message.id);
           },
           positionCalculator: () => _calculateMessagePosition(message),
         ),
@@ -168,13 +171,14 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   /// 计算消息的垂直位置
   double _calculateMessagePosition(AppMessage message) {
     final activeMessages = ref.read(messageManagerProvider).activeMessages;
-    final messageIndex = activeMessages.indexWhere((msg) => msg.id == message.id);
+    final messageIndex =
+        activeMessages.indexWhere((msg) => msg.id == message.id);
 
     if (messageIndex == -1) {
-      return MediaQuery.of(context).padding.top + _topPadding;
+      return _calculateSafeTopPosition();
     }
 
-    double position = MediaQuery.of(context).padding.top + _topPadding;
+    double position = _calculateSafeTopPosition();
 
     // 累加前面消息的高度
     for (int i = 0; i < messageIndex; i++) {
@@ -182,7 +186,8 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
       final prevKey = _messageKeys[prevMessage.id];
 
       if (prevKey?.currentContext != null) {
-        final renderBox = prevKey!.currentContext!.findRenderObject() as RenderBox?;
+        final renderBox =
+            prevKey!.currentContext!.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           position += renderBox.size.height + _messageSpacing;
         } else {
@@ -196,6 +201,63 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
     }
 
     return position;
+  }
+
+  /// 计算安全的顶部位置，避开AppBar区域
+  double _calculateSafeTopPosition() {
+    final mediaQuery = MediaQuery.of(context);
+    final statusBarHeight = mediaQuery.padding.top;
+
+    // 尝试检测当前页面是否有AppBar
+    double appBarHeight = 0;
+    bool hasAppBar = false;
+
+    try {
+      // 查找当前页面的Scaffold
+      final scaffoldContext = Scaffold.maybeOf(context);
+      if (scaffoldContext != null) {
+        // 检查是否有AppBar - 通过查找AppBar widget
+        context.visitAncestorElements((element) {
+          if (element.widget is AppBar) {
+            hasAppBar = true;
+            return false; // 找到AppBar，停止遍历
+          }
+          return true; // 继续遍历
+        });
+
+        if (hasAppBar) {
+          // 获取AppBar的默认高度
+          appBarHeight = kToolbarHeight;
+
+          // 检查是否有多行标题（subtitle）
+          context.visitAncestorElements((element) {
+            if (element.widget is AppBar) {
+              final appBar = element.widget as AppBar;
+              // 如果AppBar的title是Column，说明可能有subtitle，需要更多空间
+              if (appBar.title is Column) {
+                appBarHeight += 20; // 为subtitle预留额外空间
+              }
+              return false;
+            }
+            return true;
+          });
+        }
+      }
+    } catch (e) {
+      Log.w('MessageOverlay: 检测AppBar失败，使用默认配置 - $e');
+      // 发生错误时，保守地假设有AppBar
+      hasAppBar = true;
+      appBarHeight = kToolbarHeight;
+    }
+
+    // 计算安全位置
+    final safeTop =
+        statusBarHeight + (hasAppBar ? appBarHeight : 0) + _topPadding;
+
+    Log.v(
+        'MessageOverlay: 计算安全位置 - 状态栏:${statusBarHeight}px, AppBar:${hasAppBar ? appBarHeight : 0}px (检测到:$hasAppBar), 总计:${safeTop}px');
+
+    return safeTop;
   }
 
   /// 更新所有消息的位置
@@ -218,7 +280,8 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   Widget build(BuildContext context) {
     // 监听消息状态变化
     ref.listen<MessageState>(messageManagerProvider, (previous, next) {
-      Log.v('MessageOverlay: 活跃消息变化 ${previous?.activeMessages.length ?? 0} -> ${next.activeMessages.length}');
+      Log.v(
+          'MessageOverlay: 活跃消息变化 ${previous?.activeMessages.length ?? 0} -> ${next.activeMessages.length}');
       _syncActiveMessages();
     });
 
@@ -305,17 +368,11 @@ class _MessagePositionedState extends State<_MessagePositioned>
           top: _positionAnimation.value,
           left: 16,
           right: 16,
-          child: Material(
-            color: Colors.transparent,
-            elevation: 1000, // 确保在最顶层
-            child: SafeArea(
-              child: _MessageCard(
-                key: widget.messageCardKey,
-                messageKey: widget.messageKey,
-                message: widget.message,
-                onDismiss: widget.onDismiss,
-              ),
-            ),
+          child: _MessageCard(
+            key: widget.messageCardKey,
+            messageKey: widget.messageKey,
+            message: widget.message,
+            onDismiss: widget.onDismiss,
           ),
         );
       },
@@ -438,7 +495,8 @@ class _MessageCardState extends State<_MessageCard>
   void _dismiss() async {
     if (_isExiting) return; // 防止重复调用
 
-    Log.v('MessageCard [ID:${widget.message.id}]: 开始关闭动画 - ${widget.message.content}');
+    Log.v(
+        'MessageCard [ID:${widget.message.id}]: 开始关闭动画 - ${widget.message.content}');
 
     setState(() {
       _isExiting = true;
@@ -463,55 +521,81 @@ class _MessageCardState extends State<_MessageCard>
       position: _slideAnimation,
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: Material(
-          key: widget.messageKey, // 使用传入的messageKey用于高度测量
-          elevation: 8,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _getBackgroundColor(widget.message.type),
+        child: AnimatedBuilder(
+          animation: _fadeAnimation,
+          builder: (context, child) {
+            // 根据fade动画的值动态调整Material elevation
+            // 当opacity接近0时，elevation也接近0，避免阴影残留
+            final dynamicElevation = _fadeAnimation.value * 3.0;
+
+            return Material(
+              color: Colors.transparent,
+              elevation: dynamicElevation, // 动态elevation，与fade动画同步
               borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _getIcon(widget.message.type),
-                  color: Colors.white,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    widget.message.content,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+              child: Container(
+                key: widget.messageKey, // 使用传入的messageKey用于高度测量
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _getBackgroundColor(widget.message.type),
+                  borderRadius: BorderRadius.circular(12),
+                  // 使用柔和的自定义阴影，符合Material 3设计规范
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08 * _fadeAnimation.value), // 阴影透明度也与动画同步
+                      blurRadius: 6, // 减少模糊半径
+                      spreadRadius: 0, // 不扩散，避免"脏"的效果
+                      offset: const Offset(0, 2), // 轻微向下偏移，自然的投影
                     ),
-                  ),
+                    // 添加第二层更淡的阴影，增加层次感但不突兀
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04 * _fadeAnimation.value), // 阴影透明度也与动画同步
+                      blurRadius: 12,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                // 使用InkWell替代GestureDetector，提供更好的触摸反馈
-                InkWell(
-                  onTap: _dismiss,
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.all(8), // 增大触摸区域
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                child: Row(
+                  children: [
+                    Icon(
+                      _getIcon(widget.message.type),
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.message.content,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 使用InkWell替代GestureDetector，提供更好的触摸反馈
+                    InkWell(
+                      onTap: _dismiss,
                       borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        padding: const EdgeInsets.all(8), // 增大触摸区域
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -533,19 +617,27 @@ class GlobalMsgManager {
       if (_container != null) {
         switch (type) {
           case MessageType.success:
-            _container!.read(messageManagerProvider.notifier).showSuccess(content);
+            _container!
+                .read(messageManagerProvider.notifier)
+                .showSuccess(content);
             Log.i('GlobalMsgManager: 显示$typeName消息 - $content');
             break;
           case MessageType.error:
-            _container!.read(messageManagerProvider.notifier).showError(content);
+            _container!
+                .read(messageManagerProvider.notifier)
+                .showError(content);
             Log.e('GlobalMsgManager: 显示$typeName消息 - $content');
             break;
           case MessageType.warning:
-            _container!.read(messageManagerProvider.notifier).showWarning(content);
+            _container!
+                .read(messageManagerProvider.notifier)
+                .showWarning(content);
             Log.w('GlobalMsgManager: 显示$typeName消息 - $content');
             break;
           case MessageType.info:
-            _container!.read(messageManagerProvider.notifier).showMessage(content, type: type);
+            _container!
+                .read(messageManagerProvider.notifier)
+                .showMessage(content, type: type);
             Log.i('GlobalMsgManager: 显示$typeName消息 - $content');
             break;
         }
@@ -562,7 +654,6 @@ class GlobalMsgManager {
   static void showMessage(String content) {
     _showMessage(content, MessageType.info, '信息');
   }
-
 
   /// 显示成功消息
   static void showSuccess(String content) {
@@ -583,7 +674,8 @@ class GlobalMsgManager {
 /// 消息管理器的便捷扩展
 extension MessageManagerExtension on WidgetRef {
   /// 通用消息显示方法
-  void _showMessageWithFallback(String content, MessageType type, String typeName) {
+  void _showMessageWithFallback(
+      String content, MessageType type, String typeName) {
     try {
       read(messageManagerProvider.notifier).showMessage(content, type: type);
       // 根据消息类型使用相应的日志级别
