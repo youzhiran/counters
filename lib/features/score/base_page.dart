@@ -11,7 +11,7 @@ import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
-import 'package:counters/features/lan/lan_test_page.dart';
+import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/lan/widgets/lan_status_button.dart';
 import 'package:counters/features/score/counter/config.dart';
 import 'package:counters/features/score/landlords/config.dart';
@@ -185,7 +185,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     title: Text(template.templateName),
                     actions: [
                       // 显示LAN状态图标：主机模式、已连接的客户端、或处于客户端模式（包括重连状态）
-                      const LanStatusButton(),
+                      LanStatusButton(),
                       IconButton(
                         icon: Icon(Icons.sports_score),
                         tooltip: '当前游戏情况',
@@ -240,7 +240,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                               break;
                             case 'lan_debug':
                               Navigator.of(context).pushWithSlide(
-                                const LanTestPage(),
+                                const LogTestPage(),
                                 direction: SlideDirection.fromRight,
                                 duration: const Duration(milliseconds: 300),
                               );
@@ -257,7 +257,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                               break;
                             case 'lan_test':
                               Navigator.of(context).pushWithSlide(
-                                const LanTestPage(),
+                                const LogTestPage(),
                                 direction: SlideDirection.fromRight,
                                 duration: const Duration(milliseconds: 300),
                               );

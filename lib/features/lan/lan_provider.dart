@@ -914,7 +914,7 @@ class Lan extends _$Lan {
     }
   }
 
-  /// 通过当前活动的网络连接发送消息 (用于 LanTestPage 的按钮)。
+  /// 通过当前活动的网络连接发送消息 (用于 LogTestPage 的按钮)。
   void sendMessage() {
     final message = _messageController.text;
     if (message.isNotEmpty) {

@@ -11,7 +11,7 @@ import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/umeng.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/dev/message_debug_page.dart';
-import 'package:counters/features/lan/lan_test_page.dart';
+import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
 import 'package:counters/features/setting/setting_page.dart';
@@ -154,7 +154,7 @@ class _MyAppState extends ConsumerState<MyApp> {
         // 添加主页面路由
         '/main': (context) => const MessageOverlay(child: MainTabsScreen()),
         // 添加测试页面路由
-        '/lan_test': (context) => const LanTestPage(),
+        '/log_test': (context) => const LogTestPage(),
         // 添加消息调试页面
         '/message_debug': (context) => const MessageDebugPage(),
         '/template/config': (context) => Scaffold(

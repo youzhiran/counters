@@ -1,5 +1,4 @@
 import 'package:counters/common/providers/log_provider.dart';
-import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/widgets/ip_display_widget.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/lan/lan_provider.dart';
@@ -8,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // UI Widget
-class LanTestPage extends ConsumerWidget {
-  const LanTestPage({super.key});
+class LogTestPage extends ConsumerWidget {
+  const LogTestPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,7 +38,7 @@ class LanTestPage extends ConsumerWidget {
         title: const Text('程序日志'),
         actions: [
           // LAN状态显示按钮（显示主机模式、客户端模式、连接状态等）
-          const LanStatusButton(),
+          LanStatusButton(),
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
             tooltip: '清空所有日志和消息',
@@ -49,52 +48,6 @@ class LanTestPage extends ConsumerWidget {
               GlobalMsgManager.showMessage('日志和消息已清空');
             },
           ),
-          // 停止/断开连接按钮
-          if (lanState.isConnected || lanState.isHost)
-            IconButton(
-              icon: const Icon(Icons.stop_circle_outlined),
-              tooltip: lanState.isHost ? '停止主机' : '断开连接',
-              onPressed: () async {
-                try {
-                  await lanNotifier.disposeManager();
-                  GlobalMsgManager.showMessage(lanState.isHost ? '主机已停止' : '连接已断开');
-                } catch (e) {
-                  ErrorHandler.handle(e, StackTrace.current, prefix: '停止连接失败');
-                }
-              },
-            ),
-          // 重连按钮（客户端模式且未连接且有主机IP时显示）
-          if (lanState.isClientMode &&
-              !lanState.isConnected &&
-              !lanState.isReconnecting &&
-              lanState.hostIp != null)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: '重连到主机',
-              onPressed: () async {
-                try {
-                  await lanNotifier.manualReconnect();
-                } catch (e) {
-                  ErrorHandler.handle(e, StackTrace.current, prefix: '手动重连失败');
-                }
-              },
-            ),
-          // 退出客户端模式按钮（客户端模式且未连接时显示）
-          if (lanState.isClientMode &&
-              !lanState.isConnected &&
-              !lanState.isReconnecting)
-            IconButton(
-              icon: const Icon(Icons.exit_to_app),
-              tooltip: '退出客户端模式',
-              onPressed: () async {
-                try {
-                  await lanNotifier.exitClientMode();
-                } catch (e) {
-                  ErrorHandler.handle(e, StackTrace.current,
-                      prefix: '退出客户端模式失败');
-                }
-              },
-            ),
         ],
       ),
       body: Padding(

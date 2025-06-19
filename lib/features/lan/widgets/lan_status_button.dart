@@ -17,6 +17,7 @@ class _LanStatusButtonState extends ConsumerState<LanStatusButton>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
+  bool _hasInitializedAnimation = false;
 
   @override
   void initState() {
@@ -53,6 +54,16 @@ class _LanStatusButtonState extends ConsumerState<LanStatusButton>
     ref.listen<LanState>(lanProvider, (previous, next) {
       _handleAnimationStateChange(previous, next);
     });
+
+    // 检查当前状态是否需要动画（用于初始状态）
+    if (!_hasInitializedAnimation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _hasInitializedAnimation = true;
+          _handleAnimationStateChange(null, lanState);
+        }
+      });
+    }
 
     // 如果不应该显示按钮，返回空容器
     if (!LanStatusUtils.shouldShowLanButton(lanState)) {
@@ -98,7 +109,7 @@ class _LanStatusButtonState extends ConsumerState<LanStatusButton>
     } else if (!shouldAnimate && wasAnimating) {
       // 停止动画
       _animationController.stop();
-      _animationController.value = 0.0;
+      _animationController.value = 1.0;
     }
   }
 

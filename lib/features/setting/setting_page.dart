@@ -151,7 +151,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   title: '程序日志',
                   subtitle: '提供局域网状态和程序日志查看',
                   onTap: () {
-                    Navigator.pushNamed(context, '/lan_test');
+                    Navigator.pushNamed(context, '/log_test');
                   },
                 ),
                 SettingSwitchListTile(

@@ -15,6 +15,7 @@ import 'package:counters/common/widgets/template_card.dart';
 import 'package:counters/features/history/history_page.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
+import 'package:counters/features/lan/widgets/lan_status_dialog.dart';
 import 'package:counters/features/score/counter/counter_page.dart';
 import 'package:counters/features/score/landlords/landlords_page.dart';
 import 'package:counters/features/score/mahjong/mahjong_page.dart';
@@ -195,15 +196,17 @@ class HomePage extends ConsumerWidget {
   }
 
   Widget _buildLanButton(WidgetRef ref, LanState lanState) {
-    final isDisabled = lanState.isHost || lanState.isClientMode;
+    final isShowState = lanState.isHost || lanState.isClientMode;
+    final buttonText = _getLanButtonText(lanState);
+
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
         minimumSize: Size(200, 48),
-        foregroundColor: isDisabled ? Colors.grey : null,
-        side: isDisabled ? BorderSide(color: Colors.grey.shade300) : null,
       ),
-      onPressed: isDisabled
-          ? null
+      onPressed: isShowState
+          ? () {
+              showLanStatusDialog();
+            }
           : () {
               Navigator.of(ref.context).pushWithSlide(
                 const LanDiscoveryPage(),
@@ -211,8 +214,29 @@ class HomePage extends ConsumerWidget {
                 duration: const Duration(milliseconds: 300),
               );
             },
-      child: Text('连接到局域网计分(Beta)'),
+      child: Text(buttonText),
     );
+  }
+
+  /// 根据 LAN 状态获取按钮文字
+  String _getLanButtonText(LanState lanState) {
+    if (lanState.isHost) {
+      if (lanState.connectedClientIps.isNotEmpty) {
+        return '主机模式 (${lanState.connectedClientIps.length}个客户端)';
+      } else {
+        return '主机模式 (等待连接)';
+      }
+    } else if (lanState.isClientMode) {
+      if (lanState.isConnected) {
+        return '客户端模式 (已连接)';
+      } else if (lanState.isReconnecting) {
+        return '客户端模式 (重连中...)';
+      } else {
+        return '客户端模式 (已断开)';
+      }
+    } else {
+      return '连接到局域网计分(Beta)';
+    }
   }
 
   Widget _buildScoringBoard(
@@ -382,55 +406,55 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
             body: Center(child: Text('模板加载失败: $e')),
           ),
           data: (templates) {
-        Log.d('所有模板ID: ${templates.map((t) => t.tid).join(",")}');
-        Log.d('buildSessionPage 需要的 templateId: ${widget.templateId}');
-        final template =
-            templates.firstWhereOrNull((t) => t.tid == widget.templateId);
-        if (template == null) {
-          // 修复：检查是否为客户端模式，如果是则不要重新加载模板
-          final lanState = ref.read(lanProvider);
-          final isClientMode = lanState.isConnected && !lanState.isHost;
+            Log.d('所有模板ID: ${templates.map((t) => t.tid).join(",")}');
+            Log.d('buildSessionPage 需要的 templateId: ${widget.templateId}');
+            final template =
+                templates.firstWhereOrNull((t) => t.tid == widget.templateId);
+            if (template == null) {
+              // 修复：检查是否为客户端模式，如果是则不要重新加载模板
+              final lanState = ref.read(lanProvider);
+              final isClientMode = lanState.isConnected && !lanState.isHost;
 
-          if (isClientMode) {
-            // 客户端模式下，模板可能还在同步中，等待一下但不要重新加载
-            Log.w('客户端模式：等待模板同步，模板ID: ${widget.templateId}');
-            if (_retryCount < 10) {
-              // 增加重试次数但不重新加载
-              _retryCount++;
-              Future.delayed(Duration(milliseconds: 500), () {
-                if (mounted) {
-                  setState(() {}); // 仅触发重建，不重新加载模板
+              if (isClientMode) {
+                // 客户端模式下，模板可能还在同步中，等待一下但不要重新加载
+                Log.w('客户端模式：等待模板同步，模板ID: ${widget.templateId}');
+                if (_retryCount < 10) {
+                  // 增加重试次数但不重新加载
+                  _retryCount++;
+                  Future.delayed(Duration(milliseconds: 500), () {
+                    if (mounted) {
+                      setState(() {}); // 仅触发重建，不重新加载模板
+                    }
+                  });
                 }
-              });
-            }
-          } else {
-            // 主机模式或非联机模式：正常重新加载模板
-            if (_retryCount < 5) {
-              _retryCount++;
-              Future.delayed(Duration(seconds: 2), () {
-                if (mounted) {
-                  ref.invalidate(templatesProvider);
-                  ref.read(templatesProvider.notifier).refreshTemplates();
+              } else {
+                // 主机模式或非联机模式：正常重新加载模板
+                if (_retryCount < 5) {
+                  _retryCount++;
+                  Future.delayed(Duration(seconds: 2), () {
+                    if (mounted) {
+                      ref.invalidate(templatesProvider);
+                      ref.read(templatesProvider.notifier).refreshTemplates();
+                    }
+                  });
                 }
-              });
+              }
+              return Scaffold(
+                appBar: AppBar(title: const Text('模板同步中')),
+                body: const Center(child: Text('正在同步模板信息，请稍候...')),
+              );
             }
-          }
-          return Scaffold(
-            appBar: AppBar(title: const Text('模板同步中')),
-            body: const Center(child: Text('正在同步模板信息，请稍候...')),
-          );
-        }
-        if (template is Poker50Template) {
-          return Poker50SessionPage(templateId: widget.templateId);
-        } else if (template is LandlordsTemplate) {
-          return LandlordsSessionPage(templateId: widget.templateId);
-        } else if (template is MahjongTemplate) {
-          return MahjongPage(templateId: widget.templateId);
-        } else if (template is CounterTemplate) {
-          return CounterSessionPage(templateId: widget.templateId);
-        }
-        Future.microtask(() => GlobalMsgManager.showError('未知的模板类型'));
-        return const HomePage();
+            if (template is Poker50Template) {
+              return Poker50SessionPage(templateId: widget.templateId);
+            } else if (template is LandlordsTemplate) {
+              return LandlordsSessionPage(templateId: widget.templateId);
+            } else if (template is MahjongTemplate) {
+              return MahjongPage(templateId: widget.templateId);
+            } else if (template is CounterTemplate) {
+              return CounterSessionPage(templateId: widget.templateId);
+            }
+            Future.microtask(() => GlobalMsgManager.showError('未知的模板类型'));
+            return const HomePage();
           },
         );
       },
