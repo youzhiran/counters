@@ -38,6 +38,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   bool _enableProviderLogger = false;
   bool _enableDesktopMode = false;
   bool _enableVerboseLog = false;
+  bool _enableClarityDebug = false;
   static const String _keyEnableProviderLogger = 'enable_provider_logger';
   static const String _keyEnableDesktopMode = 'enable_desktop_mode';
   static const String _keyEnableVerboseLog = 'enable_verbose_log';
@@ -68,6 +69,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     _loadProviderLoggerSetting();
     _loadDesktopModeSetting();
     _loadVerboseLogSetting();
+    _loadClarityDebugSetting();
   }
 
   @override
@@ -233,6 +235,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     subtitle: '显示最详细的日志信息，包括UI组件调试信息',
                     value: _enableVerboseLog,
                     onChanged: _saveVerboseLogSetting,
+                  ),
+                  SettingSwitchListTile(
+                    icon: Icons.analytics,
+                    title: '启用 Clarity 调试日志',
+                    subtitle: '显示 Clarity 分析工具的详细日志信息，重启应用后生效',
+                    value: _enableClarityDebug,
+                    onChanged: _saveClarityDebugSetting,
                   ),
                   SettingListTile(
                     icon: Icons.science,
@@ -635,6 +644,24 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     ref.read(verboseLogProvider.notifier).setVerboseLogEnabled(value);
 
     GlobalMsgManager.showMessage('Verbose日志已${value ? '启用' : '禁用'}');
+  }
+
+  // 加载Clarity调试设置
+  Future<void> _loadClarityDebugSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _enableClarityDebug = prefs.getBool('enable_clarity_debug') ?? false;
+    });
+  }
+
+  // 保存Clarity调试设置
+  Future<void> _saveClarityDebugSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('enable_clarity_debug', value);
+    setState(() {
+      _enableClarityDebug = value;
+    });
+    GlobalMsgManager.showMessage('Clarity调试日志已${value ? '启用' : '禁用'}，重启应用后生效');
   }
 
   // 测试日志级别

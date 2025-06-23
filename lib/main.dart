@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
@@ -64,10 +65,11 @@ void main() async {
   // 初始化全局状态
   await globalState.init();
 
-  // 获取Provider调试设置和Verbose日志设置
+  // 获取Provider调试设置、Verbose日志设置和Clarity调试设置
   final prefs = await SharedPreferences.getInstance();
   final enableProviderLogger = prefs.getBool('enable_provider_logger') ?? false;
   final enableVerboseLog = prefs.getBool('enable_verbose_log') ?? false;
+  final enableClarityDebug = prefs.getBool('enable_clarity_debug') ?? false;
 
   // 根据设置初始化日志级别
   if (enableVerboseLog) {
@@ -79,12 +81,24 @@ void main() async {
     Log.i('应用启动: Verbose日志已禁用');
   }
 
+  // 创建 Clarity 配置
+  final clarityConfig = ClarityConfig(
+    projectId: "r8m6tk8tfr",
+    logLevel: enableClarityDebug ? LogLevel.Debug : LogLevel.None, // 根据设置决定日志级别
+  );
+
+  // 输出 Clarity 初始化信息
+  Log.i('Clarity 初始化: 项目ID=r8m6tk8tfr, 调试模式=${enableClarityDebug ? '启用' : '禁用'}');
+
   // 创建 ProviderScope，不再使用废弃的 parent 参数
   runApp(
-    ProviderScope(
-      observers: enableProviderLogger ? [PLogger()] : null,
-      // 根据设置决定是否启用Provider调试
-      child: const MyApp(),
+    ClarityWidget(
+      clarityConfig: clarityConfig,
+      app: ProviderScope(
+        observers: enableProviderLogger ? [PLogger()] : null,
+        // 根据设置决定是否启用Provider调试
+        child: const MyApp(),
+      ),
     ),
   );
 }
