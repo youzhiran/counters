@@ -9,8 +9,10 @@ import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/net.dart';
 import 'package:counters/common/utils/umeng.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/dev/message_debug_page.dart';
 import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
@@ -18,6 +20,7 @@ import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
 import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
+import 'package:counters/features/setting/update_check_provider.dart';
 import 'package:counters/features/template/template_page.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/foundation.dart';
@@ -104,6 +107,54 @@ void main() async {
   );
 }
 
+/// 在应用启动时根据设置检查更新
+Future<void> _checkUpdateOnStartup(ProviderContainer container) async {
+  try {
+    // 延迟一段时间，确保应用完全启动
+    await Future.delayed(const Duration(seconds: 2));
+
+    final updateCheckNotifier = container.read(updateCheckProvider.notifier);
+
+    // 检查是否应该检查更新
+    if (!updateCheckNotifier.shouldCheckUpdate) {
+      Log.d('启动时更新检查已禁用');
+      return;
+    }
+
+    Log.i('启动时检查更新: 包含测试版=${updateCheckNotifier.includePrereleases}');
+
+    // 执行更新检查
+    final result = await UpdateChecker.isUpdateAvailable(
+      includePrereleases: updateCheckNotifier.includePrereleases,
+    );
+
+    // 如果有更新，检查是否被忽略
+    if (result.startsWith('v')) {
+      // 检查版本是否被忽略
+      final isIgnored = await UpdateIgnoreManager.isVersionIgnored(result);
+      if (isIgnored) {
+        Log.d('启动时更新检查: 版本已被忽略，跳过提示');
+        return;
+      }
+
+      Log.i('发现新版本，显示更新提示');
+      // 在主线程中显示启动时更新对话框
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        globalState.showCommonDialog(
+          child: StartupUpdateDialog(
+            versionInfo: result,
+            hasUpdate: true,
+          ),
+        );
+      });
+    } else {
+      Log.d('启动时更新检查完成，无新版本');
+    }
+  } catch (e) {
+    ErrorHandler.handle(e, StackTrace.current, prefix: '启动时检查更新失败');
+  }
+}
+
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
@@ -131,8 +182,14 @@ class _MyAppState extends ConsumerState<MyApp> {
           // 初始化verbose日志Provider（这会加载设置并应用日志级别）
           container.read(verboseLogProvider);
 
+          // 初始化更新检查设置Provider
+          await container.read(updateCheckProvider.notifier).initialize();
+
           // 设置全局消息管理器容器
           GlobalMsgManager.setContainer(container);
+
+          // 根据设置检查更新
+          _checkUpdateOnStartup(container);
         } catch (e) {
           ErrorHandler.handle(e, StackTrace.current, prefix: '主题初始化失败');
         }

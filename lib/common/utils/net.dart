@@ -5,6 +5,7 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/util.dart';
+import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -134,176 +135,11 @@ class UpdateChecker {
   }
 }
 
+/// 显示手动检查更新对话框
 void checkUpdate() {
   globalState.showCommonDialog(
-    child: UpdateCheckerDialog(),
+    child: const UpdateCheckerDialog(),
   );
-}
-
-class UpdateCheckerDialog extends StatefulWidget {
-  const UpdateCheckerDialog({super.key});
-
-  @override
-  State<UpdateCheckerDialog> createState() => _UpdateCheckerDialogState();
-}
-
-class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
-  bool checkBeta = false;
-  bool isLoading = true;
-  String versionInfo = '';
-  bool hasUpdate = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkForUpdates();
-  }
-
-  Future<void> _checkForUpdates() async {
-    final result =
-        await UpdateChecker.isUpdateAvailable(includePrereleases: checkBeta);
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-        versionInfo = result;
-        hasUpdate = result.startsWith('v');
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AlertDialog(
-      title: Text('检查更新'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CheckboxListTile(
-            title: Text('包含测试版本'),
-            value: checkBeta,
-            onChanged: isLoading
-                ? null
-                : (v) {
-                    setState(() {
-                      checkBeta = v ?? false;
-                      isLoading = true;
-                      versionInfo = '';
-                    });
-                    _checkForUpdates();
-                  },
-          ),
-          if (isLoading)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: CircularProgressIndicator(),
-            )
-          else
-            Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.4,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (hasUpdate) ...[
-                      SizedBox(height: 16),
-                      Text(
-                        '发现新版本',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              versionInfo.split('\n')[0],
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: theme.colorScheme.onPrimaryContainer,
-                              ),
-                            ),
-                            Text(
-                              versionInfo.split('\n')[1],
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onPrimaryContainer
-                                    .withAlpha((0.8 * 255).toInt()),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        '更新日志',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          versionInfo.split('\n\n').last,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ] else
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          versionInfo,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-      actions: [
-        if (!isLoading)
-          TextButton(
-            onPressed: () => globalState.navigatorKey.currentState?.pop(),
-            child: Text(hasUpdate ? '稍后再说' : '关闭'),
-          ),
-        if (hasUpdate)
-          TextButton(
-            onPressed: () async {
-              final navigatorState = Navigator.of(context);
-              if (await canLaunchUrl(
-                  Uri.parse(UpdateChecker.latestReleaseUrl))) {
-                await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
-              }
-              if (mounted) {
-                navigatorState.pop();
-              }
-            },
-            child: Text('立即更新'),
-          ),
-      ],
-    );
-  }
 }
 
 class ApiChecker {

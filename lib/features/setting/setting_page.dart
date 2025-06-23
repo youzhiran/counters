@@ -14,6 +14,8 @@ import 'package:counters/features/setting/about_page.dart'; // 导入新的关�
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
+import 'package:counters/features/setting/update_check_provider.dart';
+import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,6 +114,35 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   title: '检查更新',
                   subtitle: '获取新版本或是测试版本',
                   onTap: () => checkUpdate(),
+                ),
+                // 启动时检查更新设置
+                Consumer(
+                  builder: (context, ref, child) {
+                    final updateCheckState = ref.watch(updateCheckProvider);
+                    final updateCheckNotifier = ref.read(updateCheckProvider.notifier);
+
+                    return SettingListTile(
+                      icon: Icons.update,
+                      title: '启动时检查更新',
+                      subtitle: '设置应用启动时的更新检查行为',
+                      trailing: updateCheckState.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              updateCheckState.option.displayName,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontSize: 14,
+                              ),
+                            ),
+                      onTap: updateCheckState.isLoading
+                          ? null
+                          : () => _showUpdateCheckDialog(updateCheckNotifier),
+                    );
+                  },
                 ),
                 if (Platform.isWindows)
                   SettingListTile(
@@ -224,6 +255,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                         ),
                       );
                     },
+                  ),
+                  SettingListTile(
+                    icon: Icons.clear_all,
+                    title: '清除忽略的更新',
+                    subtitle: '清除所有被忽略的更新版本记录',
+                    onTap: _clearIgnoredVersions,
                   ),
                 ],
               ],
@@ -917,6 +954,87 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       // 获取失败时返回空列表
       return [];
     }
+  }
+
+  /// 显示更新检查设置对话框
+  void _showUpdateCheckDialog(UpdateCheckNotifier notifier) {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: const Text('启动时检查更新'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('选择应用启动时的更新检查行为：'),
+            const SizedBox(height: 16),
+            ...UpdateCheckOption.values.map((option) {
+              return Consumer(
+                builder: (context, ref, child) {
+                  final currentOption = ref.watch(updateCheckProvider).option;
+                  return RadioListTile<UpdateCheckOption>(
+                    title: Text(option.displayName),
+                    subtitle: _getUpdateCheckSubtitle(option),
+                    value: option,
+                    groupValue: currentOption,
+                    onChanged: (value) {
+                      if (value != null) {
+                        notifier.setUpdateCheckOption(value);
+                      }
+                    },
+                  );
+                },
+              );
+            }),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 获取更新检查选项的描述文字
+  Widget? _getUpdateCheckSubtitle(UpdateCheckOption option) {
+    switch (option) {
+      case UpdateCheckOption.none:
+        return const Text('应用启动时不会自动检查更新');
+      case UpdateCheckOption.rc:
+        return const Text('仅检查稳定版本更新');
+      case UpdateCheckOption.beta:
+        return const Text('检查包括测试版在内的所有更新');
+    }
+  }
+
+  /// 清除忽略的更新版本记录
+  void _clearIgnoredVersions() {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: const Text('清除忽略的更新'),
+        content: const Text('此操作将清除所有被忽略的更新版本记录，下次启动时会重新提示这些版本的更新。\n\n是否继续？'),
+        actions: [
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              globalState.navigatorKey.currentState?.pop();
+              try {
+                await UpdateIgnoreManager.clearIgnoredVersions();
+                GlobalMsgManager.showMessage('已清除所有忽略的更新版本记录');
+              } catch (e) {
+                ErrorHandler.handle(e, StackTrace.current, prefix: '清除忽略版本记录失败');
+              }
+            },
+            child: const Text('清除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSectionHeader(String title) {
