@@ -3,9 +3,7 @@ import 'dart:io';
 import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
-import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
-import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
@@ -14,6 +12,7 @@ import 'package:counters/features/dev/animation_demo_page.dart';
 import 'package:counters/features/dev/performance_demo.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
 import 'package:counters/features/setting/data_manager.dart';
+import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -35,13 +34,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   bool _isCustomPath = false;
   static const String _keyDataStoragePath = 'data_storage_path';
   static const String _keyIsCustomPath = 'is_custom_path';
-  bool _enableProviderLogger = false;
   bool _enableDesktopMode = false;
-  bool _enableVerboseLog = false;
-  bool _enableClarityDebug = false;
-  static const String _keyEnableProviderLogger = 'enable_provider_logger';
   static const String _keyEnableDesktopMode = 'enable_desktop_mode';
-  static const String _keyEnableVerboseLog = 'enable_verbose_log';
 
   // 添加计数器和显示状态
   int _versionClickCount = 0;
@@ -66,10 +60,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     _loadPackageInfo();
     _loadDevOptions();
     _loadStorageSettings();
-    _loadProviderLoggerSetting();
     _loadDesktopModeSetting();
-    _loadVerboseLogSetting();
-    _loadClarityDebugSetting();
   }
 
   @override
@@ -222,32 +213,17 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       duration: const Duration(milliseconds: 300),
                     ),
                   ),
-                  SettingSwitchListTile(
-                    icon: Icons.article,
-                    title: '启用 Provider 调试日志',
-                    subtitle: '重启应用后生效，仅在控制台输出',
-                    value: _enableProviderLogger,
-                    onChanged: _saveProviderLoggerSetting,
-                  ),
-                  SettingSwitchListTile(
-                    icon: Icons.bug_report,
-                    title: '启用 Verbose 级别日志',
-                    subtitle: '显示最详细的日志信息，包括UI组件调试信息',
-                    value: _enableVerboseLog,
-                    onChanged: _saveVerboseLogSetting,
-                  ),
-                  SettingSwitchListTile(
-                    icon: Icons.analytics,
-                    title: '启用 Clarity 调试日志',
-                    subtitle: '显示 Clarity 分析工具的详细日志信息，重启应用后生效',
-                    value: _enableClarityDebug,
-                    onChanged: _saveClarityDebugSetting,
-                  ),
                   SettingListTile(
-                    icon: Icons.science,
-                    title: '测试日志级别',
-                    subtitle: '测试各个级别的日志输出',
-                    onTap: _testLogLevels,
+                    icon: Icons.article,
+                    title: '日志设置',
+                    subtitle: '配置日志级别和查看程序日志',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const LogSettingsPage(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ],
@@ -353,7 +329,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
         newPath,
         onProgress: (message, progress) {
           if (message.contains('迁移已在进行中')) {
-            Log.i('有其他迁移任务正在执行，请稍后再试');
+            GlobalMsgManager.showMessage('有其他迁移任务正在执行，请稍后再试');
           }
           onProgress(message, progress);
         },
@@ -588,23 +564,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     await prefs.setBool(_keyShowDevOptions, value);
   }
 
-  // 加载Provider调试设置
-  Future<void> _loadProviderLoggerSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _enableProviderLogger = prefs.getBool(_keyEnableProviderLogger) ?? false;
-    });
-  }
 
-  // 保存Provider调试设置
-  Future<void> _saveProviderLoggerSetting(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyEnableProviderLogger, value);
-    setState(() {
-      _enableProviderLogger = value;
-    });
-    GlobalMsgManager.showMessage('设置已保存，重启应用后生效');
-  }
 
   // 加载桌面模式设置
   Future<void> _loadDesktopModeSetting() async {
@@ -624,69 +584,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     GlobalMsgManager.showMessage('设置已保存，重启应用后生效');
   }
 
-  // 加载Verbose日志设置
-  Future<void> _loadVerboseLogSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _enableVerboseLog = prefs.getBool(_keyEnableVerboseLog) ?? false;
-    });
-  }
 
-  // 保存Verbose日志设置
-  Future<void> _saveVerboseLogSetting(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyEnableVerboseLog, value);
-    setState(() {
-      _enableVerboseLog = value;
-    });
-
-    // 同时更新Provider中的状态
-    ref.read(verboseLogProvider.notifier).setVerboseLogEnabled(value);
-
-    GlobalMsgManager.showMessage('Verbose日志已${value ? '启用' : '禁用'}');
-  }
-
-  // 加载Clarity调试设置
-  Future<void> _loadClarityDebugSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _enableClarityDebug = prefs.getBool('enable_clarity_debug') ?? false;
-    });
-  }
-
-  // 保存Clarity调试设置
-  Future<void> _saveClarityDebugSetting(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('enable_clarity_debug', value);
-    setState(() {
-      _enableClarityDebug = value;
-    });
-    GlobalMsgManager.showMessage('Clarity调试日志已${value ? '启用' : '禁用'}，重启应用后生效');
-  }
-
-  // 测试日志级别
-  void _testLogLevels() {
-    // 先输出当前日志级别信息
-    final verboseEnabled = ref.read(verboseLogProvider);
-    Log.i('=== 日志级别测试开始 ===');
-    Log.i('当前Verbose日志状态: ${verboseEnabled ? '启用' : '禁用'}');
-    Log.i('当前日志级别: ${verboseEnabled ? 'Trace (包含Verbose)' : 'Debug (不包含Verbose)'}');
-
-    // 输出各级别日志
-    Log.v('这是Verbose级别日志 - 最详细的调试信息 ${verboseEnabled ? '(应该显示)' : '(应该被过滤)'}');
-    Log.d('这是Debug级别日志 - 调试信息 (应该显示)');
-    Log.i('这是Info级别日志 - 一般信息 (应该显示)');
-    Log.w('这是Warning级别日志 - 警告信息 (应该显示)');
-    Log.e('这是Error级别日志 - 错误信息 (应该显示)');
-
-    // 也测试带颜色的verbose日志
-    Log.verbose('这是带颜色的Verbose日志 ${verboseEnabled ? '(应该显示)' : '(应该被过滤)'}', color: Colors.grey);
-
-    Log.i('=== 日志级别测试结束 ===');
-
-    GlobalMsgManager.showMessage(
-        '已输出各级别日志，请查看程序日志页面\n当前Verbose: ${verboseEnabled ? '启用' : '禁用'}');
-  }
 
   void _resetDatabase() {
     globalState.showCommonDialog(

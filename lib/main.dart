@@ -14,6 +14,7 @@ import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/dev/message_debug_page.dart';
 import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
+import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
 import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
@@ -171,6 +172,8 @@ class _MyAppState extends ConsumerState<MyApp> {
         '/log_test': (context) => const LogTestPage(),
         // 添加消息调试页面
         '/message_debug': (context) => const MessageDebugPage(),
+        // 添加日志设置页面路由
+        '/log_settings': (context) => const LogSettingsPage(),
         '/template/config': (context) => Scaffold(
               appBar: AppBar(
                 title: const Text('模板配置'),
