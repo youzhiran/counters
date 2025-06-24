@@ -64,12 +64,33 @@ class WsHost {
         onServerError?.call('WebSocket 服务器监听错误: $e');
       });
     } catch (e) {
-      // 使用统一的错误处理器
-      ErrorHandler.handle(e, StackTrace.current, prefix: '启动 WebSocket 服务器失败');
-      // 通知 LanNotifier 启动失败
-      onStartupError?.call('启动 WebSocket 服务器失败: $e');
+      // 检查是否为端口占用错误
+      String errorMessage = '启动 WebSocket 服务器失败: $e';
+      if (_isPortInUseError(e)) {
+        errorMessage = '端口 $port 已被占用，请尝试以下解决方案：\n'
+            '1. 关闭其他可能占用该端口的应用程序\n'
+            '2. 重启应用程序\n'
+            '3. 如果问题持续，请重启设备';
+        Log.e('端口占用错误: 端口 $port 已被其他程序占用');
+      } else {
+        // 使用统一的错误处理器处理其他类型的错误
+        ErrorHandler.handle(e, StackTrace.current, prefix: '启动 WebSocket 服务器失败');
+      }
+
+      // 通知 LanNotifier 启动失败，传递用户友好的错误信息
+      onStartupError?.call(errorMessage);
       rethrow;
     }
+  }
+
+  /// 检查是否为端口占用错误
+  bool _isPortInUseError(Object error) {
+    final errorString = error.toString().toLowerCase();
+    return errorString.contains('errno = 10048') || // Windows
+           errorString.contains('address already in use') || // Linux/macOS
+           errorString.contains('bind failed') ||
+           errorString.contains('port') && errorString.contains('already') ||
+           errorString.contains('套接字地址') && errorString.contains('只允许使用一次');
   }
 
   void _handleNewConnection(WebSocket socket, String clientIp) {

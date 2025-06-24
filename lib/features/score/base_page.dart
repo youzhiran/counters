@@ -383,8 +383,14 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       lanNotifier
           .startHost(8080, template.tid, templateName: template.templateName)
           .then((_) {
-        ref.showSuccess('主机已启动，等待客户端连接');
+        // 检查启动是否真正成功（通过检查状态）
+        final currentLanState = ref.read(lanProvider);
+        if (currentLanState.isHost && !currentLanState.connectionStatus.contains('被占用') && !currentLanState.connectionStatus.contains('启动失败')) {
+          ref.showSuccess('主机已启动，等待客户端连接');
+        }
+        // 如果启动失败，错误消息已经在 lan_provider.dart 中显示了，这里不需要重复显示
       }).catchError((error) {
+        // 这里的错误通常是网络层面的异常，lan_provider.dart 中的错误处理可能没有覆盖到
         ref.showError('启动主机失败: $error');
       });
     }

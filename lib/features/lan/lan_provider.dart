@@ -630,17 +630,61 @@ class Lan extends _$Lan {
 
   // 新增：处理启动失败的回调
   void _handleStartupError(String error) {
-    // 使用统一的错误处理器
-    ErrorHandler.handle(Exception(error), StackTrace.current,
-        prefix: 'LAN服务器启动失败');
+    Log.e('LAN服务器启动失败: $error');
 
-    // 更新状态
-    state = state.copyWith(
-      isLoading: false,
-      isHost: false,
-      connectionStatus: '启动失败',
-    );
+    // 检查是否为端口占用错误，提供用户友好的提示
+    if (_isPortOccupiedError(error)) {
+      // 端口占用错误，显示用户友好的提示
+      final port = _currentWsPort > 0 ? _currentWsPort : 8080;
+      GlobalMsgManager.showError(
+        '端口 $port 已被占用\n\n'
+        '解决方案：\n'
+        '• 关闭其他可能占用该端口的应用\n'
+        '• 重启应用程序\n'
+        '• 如果问题持续，请重启设备'
+      );
+
+      state = state.copyWith(
+        isLoading: false,
+        isHost: false,
+        connectionStatus: '端口 $port 被占用',
+      );
+    } else {
+      // 其他类型的错误，使用通用错误处理
+      ErrorHandler.handle(Exception(error), StackTrace.current,
+          prefix: 'LAN服务器启动失败');
+
+      state = state.copyWith(
+        isLoading: false,
+        isHost: false,
+        connectionStatus: '启动失败',
+      );
+    }
   }
+
+  /// 检查是否为端口占用相关的错误
+  bool _isPortOccupiedError(String error) {
+    final errorLower = error.toLowerCase();
+    return errorLower.contains('端口') && errorLower.contains('占用') ||
+           errorLower.contains('errno = 10048') ||
+           errorLower.contains('address already in use') ||
+           errorLower.contains('bind failed') ||
+           errorLower.contains('套接字地址') && errorLower.contains('只允许使用一次');
+  }
+
+  /// 检查端口是否可用
+  Future<bool> _isPortAvailable(int port) async {
+    try {
+      final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
+      await server.close(force: true);
+      return true;
+    } catch (e) {
+      Log.v('端口 $port 不可用: $e');
+      return false;
+    }
+  }
+
+
 
   /// 修改 startHost 方法以传递回调和模板名称
   Future<void> startHost(int port, String baseTid,
@@ -665,6 +709,27 @@ class Lan extends _$Lan {
         connectionStatus: '启动失败：无法获取有效IP地址'
       );
       GlobalMsgManager.showError('启动失败：无法获取有效的本地IP地址，请检查网络连接');
+      return;
+    }
+
+    // 预检查端口可用性
+    Log.i('检查端口 $port 可用性...');
+    if (!await _isPortAvailable(port)) {
+      Log.w('端口 $port 不可用');
+
+      // 端口被占用，直接提示用户
+      GlobalMsgManager.showError(
+        '端口 $port 已被占用\n\n'
+        '解决方案：\n'
+        '• 关闭其他可能占用该端口的应用\n'
+        '• 重启应用程序\n'
+        '• 如果问题持续，请重启设备'
+      );
+      state = state.copyWith(
+        isLoading: false,
+        isHost: false,
+        connectionStatus: '端口 $port 被占用',
+      );
       return;
     }
 
@@ -700,8 +765,30 @@ class Lan extends _$Lan {
       Log.i('主机模式已成功启动在端口 $port');
     } catch (e) {
       Log.e('启动主机失败: $e');
-      state = state.copyWith(
-          isLoading: false, isHost: false, connectionStatus: '启动失败: $e');
+
+      // 检查是否为端口占用错误
+      if (_isPortOccupiedError(e.toString())) {
+        GlobalMsgManager.showError(
+          '端口 $port 已被占用\n\n'
+          '解决方案：\n'
+          '• 关闭其他可能占用该端口的应用\n'
+          '• 重启应用程序\n'
+          '• 如果问题持续，请重启设备'
+        );
+        state = state.copyWith(
+          isLoading: false,
+          isHost: false,
+          connectionStatus: '端口 $port 被占用'
+        );
+      } else {
+        // 其他类型的错误，使用通用处理
+        ErrorHandler.handle(e, StackTrace.current, prefix: '启动主机失败');
+        state = state.copyWith(
+          isLoading: false,
+          isHost: false,
+          connectionStatus: '启动失败'
+        );
+      }
     }
   }
 
