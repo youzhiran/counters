@@ -25,7 +25,7 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
         title: const Text('消息系统调试'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -336,9 +336,10 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
             // 消息历史
             if (messageState.messages.isNotEmpty) ...[
               _buildSectionHeader('消息历史'),
-              Expanded(
-                child: Card(
-                  margin: EdgeInsets.zero,
+              Card(
+                margin: EdgeInsets.zero,
+                child: Container(
+                  height: 300, // 固定高度
                   child: ListView.builder(
                     padding: const EdgeInsets.all(6),
                     itemCount: messageState.messages.length,

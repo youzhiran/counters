@@ -8,14 +8,15 @@ import 'package:counters/common/utils/net.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/setting_list_tile.dart';
+import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/dev/animation_demo_page.dart';
 import 'package:counters/features/dev/performance_demo.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/log_settings_page.dart';
+import 'package:counters/features/setting/privacy_debug_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
-import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -252,6 +253,18 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const LogSettingsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  SettingListTile(
+                    icon: Icons.privacy_tip,
+                    title: '隐私政策调试',
+                    subtitle: '查看隐私政策版本状态和手动测试',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const PrivacyDebugPage(),
                         ),
                       );
                     },

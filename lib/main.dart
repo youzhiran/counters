@@ -164,6 +164,7 @@ class MyApp extends ConsumerStatefulWidget {
 
 class _MyAppState extends ConsumerState<MyApp> {
   bool _isInitialized = false;
+  bool _privacyInitialized = false; // 添加隐私政策初始化标志
 
   @override
   void initState() {
@@ -211,9 +212,12 @@ class _MyAppState extends ConsumerState<MyApp> {
       themeMode: themeState.themeMode,
       home: Builder(
         builder: (context) {
-          // 隐私政策弹窗初始化 - 友盟功能已禁用但保留隐私政策功能
+          // 隐私政策弹窗初始化
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            PrivacyUtil.initWithPrivacy(context);
+            if (!_privacyInitialized) {
+              _privacyInitialized = true;
+              PrivacyUtil.initWithPrivacy(context);
+            }
           });
           return const MessageOverlay(
             child: MainTabsScreen(),

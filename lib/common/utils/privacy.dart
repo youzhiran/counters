@@ -2,9 +2,12 @@ import 'dart:io';
 
 import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
+import 'package:counters/common/providers/privacy_version_provider.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // 友盟SDK相关导入已注释 - 友盟功能已禁用
 // import 'package:umeng_common_sdk/umeng_common_sdk.dart';
@@ -15,83 +18,95 @@ class PrivacyUtil {
   //     MethodChannel('com.devyi.counters/umeng');
   // static final bool _isMobile = Platform.isAndroid || Platform.isIOS;
 
-  // 防止重复调用的标志
-  static bool _isInitializing = false;
-  static bool _hasInitialized = false;
-
   static Future<void> initWithPrivacy(BuildContext context) async {
-    // 防止重复调用
-    if (_isInitializing || _hasInitialized) {
-      Log.d('隐私政策初始化已跳过: 正在初始化=$_isInitializing, 已初始化=$_hasInitialized');
-      return;
-    }
-
-    _isInitializing = true;
     Log.d('开始隐私政策初始化检查');
 
-    // 友盟已注释
-    // if (!_isMobile) return;
-
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final bool agreed = prefs.getBool('privacy_agreed') ?? false;
-      if (agreed) {
-        Log.d('用户已同意隐私政策，跳过弹窗');
-        _hasInitialized = true;
-        _isInitializing = false;
-        // 友盟初始化调用已注释 - 友盟功能已禁用
-        // await _channel.invokeMethod('initUmeng');
-        return;
-      }
+      // 获取ProviderContainer
+      final container = ProviderScope.containerOf(context);
+      final privacyNotifier = container.read(privacyVersionProvider.notifier);
 
-      final bool? result = await globalState.showCommonDialog(
-        child: AlertDialog(
-          title: const Text('隐私政策'),
-          content: const Text(
-              '欢迎您使用 Counters ！我们非常重视用户的隐私和个人信息保护。您在使用我们的产品与/或服务时，我们可能会收集和使用您的相关信息。我们希望通过本《隐私政策》向您清晰地介绍我们对您个人信息的处理方式，因此我们建议您完整地阅读本政策，以帮助您了解维护自己隐私权的方式。'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                globalState.openUrl(
-                  Config.urlPrivacyPolicy,
-                  '查看隐私政策',
-                );
-              },
-              child: const Text('查看隐私政策'),
-            ),
-            TextButton(
-              onPressed: () =>
-                  globalState.navigatorKey.currentState?.pop(false),
-              child: const Text('不同意'),
-            ),
-            TextButton(
-              onPressed: () => globalState.navigatorKey.currentState?.pop(true),
-              child: const Text('同意'),
-            ),
-          ],
-        ),
-      );
+      // 检查隐私政策版本更新
+      final hasUpdate = await privacyNotifier.checkForUpdate();
 
-      if (result == true) {
-        Log.d('用户同意隐私政策');
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('privacy_agreed', true);
-        _hasInitialized = true;
-        // 友盟相关MethodChannel调用已注释 - 友盟功能已禁用
-        // await _channel.invokeMethod('setPrivacyAgreed');
-        // await _channel.invokeMethod('initUmeng');
-      } else if (result == false) {
-        Log.w('用户明确拒绝隐私政策，退出应用');
-        await _exitApplication();
+      // 如果需要更新（包括首次使用和版本更新），显示隐私政策弹窗
+      if (hasUpdate) {
+        // 判断是首次使用还是版本更新
+        final hasAgreed = await privacyNotifier.hasAgreedPrivacy();
+        final isUpdate = hasAgreed; // 如果之前已同意过，说明是版本更新
+
+        Log.i('需要显示隐私政策弹窗: 是否为更新=$isUpdate');
+        if (context.mounted) {
+          await _showPrivacyDialog(context, container, isUpdate: isUpdate);
+        }
       } else {
-        // result == null，用户可能通过返回键或其他方式关闭了弹窗
-        Log.w('用户未做选择或关闭了隐私政策弹窗，退出应用');
-        await _exitApplication();
+        Log.d('用户已同意最新版本隐私政策，跳过弹窗');
       }
+
     } catch (e) {
-      Log.e('隐私政策处理错误: $e'); // 更新错误信息描述
-    } finally {
-      _isInitializing = false;
+      ErrorHandler.handle(e, StackTrace.current, prefix: '隐私政策处理错误');
+    }
+  }
+
+  /// 显示隐私政策弹窗
+  static Future<void> _showPrivacyDialog(BuildContext context, ProviderContainer container, {bool isUpdate = false}) async {
+    final String title = isUpdate ? '隐私政策已更新' : '隐私政策';
+    final String content = isUpdate
+        ? '欢迎您使用 Counters ！本次我们更新了隐私政策。我们非常重视用户的隐私和个人信息保护。您在使用我们的产品与/或服务时，我们可能会收集和使用您的相关信息。我们希望通过本《隐私政策》向您清晰地介绍我们对您个人信息的处理方式，因此我们建议您完整地阅读本政策，以帮助您了解维护自己隐私权的方式。'
+        : '欢迎您使用 Counters ！我们非常重视用户的隐私和个人信息保护。您在使用我们的产品与/或服务时，我们可能会收集和使用您的相关信息。我们希望通过本《隐私政策》向您清晰地介绍我们对您个人信息的处理方式，因此我们建议您完整地阅读本政策，以帮助您了解维护自己隐私权的方式。';
+
+    final bool? result = await globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              globalState.openUrl(
+                Config.urlPrivacyPolicy,
+                '查看隐私政策',
+              );
+            },
+            child: const Text('查看隐私政策'),
+          ),
+          TextButton(
+            onPressed: () =>
+                globalState.navigatorKey.currentState?.pop(false),
+            child: const Text('不同意'),
+          ),
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(true),
+            child: const Text('同意'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final actionText = isUpdate ? '用户同意更新的隐私政策' : '用户同意隐私政策';
+      Log.d(actionText);
+      final privacyNotifier = container.read(privacyVersionProvider.notifier);
+      final privacyState = container.read(privacyVersionProvider);
+      final remoteVersion = privacyState.remoteVersion;
+
+      if (remoteVersion != null) {
+        // 保存远程版本的时间戳
+        await privacyNotifier.savePrivacyAgreement(remoteVersion.timestamp);
+        Log.i('已保存隐私政策同意状态和时间戳: ${remoteVersion.timestamp}');
+      } else {
+        // 如果没有远程版本信息，保存当前时间戳
+        final currentTimestamp = DateTime.now().millisecondsSinceEpoch;
+        await privacyNotifier.savePrivacyAgreement(currentTimestamp);
+        Log.i('已保存当前时间戳作为隐私政策同意时间: $currentTimestamp');
+      }
+
+    } else if (result == false) {
+      Log.w('用户明确拒绝隐私政策，退出应用');
+      await _exitApplication();
+    } else {
+      // result == null，用户可能通过返回键或其他方式关闭了弹窗
+      Log.w('用户未做选择或关闭了隐私政策弹窗，退出应用');
+      await _exitApplication();
     }
   }
 
@@ -130,6 +145,47 @@ class PrivacyUtil {
       } catch (exitError) {
         Log.e('强制退出也失败了: $exitError');
       }
+    }
+  }
+
+  /// 获取隐私政策状态（用于调试页面）
+  static Future<Map<String, dynamic>> getPrivacyStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final agreedValue = prefs.getBool('privacy_agreed');
+      final timeValue = prefs.getInt('privacy_time');
+
+      Map<String, dynamic> status = {
+        'hasAgreedKey': prefs.containsKey('privacy_agreed'),
+        'hasTimeKey': prefs.containsKey('privacy_time'),
+        'agreed': agreedValue ?? false,
+        'timestamp': timeValue,
+        'agreedType': agreedValue.runtimeType.toString(),
+        'timeType': timeValue.runtimeType.toString(),
+      };
+
+      return status;
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '获取隐私政策状态失败');
+      return {
+        'error': e.toString(),
+        'hasAgreedKey': false,
+        'hasTimeKey': false,
+        'agreed': false,
+        'timestamp': null,
+      };
+    }
+  }
+
+  /// 手动检查隐私政策更新（用于调试页面）
+  static Future<bool> checkPrivacyUpdate() async {
+    try {
+      // 创建临时的Provider实例进行检查
+      final notifier = PrivacyVersionNotifier();
+      return await notifier.checkForUpdate();
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '手动检查隐私政策更新失败');
+      return false;
     }
   }
 

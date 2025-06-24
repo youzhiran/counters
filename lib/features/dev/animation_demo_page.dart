@@ -11,7 +11,7 @@ class AnimationDemoPage extends StatelessWidget {
         title: const Text('页面动画演示'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -22,7 +22,8 @@ class AnimationDemoPage extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            Expanded(
+            Container(
+              height: 400, // 固定高度
               child: GridView.count(
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,

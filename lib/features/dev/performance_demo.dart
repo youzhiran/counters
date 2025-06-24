@@ -24,7 +24,7 @@ class _PerformanceDemoPageState extends ConsumerState<PerformanceDemoPage> {
       appBar: AppBar(
         title: const Text('性能优化演示'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,28 +117,27 @@ class _PerformanceDemoPageState extends ConsumerState<PerformanceDemoPage> {
 
             // 测试结果显示
             if (_testResults.isNotEmpty)
-              Expanded(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '测试结果',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Text(
-                              _testResults,
-                              style: const TextStyle(fontFamily: 'monospace'),
-                            ),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '测试结果',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 300, // 固定高度
+                        child: SingleChildScrollView(
+                          child: Text(
+                            _testResults,
+                            style: const TextStyle(fontFamily: 'monospace'),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
