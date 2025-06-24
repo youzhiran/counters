@@ -51,7 +51,6 @@ dependencies:
   riverpod_annotation: ^2.6.1
   freezed_annotation: ^3.0.0
   flutter_svg: ^2.1.0
-  umeng_common_sdk: ^1.2.9
   web_socket_channel: ^3.0.3
   side_sheet: ^1.0.4
   clarity_flutter: ^1.0.0

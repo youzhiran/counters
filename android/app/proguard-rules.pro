@@ -1,8 +1,7 @@
--keep class com.umeng.** {*;}
-
--keep class org.repackage.** {*;}
-
--keep class com.uyumao.** { *; }
+# 友盟混淆规则已注释 - 友盟功能已禁用
+# -keep class com.umeng.** {*;}
+# -keep class org.repackage.** {*;}
+# -keep class com.uyumao.** { *; }
 
 -keepclassmembers class * {
    public <init> (org.json.JSONObject);

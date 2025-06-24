@@ -10,14 +10,14 @@ import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
-import 'package:counters/common/utils/umeng.dart';
+import 'package:counters/common/utils/privacy.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/dev/message_debug_page.dart';
 import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
-import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
+import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
@@ -96,12 +96,12 @@ void main() async {
 
   // 创建 ProviderScope，不再使用废弃的 parent 参数
   runApp(
-    ClarityWidget(
-      clarityConfig: clarityConfig,
-      app: ProviderScope(
-        observers: enableProviderLogger ? [PLogger()] : null,
-        // 根据设置决定是否启用Provider调试
-        child: const MyApp(),
+    ProviderScope(
+      observers: enableProviderLogger ? [PLogger()] : null,
+      // 根据设置决定是否启用Provider调试
+      child: ClarityWidget(
+        clarityConfig: clarityConfig,
+        app: const MyApp(),
       ),
     ),
   );
@@ -211,9 +211,9 @@ class _MyAppState extends ConsumerState<MyApp> {
       themeMode: themeState.themeMode,
       home: Builder(
         builder: (context) {
-          // 只在第一次构建时初始化友盟
+          // 隐私政策弹窗初始化 - 友盟功能已禁用但保留隐私政策功能
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            UmengUtil.initWithPrivacy(context);
+            PrivacyUtil.initWithPrivacy(context);
           });
           return const MessageOverlay(
             child: MainTabsScreen(),

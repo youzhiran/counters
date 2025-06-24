@@ -106,7 +106,8 @@ flutter {
 }
 
 dependencies {
-    implementation 'com.umeng.umsdk:common:9.8.0'// 必选
-    implementation 'com.umeng.umsdk:asms:1.8.7'// 必选
-    implementation 'com.umeng.umsdk:apm:2.0.1'
+    // 友盟SDK依赖已注释 - 友盟功能已禁用
+    // implementation 'com.umeng.umsdk:common:9.8.0'// 必选
+    // implementation 'com.umeng.umsdk:asms:1.8.7'// 必选
+    // implementation 'com.umeng.umsdk:apm:2.0.1'
 }
