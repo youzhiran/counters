@@ -11,6 +11,7 @@ class Config {
   static const String urlReleases =
       'https://api.github.com/repos/youzhiran/counters/releases';
   static const String urlDevyi = 'https://devyi.com';
+  static const String urlApp = 'https://counters.devyi.com/?ref=app';
 
   // 常量字符串 - LAN
   static const int discoveryPort = 8099; // 用于服务发现的 UDP 端口 (不同于 WebSocket 端口)

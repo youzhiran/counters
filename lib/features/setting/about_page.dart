@@ -195,6 +195,15 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
             '点击前往访问开发者网站',
           ),
         ),
+        // 软件官网列表项
+        _buildListTile(
+          icon: Icons.language,
+          title: '软件官网',
+          onTap: () => globalState.openUrl(
+            Config.urlApp,
+            '点击前往访问 Counters 官方网站',
+          ),
+        ),
 
         // 项目地址列表项
         _buildListTile(
