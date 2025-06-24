@@ -20,32 +20,47 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
         title: const Text('模板'),
         automaticallyImplyLeading: false,
       ),
-      body: templatesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('加载失败: $err')),
-        data: (templates) {
-          if (templates.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeInOut,
+        child: templatesAsync.when(
+          loading: () => const Center(
+            key: ValueKey('loading'),
+            child: CircularProgressIndicator(),
+          ),
+          error: (err, stack) => Center(
+            key: ValueKey('error'),
+            child: Text('加载失败: $err'),
+          ),
+          data: (templates) {
+            if (templates.isEmpty) {
+              return const Center(
+                key: ValueKey('empty'),
+                child: CircularProgressIndicator(),
+              );
+            }
 
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(templatesProvider),
-            child: GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 200,
-                mainAxisExtent: 150,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
+            return RefreshIndicator(
+              key: const ValueKey('grid'),
+              onRefresh: () async => ref.invalidate(templatesProvider),
+              child: GridView.builder(
+                padding: const EdgeInsets.all(12),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 200,
+                  mainAxisExtent: 150,
+                  crossAxisSpacing: 6,
+                  mainAxisSpacing: 6,
+                ),
+                itemCount: templates.length,
+                itemBuilder: (context, index) => TemplateCard(
+                  template: templates[index],
+                  mode: TemplateCardMode.management,
+                ),
               ),
-              itemCount: templates.length,
-              itemBuilder: (context, index) => TemplateCard(
-                template: templates[index],
-                mode: TemplateCardMode.management,
-              ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

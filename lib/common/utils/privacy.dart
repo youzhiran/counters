@@ -92,12 +92,12 @@ class PrivacyUtil {
       if (remoteVersion != null) {
         // 保存远程版本的时间戳
         await privacyNotifier.savePrivacyAgreement(remoteVersion.timestamp);
-        Log.i('已保存隐私政策同意状态和时间戳: ${remoteVersion.timestamp}');
+        Log.i('已保存【远程】时间戳作为隐私政策同意时间: ${remoteVersion.timestamp}');
       } else {
         // 如果没有远程版本信息，保存当前时间戳
         final currentTimestamp = DateTime.now().millisecondsSinceEpoch;
         await privacyNotifier.savePrivacyAgreement(currentTimestamp);
-        Log.i('已保存当前时间戳作为隐私政策同意时间: $currentTimestamp');
+        Log.i('已保存【当前】时间戳作为隐私政策同意时间: $currentTimestamp');
       }
 
     } else if (result == false) {
