@@ -267,7 +267,7 @@ class _NetworkInfoCard extends ConsumerWidget {
               label: '网络接口',
               value: lanState.interfaceName,
             ),
-          if (lanState.isHost)
+          if (lanState.isHost) ...[
             _InfoRow(
               icon: Icons.router,
               label: '服务端口',
@@ -275,8 +275,20 @@ class _NetworkInfoCard extends ConsumerWidget {
                   ? lanState.serverPort.toString()
                   : '8080',
             ),
+            _InfoRow(
+              icon: Icons.broadcast_on_personal,
+              label: '广播端口',
+              value: lanState.discoveryPort > 0
+                  ? lanState.discoveryPort.toString()
+                  : '8099',
+            ),
+          ],
           // 客户端模式显示主机信息
           if (lanState.isClientMode && !lanState.isHost) ...[
+            // 展示分割线
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
             if (lanState.hostIp != null)
               _InfoRow(
                 icon: Icons.dns,
@@ -287,8 +299,14 @@ class _NetworkInfoCard extends ConsumerWidget {
             if (lanState.serverPort > 0)
               _InfoRow(
                 icon: Icons.router,
-                label: '主机端口',
+                label: '服务端口',
                 value: lanState.serverPort.toString(),
+              ),
+            if (lanState.discoveryPort > 0)
+              _InfoRow(
+                icon: Icons.broadcast_on_personal,
+                label: '广播端口',
+                value: lanState.discoveryPort.toString(),
               ),
             if (lanState.disconnectReason != null)
               _InfoRow(

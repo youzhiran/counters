@@ -101,7 +101,7 @@ class PrivacyVersionNotifier extends StateNotifier<PrivacyVersionState> {
         return null;
       }
     } catch (e) {
-      ErrorHandler.handle(e, StackTrace.current, prefix: '获取远程隐私政策版本失败');
+      Log.w('获取远程隐私政策版本失败，: $e');
       return null;
     }
   }

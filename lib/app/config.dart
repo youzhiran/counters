@@ -19,8 +19,15 @@ class Config {
 
   // 常量字符串 - LAN
   static const int discoveryPort = 8099; // 用于服务发现的 UDP 端口 (不同于 WebSocket 端口)
+  static const int webSocketPort = 8080; // 默认 WebSocket 服务端口
   static const String discoveryMsgPrefix = 'CountersGameHost:'; // 广播消息标识
   static const String appName = 'Counters'; // 程序名称
+
+  // 端口范围配置
+  static const int discoveryPortMin = 8099; // 广播端口最小值
+  static const int discoveryPortMax = 8109; // 广播端口最大值
+  static const int webSocketPortMin = 8080; // WebSocket 端口最小值
+  static const int webSocketPortMax = 8090; // WebSocket 端口最大值
 
   // 常量字符串列表 - 回退字体
   static const List<String> chineseFontFallbacks = [

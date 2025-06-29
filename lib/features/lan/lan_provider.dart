@@ -9,9 +9,11 @@ import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/sync_messages.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/port_manager.dart';
 import 'package:counters/common/utils/template_utils.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/lan/client.dart';
+import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/network_manager.dart';
 import 'package:counters/features/lan/ping_provider.dart';
 // 引入 Score Provider 和 消息 Payload 类
@@ -36,6 +38,7 @@ class LanState {
   final List<String> connectedClientIps; // 新增：存储已连接客户端 IP
   final String interfaceName; // 新增：本机网络接口名称
   final int serverPort; // 新增：服务器端口号
+  final int discoveryPort; // 新增：广播发现端口号
 
   // 新增：客户端模式状态管理
   final bool isClientMode; // 是否处于客户端模式（即使断开连接也保持）
@@ -58,6 +61,7 @@ class LanState {
     this.connectedClientIps = const [], // 新增：默认空列表
     this.interfaceName = '', // 新增：默认空字符串
     this.serverPort = 0, // 新增：默认端口为0
+    this.discoveryPort = 0, // 新增：默认广播端口为0
     // 新增：客户端模式相关状态
     this.isClientMode = false, // 默认不是客户端模式
     this.isConnecting = false, // 默认不在连接建立中
@@ -81,6 +85,7 @@ class LanState {
     bool clearNetworkManager = false,
     String? interfaceName, // 新增
     int? serverPort, // 新增
+    int? discoveryPort, // 新增
     // 新增：客户端模式相关参数
     bool? isClientMode,
     bool? isConnecting,
@@ -108,6 +113,8 @@ class LanState {
       interfaceName: interfaceName ?? this.interfaceName,
       // 新增
       serverPort: serverPort ?? this.serverPort,
+      // 新增
+      discoveryPort: discoveryPort ?? this.discoveryPort,
       // 新增
       // 新增：客户端模式相关状态
       isClientMode: isClientMode ?? this.isClientMode,
@@ -672,19 +679,6 @@ class Lan extends _$Lan {
            errorLower.contains('套接字地址') && errorLower.contains('只允许使用一次');
   }
 
-  /// 检查端口是否可用
-  Future<bool> _isPortAvailable(int port) async {
-    try {
-      final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
-      await server.close(force: true);
-      return true;
-    } catch (e) {
-      Log.v('端口 $port 不可用: $e');
-      return false;
-    }
-  }
-
-
 
   /// 修改 startHost 方法以传递回调和模板名称
   Future<void> startHost(int port, String baseTid,
@@ -693,7 +687,6 @@ class Lan extends _$Lan {
     disposeManager(); // 确保旧的管理器已清理
     state = state.copyWith(isLoading: true, isHost: true, isConnected: false);
     _currentBaseTid = baseTid;
-    _currentWsPort = port;
     _currentTemplateName = templateName ?? '';
 
     // 修复：在启动主机模式前动态获取当前有效的IP地址
@@ -712,30 +705,32 @@ class Lan extends _$Lan {
       return;
     }
 
-    // 预检查端口可用性
-    Log.i('检查端口 $port 可用性...');
-    if (!await _isPortAvailable(port)) {
-      Log.w('端口 $port 不可用');
+    // 获取当前配置的服务端口
+    Log.i('获取当前配置的服务端口...');
+    final configuredPort = await PortManager.getCurrentWebSocketPort();
+    _currentWsPort = configuredPort;
+    Log.i('将使用服务端口: $configuredPort');
 
-      // 端口被占用，直接提示用户
+    // 检查端口是否被占用
+    if (await PortManager.isTcpPortOccupied(configuredPort)) {
+      Log.e('服务端口 $configuredPort 被占用');
       GlobalMsgManager.showError(
-        '端口 $port 已被占用\n\n'
-        '解决方案：\n'
-        '• 关闭其他可能占用该端口的应用\n'
-        '• 重启应用程序\n'
-        '• 如果问题持续，请重启设备'
+        PortManager.getPortOccupiedErrorMessage(configuredPort, isWebSocket: true)
       );
       state = state.copyWith(
         isLoading: false,
         isHost: false,
-        connectionStatus: '端口 $port 被占用',
+        connectionStatus: '端口 $configuredPort 被占用',
       );
       return;
     }
 
     try {
+      // 获取当前配置的广播端口
+      final configuredDiscoveryPort = await PortManager.getCurrentDiscoveryPort();
+
       final manager = await ScoreNetworkManager.createHost(
-        port,
+        configuredPort,
         onMessageReceived: _handleClientMessage,
         // 处理客户端消息的回调
         onClientConnected: _handleClientConnected,
@@ -755,25 +750,22 @@ class Lan extends _$Lan {
         // 清空客户端列表
         isBroadcasting: true,
         // 主机启动时默认开启广播
-        serverPort: port, // 新增：设置服务器端口
+        serverPort: configuredPort, // 新增：设置服务器端口
+        discoveryPort: configuredDiscoveryPort, // 新增：设置广播端口
       );
-      await _startDiscoveryBroadcast(port, baseTid);
+      await _startDiscoveryBroadcast(configuredPort, baseTid);
 
       // 修复：启动网络状态监听
       _startNetworkMonitoring();
 
-      Log.i('主机模式已成功启动在端口 $port');
+      Log.i('主机模式已成功启动在端口 $configuredPort');
     } catch (e) {
       Log.e('启动主机失败: $e');
 
       // 检查是否为端口占用错误
       if (_isPortOccupiedError(e.toString())) {
         GlobalMsgManager.showError(
-          '端口 $port 已被占用\n\n'
-          '解决方案：\n'
-          '• 关闭其他可能占用该端口的应用\n'
-          '• 重启应用程序\n'
-          '• 如果问题持续，请重启设备'
+          PortManager.getPortOccupiedErrorMessage(configuredPort, isWebSocket: true)
         );
         state = state.copyWith(
           isLoading: false,
@@ -902,7 +894,7 @@ class Lan extends _$Lan {
   }
 
   /// 连接到一个指定 IP 地址和端口的 WebSocket 主机。
-  Future<void> connectToHost(String hostIp, int port) async {
+  Future<void> connectToHost(String hostIp, int port, {int? discoveryPort}) async {
     await disposeManager();
     state = state.copyWith(
       isLoading: true,
@@ -914,6 +906,10 @@ class Lan extends _$Lan {
       // 修复：设置连接建立中状态，防止误导性警告
       hostIp: hostIp,
       // 记录主机IP用于重连
+      serverPort: port,
+      // 记录主机端口用于重连和显示
+      discoveryPort: discoveryPort ?? 8099,
+      // 记录主机广播端口用于显示
       connectionStatus: '连接中...',
       clearDisconnectReason: true,
       // 清除之前的断开原因
@@ -950,6 +946,11 @@ class Lan extends _$Lan {
         isConnecting: false,  // 修复：确保清除连接建立中状态
       );
     }
+  }
+
+  /// 从DiscoveredHost连接到主机
+  Future<void> connectToDiscoveredHost(DiscoveredHost host) async {
+    await connectToHost(host.ip, host.port, discoveryPort: host.discoveryPort);
   }
 
   /// 发送 JSON 格式的消息。
@@ -1299,14 +1300,32 @@ class Lan extends _$Lan {
 
     try {
       String hostName = Platform.localHostname;
-      // 新格式: Prefix<HostIP>|<WebSocketPort>|<BaseTID>|<HostName>|<TemplateName>
+      // 新格式: Prefix<HostIP>|<WebSocketPort>|<DiscoveryPort>|<BaseTID>|<HostName>|<TemplateName>
       final message =
-          '${Config.discoveryMsgPrefix}${state.localIp}|$_currentWsPort|$_currentBaseTid|$hostName|$_currentTemplateName';
+          '${Config.discoveryMsgPrefix}${state.localIp}|$_currentWsPort|${state.discoveryPort}|$_currentBaseTid|$hostName|$_currentTemplateName';
       final data = utf8.encode(message);
-      var send = _udpSocket?.send(
-          data, InternetAddress('255.255.255.255'), Config.discoveryPort);
-      if (send == 0) {
-        Log.w('UDP 广播发送结果:$send');
+
+      // 修复：只向当前配置的广播端口发送广播，而不是向整个端口范围发送
+      final targetPort = state.discoveryPort;
+
+      // 安全检查：确保端口号有效
+      if (targetPort <= 0 || targetPort > 65535) {
+        Log.e('无效的广播端口: $targetPort，跳过广播发送');
+        return;
+      }
+
+      try {
+        var send = _udpSocket?.send(
+            data, InternetAddress('255.255.255.255'), targetPort);
+        if (send != null && send > 0) {
+          Log.v('成功向配置的广播端口 $targetPort 发送广播');
+        } else {
+          Log.w('向配置的广播端口 $targetPort 发送广播失败：发送字节数为 $send');
+        }
+      } catch (e) {
+        Log.e('向配置的广播端口 $targetPort 发送广播失败: $e');
+        // 使用统一的错误处理器
+        ErrorHandler.handle(e, StackTrace.current, prefix: '发送UDP广播失败');
       }
     } catch (e) {
       // 使用统一的错误处理器

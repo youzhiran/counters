@@ -5,15 +5,18 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/net.dart';
+import 'package:counters/common/utils/popup_menu_utils.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/setting_list_tile.dart';
 import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/dev/animation_demo_page.dart';
 import 'package:counters/features/dev/performance_demo.dart';
+import 'package:counters/features/dev/port_test_page.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/log_settings_page.dart';
+import 'package:counters/features/setting/port_config_provider.dart';
 import 'package:counters/features/setting/privacy_debug_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
@@ -120,7 +123,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 Consumer(
                   builder: (context, ref, child) {
                     final updateCheckState = ref.watch(updateCheckProvider);
-                    final updateCheckNotifier = ref.read(updateCheckProvider.notifier);
+                    final updateCheckNotifier =
+                        ref.read(updateCheckProvider.notifier);
 
                     return SettingListTile(
                       icon: Icons.update,
@@ -185,6 +189,25 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   subtitle: '测试中功能，启用并重启后程序支持横屏界面',
                   value: _enableDesktopMode,
                   onChanged: _saveDesktopModeSetting,
+                ),
+                _buildSectionHeader('高级'),
+                SettingListTile(
+                  icon: Icons.settings_ethernet,
+                  title: '端口配置',
+                  subtitle: '配置局域网服务和广播端口',
+                  onTap: _showPortConfigDialog,
+                ),
+                SettingListTile(
+                  icon: Icons.network_check,
+                  title: '端口测试',
+                  subtitle: '测试端口可用性和配置状态',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PortTestPage(),
+                      ),
+                    );
+                  },
                 ),
                 _buildSectionHeader('关于'),
                 SettingListTile(
@@ -614,8 +637,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     await prefs.setBool(_keyShowDevOptions, value);
   }
 
-
-
   // 加载桌面模式设置
   Future<void> _loadDesktopModeSetting() async {
     final prefs = await SharedPreferences.getInstance();
@@ -633,8 +654,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     });
     GlobalMsgManager.showMessage('设置已保存，重启应用后生效');
   }
-
-
 
   void _resetDatabase() {
     globalState.showCommonDialog(
@@ -692,45 +711,21 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   }
 
   void _showThemeModeMenu() {
-    // 获取当前点击的列表项的位置信息
-    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-
-    // 计算菜单显示位置，使其显示在列表项的右侧
-    final offset = renderBox.localToGlobal(Offset.zero);
-    final size = renderBox.size;
-
-    final position = RelativeRect.fromLTRB(
-      offset.dx + size.width - 200, // 从右侧200像素处显示
-      offset.dy + 50, // 垂直方向稍微偏下
-      offset.dx + size.width,
-      offset.dy + size.height,
-    );
-
     // 获取当前主题模式
     final currentThemeMode = ref.read(themeProvider).themeMode;
 
     // 在显示菜单前获取 themeProvider.notifier
     final themeNotifier = ref.read(themeProvider.notifier);
 
-    showMenu<ThemeMode>(
+    // 使用通用工具类显示菜单
+    PopupMenuUtils.showSelectionMenu<ThemeMode>(
       context: context,
-      position: position,
       items: ThemeMode.values.map((mode) {
-        return PopupMenuItem<ThemeMode>(
+        return PopupMenuUtils.createMenuItem<ThemeMode>(
           value: mode,
-          child: Row(
-            children: [
-              Icon(
-                Icons.check,
-                color: currentThemeMode == mode
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.transparent,
-              ),
-              const SizedBox(width: 12),
-              Text(_getThemeModeText(mode)),
-            ],
-          ),
+          text: _getThemeModeText(mode),
+          isSelected: currentThemeMode == mode,
+          context: context,
         );
       }).toList(),
     ).then((value) {
@@ -1040,7 +1035,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 await UpdateIgnoreManager.clearIgnoredVersions();
                 GlobalMsgManager.showMessage('已清除所有忽略的更新版本记录');
               } catch (e) {
-                ErrorHandler.handle(e, StackTrace.current, prefix: '清除忽略版本记录失败');
+                ErrorHandler.handle(e, StackTrace.current,
+                    prefix: '清除忽略版本记录失败');
               }
             },
             child: const Text('清除', style: TextStyle(color: Colors.red)),
@@ -1061,5 +1057,185 @@ class _SettingPageState extends ConsumerState<SettingPage> {
             ),
       ),
     );
+  }
+
+  /// 显示端口配置对话框
+  void _showPortConfigDialog() {
+    globalState.showCommonDialog(
+      child: Consumer(
+        builder: (context, ref, child) {
+          final portConfig = ref.watch(portConfigProvider);
+          final portConfigNotifier = ref.read(portConfigProvider.notifier);
+
+          // 确保配置已初始化
+          Future.microtask(() => portConfigNotifier.initialize());
+
+          return AlertDialog(
+            title: const Text('端口配置'),
+            content: SizedBox(
+              width: 320,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('配置局域网服务使用的端口号：'),
+                  const SizedBox(height: 16),
+
+                  // 广播端口配置
+                  Text(
+                    '局域网广播端口',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: portConfig.isLoading ? null : () {
+                      _showDiscoveryPortMenu(context, ref);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('${portConfig.discoveryPort}${portConfig.discoveryPort == Config.discoveryPort ? ' (默认)' : ''}'),
+                          Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 服务端口配置
+                  Text(
+                    '局域网服务端口',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: portConfig.isLoading ? null : () {
+                      _showWebSocketPortMenu(context, ref);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('${portConfig.webSocketPort}${portConfig.webSocketPort == Config.webSocketPort ? ' (默认)' : ''}'),
+                          Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  if (portConfig.error != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Text(
+                        portConfig.error!,
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 12),
+                  Text(
+                    '注意：\n①无特殊情况请不要修改端口设置。\n'
+                        '②修改端口后需重启局域网服务才能生效。\n'
+                        '③修改端口后主机和客户端端口设置需保持一致方可正常联机。',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: portConfig.isLoading
+                    ? null
+                    : () {
+                        portConfigNotifier.resetToDefaults();
+                      },
+                child: const Text('重置默认'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('关闭'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// 显示广播端口选择菜单
+  void _showDiscoveryPortMenu(BuildContext context, WidgetRef ref) {
+    final portConfig = ref.read(portConfigProvider);
+    final portConfigNotifier = ref.read(portConfigProvider.notifier);
+
+    // 使用通用工具类显示端口选择菜单
+    PopupMenuUtils.showSelectionMenu<int>(
+      context: context,
+      items: portConfig.discoveryPortOptions.map((port) {
+        return PopupMenuUtils.createPortMenuItem(
+          port: port,
+          defaultPort: Config.discoveryPort,
+          currentPort: portConfig.discoveryPort,
+          context: context,
+        );
+      }).toList(),
+    ).then((value) {
+      if (value != null) {
+        portConfigNotifier.setDiscoveryPort(value);
+      }
+    });
+  }
+
+  /// 显示服务端口选择菜单
+  void _showWebSocketPortMenu(BuildContext context, WidgetRef ref) {
+    final portConfig = ref.read(portConfigProvider);
+    final portConfigNotifier = ref.read(portConfigProvider.notifier);
+
+    // 使用通用工具类显示端口选择菜单
+    PopupMenuUtils.showSelectionMenu<int>(
+      context: context,
+      items: portConfig.webSocketPortOptions.map((port) {
+        return PopupMenuUtils.createPortMenuItem(
+          port: port,
+          defaultPort: Config.webSocketPort,
+          currentPort: portConfig.webSocketPort,
+          context: context,
+        );
+      }).toList(),
+    ).then((value) {
+      if (value != null) {
+        portConfigNotifier.setWebSocketPort(value);
+      }
+    });
   }
 }

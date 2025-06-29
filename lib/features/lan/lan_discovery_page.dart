@@ -76,7 +76,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       final lanNotifier = ref.read(lanProvider.notifier);
 
       // 1. 连接到主机
-      await lanNotifier.connectToHost(host.ip, host.port);
+      await lanNotifier.connectToDiscoveredHost(host);
 
       // 2. 短暂等待连接建立
       await Future.delayed(const Duration(milliseconds: 500));

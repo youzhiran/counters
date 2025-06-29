@@ -58,15 +58,16 @@ android {
         consumerProguardFiles 'proguard-rules.pro'
     }
 
-    // 配置 ABI 拆分
-    splits {
-        abi {
-            enable true
-            reset()
-            include 'armeabi-v7a', 'arm64-v8a', 'x86_64'
-            universalApk false  // 改为 false，避免与 Flutter 插件冲突
-        }
-    }
+    // 配置 ABI 拆分 - 禁用以避免与Flutter工具冲突
+    // 使用 flutter build apk --split-per-abi 时由Flutter工具处理拆分
+    // splits {
+    //     abi {
+    //         enable true
+    //         reset()
+    //         include 'armeabi-v7a', 'arm64-v8a', 'x86_64'
+    //         universalApk false
+    //     }
+    // }
 
 
     buildTypes {
@@ -79,6 +80,12 @@ android {
                 signingConfig signingConfigs.debug
             }
         }
+    }
+
+    // 禁用lint检查以避免文件占用问题
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
     }
 }
 

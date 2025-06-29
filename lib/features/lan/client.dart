@@ -289,6 +289,14 @@ class WsClient {
     await _performConnect(_lastServerIp!, _lastPort!);
   }
 
+  // 新增：更新连接端口信息的方法
+  void updateConnectionPort(int newPort) {
+    if (_lastPort != newPort) {
+      Log.i('更新客户端记录的连接端口: $_lastPort -> $newPort');
+      _lastPort = newPort;
+    }
+  }
+
   // 重置连接状态
   void _resetConnection() {
     _channel = null;

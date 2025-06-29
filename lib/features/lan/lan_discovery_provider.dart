@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:counters/app/config.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/port_manager.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class DiscoveredHost {
   final String ip;
   final int port; // WebSocket 端口
+  final int discoveryPort; // 广播端口
   final String baseTid;
   final String hostName; // 可以是设备名或自定义名称
   final String? templateName; // 模板名称，可能为空（向后兼容）
@@ -21,6 +25,7 @@ class DiscoveredHost {
   const DiscoveredHost({
     required this.ip,
     required this.port,
+    required this.discoveryPort,
     required this.baseTid,
     required this.hostName,
     this.templateName,
@@ -35,6 +40,7 @@ class DiscoveredHost {
           runtimeType == other.runtimeType &&
           ip == other.ip &&
           port == other.port &&
+          discoveryPort == other.discoveryPort &&
           baseTid == other.baseTid;
 
   @override
@@ -102,10 +108,29 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
     _knownHostKeys.clear();
 
     try {
+      // 获取当前配置的广播端口
+      final configuredPort = await PortManager.getCurrentDiscoveryPort();
+      Log.i('尝试使用广播端口: $configuredPort');
+
+      // 检查端口是否被占用
+      if (await PortManager.isUdpPortOccupied(configuredPort)) {
+        Log.e('广播端口 $configuredPort 被占用');
+        if (mounted) {
+          state = state.copyWith(
+            isScanning: false,
+            error: '端口 $configuredPort 被占用'
+          );
+        }
+        GlobalMsgManager.showError(
+          PortManager.getPortOccupiedErrorMessage(configuredPort)
+        );
+        return;
+      }
+
       _socket = await RawDatagramSocket.bind(
-          InternetAddress.anyIPv4, Config.discoveryPort);
+          InternetAddress.anyIPv4, configuredPort);
       _socket?.broadcastEnabled = true; // 允许接收广播
-      Log.i('开始监听 UDP 发现端口: ${Config.discoveryPort}');
+      Log.i('开始监听 UDP 广播端口: $configuredPort');
 
       _socket?.listen(
         _handleDatagram,
@@ -129,7 +154,8 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
       _cleanupTimer =
           Timer.periodic(const Duration(seconds: 15), _cleanupHosts);
     } catch (e) {
-      Log.e('绑定 UDP 端口 ${Config.discoveryPort} 失败: $e');
+      Log.e('绑定 UDP 广播端口失败: $e');
+      ErrorHandler.handle(e, StackTrace.current, prefix: '启动发现服务失败');
       if (mounted) {
         state = state.copyWith(isScanning: false, error: '绑定端口失败: $e');
       }
@@ -148,13 +174,31 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
           if (message.startsWith(Config.discoveryMsgPrefix)) {
             final parts =
                 message.substring(Config.discoveryMsgPrefix.length).split('|');
-            // 期望格式: Prefix<HostIP>|<WebSocketPort>|<BaseTID>|<HostName>|<TemplateName>
+            // 新格式: Prefix<HostIP>|<WebSocketPort>|<DiscoveryPort>|<BaseTID>|<HostName>|<TemplateName>
+            // 兼容旧格式: Prefix<HostIP>|<WebSocketPort>|<BaseTID>|<HostName>|<TemplateName>
             if (parts.length >= 4) {
               final hostIp = parts[0];
               final wsPort = int.tryParse(parts[1]);
-              final baseTid = parts[2];
-              final hostName = parts[3]; // 主机名
-              final templateName = parts.length >= 5 ? parts[4] : null; // 模板名称（向后兼容）
+
+              // 检查是否为新格式（包含广播端口）
+              int? discoveryPort;
+              String baseTid;
+              String hostName;
+              String? templateName;
+
+              if (parts.length >= 6) {
+                // 新格式: IP|WSPort|DiscoveryPort|BaseTID|HostName|TemplateName
+                discoveryPort = int.tryParse(parts[2]);
+                baseTid = parts[3];
+                hostName = parts[4];
+                templateName = parts.length >= 6 ? parts[5] : null;
+              } else {
+                // 旧格式: IP|WSPort|BaseTID|HostName|TemplateName（向后兼容）
+                discoveryPort = null; // 旧格式没有广播端口信息
+                baseTid = parts[2];
+                hostName = parts[3];
+                templateName = parts.length >= 5 ? parts[4] : null;
+              }
 
               if (wsPort != null) {
                 final hostKey = '$hostIp:$wsPort:$baseTid';
@@ -162,6 +206,7 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
                 final newHost = DiscoveredHost(
                   ip: hostIp,
                   port: wsPort,
+                  discoveryPort: discoveryPort ?? 8099, // 使用默认广播端口作为后备
                   baseTid: baseTid,
                   hostName: hostName,
                   templateName: templateName,
@@ -210,7 +255,7 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
   }
 
   // 定期清理超过一定时间未收到消息的主机
-  void _cleanupHosts(_) {
+  void _cleanupHosts(Timer timer) {
     if (!mounted) return;
     final now = DateTime.now();
     final timeout = const Duration(seconds: 30); // 例如，30秒没收到消息就移除

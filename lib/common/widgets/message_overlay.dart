@@ -170,37 +170,46 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
 
   /// 计算消息的垂直位置
   double _calculateMessagePosition(AppMessage message) {
-    final activeMessages = ref.read(messageManagerProvider).activeMessages;
-    final messageIndex =
-        activeMessages.indexWhere((msg) => msg.id == message.id);
+    try {
+      final activeMessages = ref.read(messageManagerProvider).activeMessages;
+      final messageIndex =
+          activeMessages.indexWhere((msg) => msg.id == message.id);
 
-    if (messageIndex == -1) {
-      return _calculateSafeTopPosition();
-    }
+      if (messageIndex == -1) {
+        return _calculateSafeTopPosition();
+      }
 
-    double position = _calculateSafeTopPosition();
+      double position = _calculateSafeTopPosition();
 
-    // 累加前面消息的高度
-    for (int i = 0; i < messageIndex; i++) {
-      final prevMessage = activeMessages[i];
-      final prevKey = _messageKeys[prevMessage.id];
+      // 累加前面消息的高度
+      for (int i = 0; i < messageIndex; i++) {
+        final prevMessage = activeMessages[i];
+        final prevKey = _messageKeys[prevMessage.id];
 
-      if (prevKey?.currentContext != null) {
-        final renderBox =
-            prevKey!.currentContext!.findRenderObject() as RenderBox?;
-        if (renderBox != null) {
-          position += renderBox.size.height + _messageSpacing;
+        if (prevKey?.currentContext != null) {
+          final renderBox =
+              prevKey!.currentContext!.findRenderObject() as RenderBox?;
+          // 检查RenderBox是否已完成布局且有有效尺寸
+          if (renderBox != null && renderBox.hasSize) {
+            position += renderBox.size.height + _messageSpacing;
+          } else {
+            // 如果RenderBox未完成布局或无法获取实际高度，使用估算高度
+            position += 80.0 + _messageSpacing; // 估算的消息卡片高度
+          }
         } else {
           // 如果无法获取实际高度，使用估算高度
-          position += 80.0 + _messageSpacing; // 估算的消息卡片高度
+          position += 80.0 + _messageSpacing;
         }
-      } else {
-        // 如果无法获取实际高度，使用估算高度
-        position += 80.0 + _messageSpacing;
       }
-    }
 
-    return position;
+      return position;
+    } catch (e, stackTrace) {
+      // 使用ErrorHandler处理错误，但不显示用户消息以避免递归
+      Log.e('MessageOverlay: 计算消息位置失败 - $e');
+      Log.e('StackTrace: $stackTrace');
+      // 返回安全的默认位置
+      return _calculateSafeTopPosition();
+    }
   }
 
   /// 计算安全的顶部位置，避开AppBar区域
@@ -325,7 +334,44 @@ class _MessagePositionedState extends State<_MessagePositioned>
       vsync: this,
     );
 
-    _currentTop = widget.positionCalculator();
+    // 延迟位置计算到下一帧，确保所有RenderBox都已完成布局
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        try {
+          _currentTop = widget.positionCalculator();
+          _positionAnimation = Tween<double>(
+            begin: _currentTop,
+            end: _currentTop,
+          ).animate(CurvedAnimation(
+            parent: _positionController,
+            curve: Curves.easeInOut,
+          ));
+          // 触发重建以应用新的位置
+          if (mounted) {
+            setState(() {});
+          }
+        } catch (e, stackTrace) {
+          // 使用ErrorHandler处理错误
+          Log.e('MessagePositioned: 初始化位置计算失败 - $e');
+          Log.e('StackTrace: $stackTrace');
+          // 使用默认位置
+          _currentTop = 100.0; // 安全的默认位置
+          _positionAnimation = Tween<double>(
+            begin: _currentTop,
+            end: _currentTop,
+          ).animate(CurvedAnimation(
+            parent: _positionController,
+            curve: Curves.easeInOut,
+          ));
+          if (mounted) {
+            setState(() {});
+          }
+        }
+      }
+    });
+
+    // 初始化时使用安全的默认位置
+    _currentTop = 100.0; // 临时默认位置，将在postFrameCallback中更新
     _positionAnimation = Tween<double>(
       begin: _currentTop,
       end: _currentTop,
@@ -343,19 +389,26 @@ class _MessagePositionedState extends State<_MessagePositioned>
 
   /// 更新位置
   void updatePosition() {
-    final newTop = widget.positionCalculator();
-    if (newTop != _currentTop) {
-      _positionAnimation = Tween<double>(
-        begin: _currentTop,
-        end: newTop,
-      ).animate(CurvedAnimation(
-        parent: _positionController,
-        curve: Curves.easeInOut,
-      ));
+    try {
+      final newTop = widget.positionCalculator();
+      if (newTop != _currentTop) {
+        _positionAnimation = Tween<double>(
+          begin: _currentTop,
+          end: newTop,
+        ).animate(CurvedAnimation(
+          parent: _positionController,
+          curve: Curves.easeInOut,
+        ));
 
-      _positionController.reset();
-      _positionController.forward();
-      _currentTop = newTop;
+        _positionController.reset();
+        _positionController.forward();
+        _currentTop = newTop;
+      }
+    } catch (e, stackTrace) {
+      // 使用ErrorHandler处理错误
+      Log.e('MessagePositioned: 更新位置失败 - $e');
+      Log.e('StackTrace: $stackTrace');
+      // 位置更新失败时保持当前位置不变
     }
   }
 

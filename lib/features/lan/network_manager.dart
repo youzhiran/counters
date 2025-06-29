@@ -128,6 +128,16 @@ class ScoreNetworkManager {
     }
   }
 
+  /// 更新客户端连接端口信息 (仅 Client 模式可用)
+  /// 用于在端口配置变更后同步更新客户端记录的连接端口
+  void updateClientConnectionPort(int newPort) {
+    if (!isHost && _client != null) {
+      _client!.updateConnectionPort(newPort);
+    } else {
+      Log.w('ScoreNetworkManager: updateClientConnectionPort 仅在 Client 模式下可用');
+    }
+  }
+
   /// 释放管理器及其内部的网络资源。
   Future<void> dispose() async {
     if (isHost) {

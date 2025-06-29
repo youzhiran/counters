@@ -50,6 +50,7 @@ dist/
 /android/app/.cxx
 .lingma/
 .trae/
+/android/build/
 
 # FVM Version Cache
 .fvm/
