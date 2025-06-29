@@ -51,37 +51,23 @@ class _ScoreColumn extends ConsumerWidget {
   final PlayerInfo player;
   final List<int?> scores;
   final int currentRound;
-  final Map<String, GlobalKey> cellKeys;
 
   const _ScoreColumn({
     required this.templateId,
     required this.player,
     required this.scores,
     required this.currentRound,
-    required this.cellKeys,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final highlight = ref.watch(scoreProvider).when(
-          loading: () => null,
-          error: (error, stack) => null,
-          data: (state) => state.currentHighlight,
-        );
-
     return SizedBox(
       width: 80,
       child: Column(
         children: [
           // 历史回合得分
           ...List.generate(currentRound, (index) {
-            final isHighlight = highlight != null &&
-                highlight.key == player.pid &&
-                highlight.value == index;
             final score = index < scores.length ? scores[index] : null;
-
-            final key = '${player.pid}_$index';
-            final cellKey = cellKeys.putIfAbsent(key, () => GlobalKey());
 
             return Expanded(
               child: RepaintBoundary(
@@ -108,11 +94,9 @@ class _ScoreColumn extends ConsumerWidget {
                   },
                   behavior: HitTestBehavior.opaque,
                   child: Container(
-                    key: isHighlight ? cellKey : null,
                     height: 48,
                     alignment: Alignment.center,
                     child: _ScoreCell(
-                      isHighlighted: isHighlight,
                       score: score,
                       total: scores
                           .take(index + 1)
@@ -140,7 +124,6 @@ class _ScoreBoard extends ConsumerStatefulWidget {
 }
 
 class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
-  final Map<String, GlobalKey> _cellKeys = {};
   final ScrollController _horizontalScrollController = ScrollController();
   late final ScrollController _headerHorizontalController = ScrollController();
   late final ScrollController _contentHorizontalController = ScrollController();
@@ -162,28 +145,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
         _headerHorizontalController.jumpTo(_contentHorizontalController.offset);
       }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(scoreProvider.notifier).updateHighlight();
-    });
-  }
-
-  void _scrollToHighlight() {
-    // 修复：检查 Widget 是否已被销毁
-    if (!mounted) return;
-
-    final highlight = ref.read(scoreProvider).value?.currentHighlight;
-    if (highlight != null) {
-      final key = '${highlight.key}_${highlight.value}';
-      final cellKey = _cellKeys[key];
-      if (cellKey?.currentContext != null) {
-        Scrollable.ensureVisible(
-          cellKey!.currentContext!,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          alignment: 0.5,
-        );
-      }
-    }
   }
 
   @override
@@ -193,17 +154,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
           error: (err, stack) => 0,
           data: (state) => state.currentRound,
         );
-
-    ref.listen(scoreProvider, (previous, next) {
-      if (next.value?.currentHighlight != null) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          // 修复：在回调中再次检查 Widget 是否已被销毁
-          if (mounted) {
-            _scrollToHighlight();
-          }
-        });
-      }
-    });
 
     return Column(
       children: [
@@ -295,7 +245,6 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
               scores: score.roundScores,
               currentRound: currentRound + 1,
               // 传递的是总轮次数，用于List.generate
-              cellKeys: _cellKeys,
             );
           }),
         ],
@@ -307,12 +256,10 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
 class _ScoreCell extends ConsumerWidget {
   final int? score; // 存储的仍然是乘以100后的整数
   final int total; // 存储的仍然是乘以100后的整数
-  final bool isHighlighted;
 
   const _ScoreCell({
     this.score,
     required this.total,
-    required this.isHighlighted,
   });
 
   @override
@@ -323,14 +270,6 @@ class _ScoreCell extends ConsumerWidget {
     final displayTotal = (total / 100.0).toStringAsFixed(2);
 
     return Container(
-      decoration: BoxDecoration(
-        color: isHighlighted
-            ? Theme.of(context).colorScheme.primaryContainer
-            : null,
-        border: isHighlighted
-            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-            : null,
-      ),
       width: 80,
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 4),
