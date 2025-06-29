@@ -49,6 +49,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   static const String _keyShowDevOptions = 'show_dev_options'; // 添加key常量
   final int _clicksToShowDev = 5; // 需要点击5次才显示开发者选项
 
+  // 保存最后一次点击位置，用于菜单定位
+  Offset? _lastTapPosition;
+
   final List<Color> _themeColors = [
     Colors.blue,
     Colors.green,
@@ -1093,6 +1096,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     onTap: portConfig.isLoading ? null : () {
                       _showDiscoveryPortMenu(context, ref);
                     },
+                    onTapDown: (details) {
+                      // 保存点击位置用于菜单定位
+                      _lastTapPosition = details.globalPosition;
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(
@@ -1122,6 +1129,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   InkWell(
                     onTap: portConfig.isLoading ? null : () {
                       _showWebSocketPortMenu(context, ref);
+                    },
+                    onTapDown: (details) {
+                      // 保存点击位置用于菜单定位
+                      _lastTapPosition = details.globalPosition;
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -1198,9 +1209,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     final portConfig = ref.read(portConfigProvider);
     final portConfigNotifier = ref.read(portConfigProvider.notifier);
 
-    // 使用通用工具类显示端口选择菜单
+    // 使用通用工具类显示端口选择菜单，传递点击位置进行精确定位
     PopupMenuUtils.showSelectionMenu<int>(
       context: context,
+      globalPosition: _lastTapPosition,
       items: portConfig.discoveryPortOptions.map((port) {
         return PopupMenuUtils.createPortMenuItem(
           port: port,
@@ -1221,9 +1233,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     final portConfig = ref.read(portConfigProvider);
     final portConfigNotifier = ref.read(portConfigProvider.notifier);
 
-    // 使用通用工具类显示端口选择菜单
+    // 使用通用工具类显示端口选择菜单，传递点击位置进行精确定位
     PopupMenuUtils.showSelectionMenu<int>(
       context: context,
+      globalPosition: _lastTapPosition,
       items: portConfig.webSocketPortOptions.map((port) {
         return PopupMenuUtils.createPortMenuItem(
           port: port,

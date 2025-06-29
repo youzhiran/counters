@@ -3,13 +3,63 @@ import 'package:flutter/material.dart';
 /// 弹窗菜单工具类
 /// 提供统一的弹窗定位和显示逻辑
 class PopupMenuUtils {
-  /// 计算弹窗菜单的显示位置
-  /// 
+  /// 根据全局点击位置计算弹窗菜单的显示位置
+  ///
+  /// [globalPosition] - 全局点击位置
+  /// [context] - BuildContext，用于获取屏幕尺寸进行边界检测
+  ///
+  /// 返回计算好的RelativeRect位置信息
+  static RelativeRect calculateMenuPositionFromGlobalPosition(
+    Offset globalPosition,
+    BuildContext context,
+  ) {
+    // 获取屏幕尺寸用于边界检测
+    final screenSize = MediaQuery.of(context).size;
+    final padding = MediaQuery.of(context).padding;
+
+    // 可用屏幕区域
+    final availableWidth = screenSize.width;
+    final availableHeight = screenSize.height - padding.top - padding.bottom;
+
+    // 预估菜单尺寸（用于边界检测）
+    const estimatedMenuWidth = 200.0;
+    const estimatedMenuHeight = 150.0;
+
+    double left = globalPosition.dx;
+    double top = globalPosition.dy;
+
+    // 水平边界检测
+    if (left + estimatedMenuWidth > availableWidth) {
+      left = availableWidth - estimatedMenuWidth;
+    }
+    if (left < 0) {
+      left = 0;
+    }
+
+    // 垂直边界检测
+    if (top + estimatedMenuHeight > availableHeight) {
+      top = globalPosition.dy - estimatedMenuHeight;
+    }
+    if (top < padding.top) {
+      top = padding.top;
+    }
+
+    return RelativeRect.fromLTRB(
+      left,
+      top,
+      left + estimatedMenuWidth,
+      top + estimatedMenuHeight,
+    );
+  }
+
+  /// 计算弹窗菜单的显示位置（兼容旧版本）
+  ///
   /// [context] - 当前组件的BuildContext
   /// [offsetX] - 水平偏移量，默认从右侧200像素处显示
   /// [offsetY] - 垂直偏移量，默认向下偏移50像素
-  /// 
+  ///
   /// 返回计算好的RelativeRect位置信息，如果计算失败返回null
+  @Deprecated('使用 calculateMenuPositionFromGlobalPosition 获得更好的定位效果')
   static RelativeRect? calculateMenuPosition(
     BuildContext context, {
     double offsetX = 200.0,
@@ -31,28 +81,36 @@ class PopupMenuUtils {
     );
   }
 
-  /// 显示选择菜单
-  /// 
+  /// 显示选择菜单（推荐使用，支持基于点击位置的精确定位）
+  ///
   /// [context] - BuildContext
   /// [items] - 菜单项列表
-  /// [position] - 菜单显示位置，如果为null会自动计算
-  /// [offsetX] - 水平偏移量（仅在position为null时生效）
-  /// [offsetY] - 垂直偏移量（仅在position为null时生效）
-  /// 
+  /// [globalPosition] - 全局点击位置，如果提供则使用精确定位
+  /// [position] - 菜单显示位置，如果为null且globalPosition也为null会自动计算
+  /// [offsetX] - 水平偏移量（仅在position和globalPosition都为null时生效）
+  /// [offsetY] - 垂直偏移量（仅在position和globalPosition都为null时生效）
+  ///
   /// 返回用户选择的值，如果取消选择返回null
   static Future<T?> showSelectionMenu<T>({
     required BuildContext context,
     required List<PopupMenuItem<T>> items,
+    Offset? globalPosition,
     RelativeRect? position,
     double offsetX = 200.0,
     double offsetY = 50.0,
   }) async {
-    // 如果没有提供位置，自动计算
-    position ??= calculateMenuPosition(
-      context,
-      offsetX: offsetX,
-      offsetY: offsetY,
-    );
+    // 优先使用全局位置进行精确定位
+    if (globalPosition != null) {
+      position = calculateMenuPositionFromGlobalPosition(globalPosition, context);
+    } else {
+      // 如果没有提供位置，使用旧的自动计算方法（向后兼容）
+      // ignore: deprecated_member_use_from_same_package
+      position ??= calculateMenuPosition(
+        context,
+        offsetX: offsetX,
+        offsetY: offsetY,
+      );
+    }
 
     if (position == null) return null;
 
@@ -60,6 +118,26 @@ class PopupMenuUtils {
       context: context,
       position: position,
       items: items,
+      elevation: 8.0, // 添加阴影效果
+    );
+  }
+
+  /// 显示选择菜单（基于点击位置的便捷方法）
+  ///
+  /// [context] - BuildContext
+  /// [items] - 菜单项列表
+  /// [globalPosition] - 全局点击位置
+  ///
+  /// 返回用户选择的值，如果取消选择返回null
+  static Future<T?> showSelectionMenuAtPosition<T>({
+    required BuildContext context,
+    required List<PopupMenuItem<T>> items,
+    required Offset globalPosition,
+  }) async {
+    return showSelectionMenu<T>(
+      context: context,
+      items: items,
+      globalPosition: globalPosition,
     );
   }
 
