@@ -257,13 +257,41 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
-          // 新增：显示本机IP地址和操作按钮
+          // 显示本机IP地址和操作按钮
           IpDisplayWidget(
             localIp: lanState.localIp,
             interfaceName: lanState.interfaceName,
             onRefreshIp: () => lanNotifier.refreshLocalIp(),
           ),
-          // 结束新增
+          // 显示正在接受广播的端口
+          if (discoveryState.listeningPort != null)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.radio,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '正在监听广播端口: ${discoveryState.listeningPort}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // 显示扫描状态或无主机提示
           if (discoveryState.isScanning && discoveryState.hosts.isEmpty)
             const Expanded(

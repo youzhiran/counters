@@ -57,11 +57,13 @@ class LanDiscoveryState {
   final bool isScanning;
   final List<DiscoveredHost> hosts;
   final String? error;
+  final int? listeningPort; // 新增：当前正在监听的广播端口
 
   const LanDiscoveryState({
     this.isScanning = false,
     this.hosts = const [],
     this.error,
+    this.listeningPort, // 新增：默认为null
   });
 
   LanDiscoveryState copyWith({
@@ -69,11 +71,14 @@ class LanDiscoveryState {
     List<DiscoveredHost>? hosts,
     String? error,
     bool clearError = false,
+    int? listeningPort, // 新增：监听端口参数
+    bool clearListeningPort = false, // 新增：清除监听端口参数
   }) {
     return LanDiscoveryState(
       isScanning: isScanning ?? this.isScanning,
       hosts: hosts ?? this.hosts,
       error: clearError ? null : error ?? this.error,
+      listeningPort: clearListeningPort ? null : (listeningPort ?? this.listeningPort), // 新增：处理监听端口
     );
   }
 }
@@ -104,7 +109,8 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
         isScanning: true,
         error: null,
         clearError: true,
-        hosts: []); // 开始扫描时清空列表和错误
+        hosts: [],
+        clearListeningPort: true); // 开始扫描时清空列表、错误和监听端口
     _knownHostKeys.clear();
 
     try {
@@ -118,7 +124,8 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
         if (mounted) {
           state = state.copyWith(
             isScanning: false,
-            error: '端口 $configuredPort 被占用'
+            error: '端口 $configuredPort 被占用',
+            clearListeningPort: true
           );
         }
         GlobalMsgManager.showError(
@@ -131,6 +138,11 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
           InternetAddress.anyIPv4, configuredPort);
       _socket?.broadcastEnabled = true; // 允许接收广播
       Log.i('开始监听 UDP 广播端口: $configuredPort');
+
+      // 新增：设置当前正在监听的端口
+      if (mounted) {
+        state = state.copyWith(listeningPort: configuredPort);
+      }
 
       _socket?.listen(
         _handleDatagram,
@@ -157,7 +169,11 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
       Log.e('绑定 UDP 广播端口失败: $e');
       ErrorHandler.handle(e, StackTrace.current, prefix: '启动发现服务失败');
       if (mounted) {
-        state = state.copyWith(isScanning: false, error: '绑定端口失败: $e');
+        state = state.copyWith(
+          isScanning: false,
+          error: '绑定端口失败: $e',
+          clearListeningPort: true
+        );
       }
       await stopDiscovery(); // 确保清理
     }
@@ -288,7 +304,10 @@ class LanDiscoveryNotifier extends StateNotifier<LanDiscoveryState> {
     _socket?.close();
     _socket = null;
     if (mounted) {
-      state = state.copyWith(isScanning: false); // 确保状态更新
+      state = state.copyWith(
+        isScanning: false,
+        clearListeningPort: true
+      ); // 确保状态更新并清除监听端口
     }
   }
 

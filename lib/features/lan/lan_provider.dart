@@ -16,6 +16,7 @@ import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/network_manager.dart';
 import 'package:counters/features/lan/ping_provider.dart';
+
 // 引入 Score Provider 和 消息 Payload 类
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -171,14 +172,9 @@ class Lan extends _$Lan {
   int _currentWsPort = 0;
   String _currentTemplateName = '';
 
-  // 修复：添加网络状态监听
-  Timer? _networkCheckTimer;
-  String _lastKnownIp = '';
-
   void dispose() {
     _hostIpController.dispose();
     _messageController.dispose();
-    _stopNetworkMonitoring();
     disposeManager();
     Log.d('LanNotifier dispose');
   }
@@ -219,62 +215,15 @@ class Lan extends _$Lan {
       }
 
       // 排除一些明显无效的IP地址
-      if (ip.startsWith('0.') || ip.startsWith('127.') || ip == '255.255.255.255') {
+      if (ip.startsWith('0.') ||
+          ip.startsWith('127.') ||
+          ip == '255.255.255.255') {
         return false;
       }
 
       return true;
     } catch (e) {
       return false;
-    }
-  }
-
-
-
-  /// 启动网络状态监听
-  void _startNetworkMonitoring() {
-    _stopNetworkMonitoring();
-    _lastKnownIp = state.localIp;
-
-    // 每30秒检查一次网络状态
-    _networkCheckTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
-      await _checkNetworkChanges();
-    });
-
-    Log.i('网络状态监听已启动');
-  }
-
-  /// 停止网络状态监听
-  void _stopNetworkMonitoring() {
-    _networkCheckTimer?.cancel();
-    _networkCheckTimer = null;
-    Log.d('网络状态监听已停止');
-  }
-
-  /// 检查网络变化
-  Future<void> _checkNetworkChanges() async {
-    try {
-      final ipData = await getWlanIp();
-      final currentIp = ipData?['ip'] ?? '获取失败';
-
-      if (currentIp != _lastKnownIp && currentIp != '获取失败') {
-        Log.i('检测到IP地址变化: $_lastKnownIp -> $currentIp');
-        _lastKnownIp = currentIp;
-
-        // 更新状态
-        state = state.copyWith(
-          localIp: currentIp,
-          interfaceName: ipData?['name'] ?? '',
-        );
-
-        // 如果是主机模式且正在广播，重启UDP广播
-        if (state.isHost && state.isBroadcasting) {
-          Log.i('主机模式检测到IP变化，重启UDP广播...');
-          await _startDiscoveryBroadcast(_currentWsPort, _currentBaseTid);
-        }
-      }
-    } catch (e) {
-      Log.d('网络状态检查失败: $e');
     }
   }
 
@@ -491,7 +440,8 @@ class Lan extends _$Lan {
                 timestamp: DateTime.now().millisecondsSinceEpoch,
                 id: pingMessage.id,
               );
-              state.networkManager?.sendMessage(jsonEncode(pongMessage.toJson()));
+              state.networkManager
+                  ?.sendMessage(jsonEncode(pongMessage.toJson()));
               Log.v('响应ping消息: ${pingMessage.id}');
             }
             break;
@@ -562,7 +512,10 @@ class Lan extends _$Lan {
 
     // 如果连接断开且处于客户端模式，显示相应提示
     // 修复：添加 !state.isConnecting 检查，防止在连接建立过程中显示误导性警告
-    if (!isConnected && state.isClientMode && !isReconnecting && !state.isConnecting) {
+    if (!isConnected &&
+        state.isClientMode &&
+        !isReconnecting &&
+        !state.isConnecting) {
       if (statusMessage.contains('重连失败')) {
         GlobalMsgManager.showError('连接断开，重连失败。您可以尝试手动重连或退出客户端模式。');
       } else if (!statusMessage.contains('已断开连接')) {
@@ -581,7 +534,8 @@ class Lan extends _$Lan {
       isConnected: false,
       connectionStatus: '主机已断开连接',
       disconnectReason: reason,
-      isConnecting: false,  // 修复：清除连接建立中状态
+      isConnecting: false,
+      // 修复：清除连接建立中状态
       isReconnecting: false,
       reconnectAttempts: 0,
     );
@@ -643,13 +597,11 @@ class Lan extends _$Lan {
     if (_isPortOccupiedError(error)) {
       // 端口占用错误，显示用户友好的提示
       final port = _currentWsPort > 0 ? _currentWsPort : 8080;
-      GlobalMsgManager.showError(
-        '端口 $port 已被占用\n\n'
-        '解决方案：\n'
-        '• 关闭其他可能占用该端口的应用\n'
-        '• 重启应用程序\n'
-        '• 如果问题持续，请重启设备'
-      );
+      GlobalMsgManager.showError('端口 $port 已被占用\n\n'
+          '解决方案：\n'
+          '• 关闭其他可能占用该端口的应用\n'
+          '• 重启应用程序\n'
+          '• 如果问题持续，请重启设备');
 
       state = state.copyWith(
         isLoading: false,
@@ -673,12 +625,11 @@ class Lan extends _$Lan {
   bool _isPortOccupiedError(String error) {
     final errorLower = error.toLowerCase();
     return errorLower.contains('端口') && errorLower.contains('占用') ||
-           errorLower.contains('errno = 10048') ||
-           errorLower.contains('address already in use') ||
-           errorLower.contains('bind failed') ||
-           errorLower.contains('套接字地址') && errorLower.contains('只允许使用一次');
+        errorLower.contains('errno = 10048') ||
+        errorLower.contains('address already in use') ||
+        errorLower.contains('bind failed') ||
+        errorLower.contains('套接字地址') && errorLower.contains('只允许使用一次');
   }
-
 
   /// 修改 startHost 方法以传递回调和模板名称
   Future<void> startHost(int port, String baseTid,
@@ -697,10 +648,7 @@ class Lan extends _$Lan {
     if (state.localIp == '获取中...' || state.localIp == '获取失败') {
       Log.e('无法启动主机模式：无效的本地IP地址 (${state.localIp})');
       state = state.copyWith(
-        isLoading: false,
-        isHost: false,
-        connectionStatus: '启动失败：无法获取有效IP地址'
-      );
+          isLoading: false, isHost: false, connectionStatus: '启动失败：无法获取有效IP地址');
       GlobalMsgManager.showError('启动失败：无法获取有效的本地IP地址，请检查网络连接');
       return;
     }
@@ -714,9 +662,9 @@ class Lan extends _$Lan {
     // 检查端口是否被占用
     if (await PortManager.isTcpPortOccupied(configuredPort)) {
       Log.e('服务端口 $configuredPort 被占用');
-      GlobalMsgManager.showError(
-        PortManager.getPortOccupiedErrorMessage(configuredPort, isWebSocket: true)
-      );
+      GlobalMsgManager.showError(PortManager.getPortOccupiedErrorMessage(
+          configuredPort,
+          isWebSocket: true));
       state = state.copyWith(
         isLoading: false,
         isHost: false,
@@ -727,7 +675,8 @@ class Lan extends _$Lan {
 
     try {
       // 获取当前配置的广播端口
-      final configuredDiscoveryPort = await PortManager.getCurrentDiscoveryPort();
+      final configuredDiscoveryPort =
+          await PortManager.getCurrentDiscoveryPort();
 
       final manager = await ScoreNetworkManager.createHost(
         configuredPort,
@@ -750,13 +699,11 @@ class Lan extends _$Lan {
         // 清空客户端列表
         isBroadcasting: true,
         // 主机启动时默认开启广播
-        serverPort: configuredPort, // 新增：设置服务器端口
+        serverPort: configuredPort,
+        // 新增：设置服务器端口
         discoveryPort: configuredDiscoveryPort, // 新增：设置广播端口
       );
       await _startDiscoveryBroadcast(configuredPort, baseTid);
-
-      // 修复：启动网络状态监听
-      _startNetworkMonitoring();
 
       Log.i('主机模式已成功启动在端口 $configuredPort');
     } catch (e) {
@@ -764,22 +711,16 @@ class Lan extends _$Lan {
 
       // 检查是否为端口占用错误
       if (_isPortOccupiedError(e.toString())) {
-        GlobalMsgManager.showError(
-          PortManager.getPortOccupiedErrorMessage(configuredPort, isWebSocket: true)
-        );
+        GlobalMsgManager.showError(PortManager.getPortOccupiedErrorMessage(
+            configuredPort,
+            isWebSocket: true));
         state = state.copyWith(
-          isLoading: false,
-          isHost: false,
-          connectionStatus: '端口 $port 被占用'
-        );
+            isLoading: false, isHost: false, connectionStatus: '端口 $port 被占用');
       } else {
         // 其他类型的错误，使用通用处理
         ErrorHandler.handle(e, StackTrace.current, prefix: '启动主机失败');
         state = state.copyWith(
-          isLoading: false,
-          isHost: false,
-          connectionStatus: '启动失败'
-        );
+            isLoading: false, isHost: false, connectionStatus: '启动失败');
       }
     }
   }
@@ -802,90 +743,94 @@ class Lan extends _$Lan {
             return; // 或者发送错误消息给客户端？
           }
 
-        // 1. 发送模板信息 (template_info)
-        final template = ref
-            .read(templatesProvider.notifier)
-            .getTemplate(requestedTemplateId);
-        if (template != null) {
-          // 注意：我们需要将 BaseTemplate 转换回 Map<String, dynamic>
-          // 修复：确保包含完整的玩家信息
-          try {
-            // 获取模板的基础数据
-            final templateData = template.toMap();
+          // 1. 发送模板信息 (template_info)
+          final template = ref
+              .read(templatesProvider.notifier)
+              .getTemplate(requestedTemplateId);
+          if (template != null) {
+            // 注意：我们需要将 BaseTemplate 转换回 Map<String, dynamic>
+            // 修复：确保包含完整的玩家信息
+            try {
+              // 获取模板的基础数据
+              final templateData = template.toMap();
 
-            // 修复：确保玩家信息被正确包含
-            templateData['players'] =
-                template.players.map((player) => player.toJson()).toList();
+              // 修复：确保玩家信息被正确包含
+              templateData['players'] =
+                  template.players.map((player) => player.toJson()).toList();
 
-            Log.i(
-                '发送模板信息，包含 ${template.players.length} 个玩家: ${template.players.map((p) => p.name).join(", ")}');
+              Log.i(
+                  '发送模板信息，包含 ${template.players.length} 个玩家: ${template.players.map((p) => p.name).join(", ")}');
 
-            final templateMessage =
-                SyncMessage(type: "template_info", data: templateData);
-            final templateJsonString = jsonEncode(templateMessage.toJson());
-            state.networkManager?.sendToClient(client, templateJsonString);
-            Log.i('已发送 template_info 给客户端，玩家数量: ${template.players.length}');
-          } catch (e) {
-            // 使用统一的错误处理器
-            ErrorHandler.handle(e, StackTrace.current,
-                prefix: '序列化或发送template_info失败');
-            // 即使模板发送失败，也尝试发送状态
-          }
-        } else {
-          Log.w('未找到请求的模板 $requestedTemplateId，无法发送 template_info');
-          // 即使找不到模板，仍然尝试发送状态，客户端可能需要处理这种情况
-        }
-
-        // 2. 发送会话状态 (sync_state) - 保持原有逻辑
-        final currentScoreState = ref.read(scoreProvider).value;
-        if (currentScoreState != null &&
-            currentScoreState.currentSession != null) {
-          // 确保 session 的 templateId 与请求的一致，或者根据情况处理
-          if (currentScoreState.currentSession!.templateId ==
-              requestedTemplateId) {
-            final syncPayload =
-                SyncStatePayload(session: currentScoreState.currentSession!);
-            final syncMessage =
-                SyncMessage(type: "sync_state", data: syncPayload.toJson());
-            final jsonString = jsonEncode(syncMessage.toJson());
-            state.networkManager?.sendToClient(client, jsonString);
-            Log.i('已发送 sync_state 给客户端');
+              final templateMessage =
+                  SyncMessage(type: "template_info", data: templateData);
+              final templateJsonString = jsonEncode(templateMessage.toJson());
+              state.networkManager?.sendToClient(client, templateJsonString);
+              Log.i('已发送 template_info 给客户端，玩家数量: ${template.players.length}');
+            } catch (e) {
+              // 使用统一的错误处理器
+              ErrorHandler.handle(e, StackTrace.current,
+                  prefix: '序列化或发送template_info失败');
+              // 即使模板发送失败，也尝试发送状态
+            }
           } else {
-            Log.w(
-                '当前会话的模板ID (${currentScoreState.currentSession!.templateId}) 与客户端请求的 ($requestedTemplateId) 不匹配，未发送 sync_state');
-            // 这里可能需要更复杂的逻辑，比如是否强制同步或者发送错误
+            Log.w('未找到请求的模板 $requestedTemplateId，无法发送 template_info');
+            // 即使找不到模板，仍然尝试发送状态，客户端可能需要处理这种情况
           }
-        } else {
-          Log.w('无法获取当前分数状态以发送 sync_state');
-        }
-        break;
 
-      case "ping":
-        // 主机收到客户端ping，发送pong响应
-        if (receivedMessage.data is Map<String, dynamic>) {
-          final pingMessage = PingMessage.fromJson(receivedMessage.data as Map<String, dynamic>);
-          final pongMessage = PingMessage(
-            type: 'pong',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            id: pingMessage.id,
-          );
-          // 包装在SyncMessage中发送
-          final syncMessage = SyncMessage(type: 'pong', data: pongMessage.toJson());
-          state.networkManager?.sendToClient(client, jsonEncode(syncMessage.toJson()));
-          Log.v('主机响应客户端ping: ${pingMessage.id}');
-        }
-        break;
+          // 2. 发送会话状态 (sync_state) - 保持原有逻辑
+          final currentScoreState = ref.read(scoreProvider).value;
+          if (currentScoreState != null &&
+              currentScoreState.currentSession != null) {
+            // 确保 session 的 templateId 与请求的一致，或者根据情况处理
+            if (currentScoreState.currentSession!.templateId ==
+                requestedTemplateId) {
+              final syncPayload =
+                  SyncStatePayload(session: currentScoreState.currentSession!);
+              final syncMessage =
+                  SyncMessage(type: "sync_state", data: syncPayload.toJson());
+              final jsonString = jsonEncode(syncMessage.toJson());
+              state.networkManager?.sendToClient(client, jsonString);
+              Log.i('已发送 sync_state 给客户端');
+            } else {
+              Log.w(
+                  '当前会话的模板ID (${currentScoreState.currentSession!.templateId}) 与客户端请求的 ($requestedTemplateId) 不匹配，未发送 sync_state');
+              // 这里可能需要更复杂的逻辑，比如是否强制同步或者发送错误
+            }
+          } else {
+            Log.w('无法获取当前分数状态以发送 sync_state');
+          }
+          break;
 
-      case "pong":
-        // 主机收到客户端pong响应
-        if (receivedMessage.data is Map<String, dynamic>) {
-          ref.read(pingProvider.notifier).handlePingResponse(receivedMessage.data as Map<String, dynamic>);
-        }
-        break;
+        case "ping":
+          // 主机收到客户端ping，发送pong响应
+          if (receivedMessage.data is Map<String, dynamic>) {
+            final pingMessage = PingMessage.fromJson(
+                receivedMessage.data as Map<String, dynamic>);
+            final pongMessage = PingMessage(
+              type: 'pong',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              id: pingMessage.id,
+            );
+            // 包装在SyncMessage中发送
+            final syncMessage =
+                SyncMessage(type: 'pong', data: pongMessage.toJson());
+            state.networkManager
+                ?.sendToClient(client, jsonEncode(syncMessage.toJson()));
+            Log.v('主机响应客户端ping: ${pingMessage.id}');
+          }
+          break;
 
-      default:
-        Log.d('主机收到客户端未知消息类型: ${receivedMessage.type}');
-        break;
+        case "pong":
+          // 主机收到客户端pong响应
+          if (receivedMessage.data is Map<String, dynamic>) {
+            ref.read(pingProvider.notifier).handlePingResponse(
+                receivedMessage.data as Map<String, dynamic>);
+          }
+          break;
+
+        default:
+          Log.d('主机收到客户端未知消息类型: ${receivedMessage.type}');
+          break;
       }
     } catch (e) {
       // 使用统一的错误处理器
@@ -894,7 +839,8 @@ class Lan extends _$Lan {
   }
 
   /// 连接到一个指定 IP 地址和端口的 WebSocket 主机。
-  Future<void> connectToHost(String hostIp, int port, {int? discoveryPort}) async {
+  Future<void> connectToHost(String hostIp, int port,
+      {int? discoveryPort}) async {
     await disposeManager();
     state = state.copyWith(
       isLoading: true,
@@ -927,10 +873,10 @@ class Lan extends _$Lan {
       );
 
       state = state.copyWith(
-          isLoading: false,
-          networkManager: manager,
-          receivedMessages: [],
-          isConnecting: false,  // 修复：清除连接建立中状态
+        isLoading: false,
+        networkManager: manager,
+        receivedMessages: [],
+        isConnecting: false, // 修复：清除连接建立中状态
       );
 
       // Client 连接成功后，确保 ScoreNotifier 知道当前处于客户端模式
@@ -943,7 +889,7 @@ class Lan extends _$Lan {
       _handleConnectionChanged(false, '连接主机失败: $e'); // 确保状态更新
       state = state.copyWith(
         isLoading: false,
-        isConnecting: false,  // 修复：确保清除连接建立中状态
+        isConnecting: false, // 修复：确保清除连接建立中状态
       );
     }
   }
@@ -1054,7 +1000,7 @@ class Lan extends _$Lan {
     // 修复：手动重连时递增重连计数器
     final newAttempts = state.reconnectAttempts + 1;
     state = state.copyWith(
-      isConnecting: true,  // 修复：设置连接建立中状态
+      isConnecting: true, // 修复：设置连接建立中状态
       isReconnecting: true,
       reconnectAttempts: newAttempts,
       connectionStatus: '正在重连... ($newAttempts/${state.maxReconnectAttempts})',
@@ -1072,13 +1018,13 @@ class Lan extends _$Lan {
       state = state.copyWith(
         networkManager: manager,
         clearDisconnectReason: true,
-        isConnecting: false,  // 修复：清除连接建立中状态
+        isConnecting: false, // 修复：清除连接建立中状态
       );
     } catch (e) {
       // 使用统一的错误处理器
       ErrorHandler.handle(e, StackTrace.current, prefix: '手动重连失败');
       state = state.copyWith(
-        isConnecting: false,  // 修复：确保清除连接建立中状态
+        isConnecting: false, // 修复：确保清除连接建立中状态
       );
     }
   }
@@ -1096,7 +1042,8 @@ class Lan extends _$Lan {
 
     state = state.copyWith(
       isClientMode: false,
-      isConnecting: false,  // 修复：清除连接建立中状态
+      isConnecting: false,
+      // 修复：清除连接建立中状态
       isReconnecting: false,
       reconnectAttempts: 0,
       clearDisconnectReason: true,
@@ -1110,7 +1057,6 @@ class Lan extends _$Lan {
   /// 清理并释放所有网络资源。
   Future<void> disposeManager() async {
     Log.d('Disposing network manager...');
-    _stopNetworkMonitoring();
     _stopDiscoveryBroadcast();
 
     // 如果是主机模式且有连接的客户端，发送断开通知
@@ -1228,7 +1174,6 @@ class Lan extends _$Lan {
 
         // 成功启动，退出重试循环
         break;
-
       } catch (e) {
         retryCount++;
         Log.w('第 $retryCount 次启动UDP广播失败: $e');
