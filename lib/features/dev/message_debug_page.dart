@@ -338,7 +338,7 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               _buildSectionHeader('消息历史'),
               Card(
                 margin: EdgeInsets.zero,
-                child: Container(
+                child: SizedBox(
                   height: 300, // 固定高度
                   child: ListView.builder(
                     padding: const EdgeInsets.all(6),

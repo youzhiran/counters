@@ -10,7 +10,9 @@ import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/setting_list_tile.dart';
 import 'package:counters/common/widgets/update_dialog.dart';
+import 'package:counters/features/backup/backup_page.dart';
 import 'package:counters/features/dev/animation_demo_page.dart';
+import 'package:counters/features/dev/backup_debug_page.dart';
 import 'package:counters/features/dev/performance_demo.dart';
 import 'package:counters/features/dev/port_test_page.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
@@ -179,11 +181,15 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   onTap: _resetDatabase,
                 ),
                 SettingListTile(
-                  icon: Icons.article,
-                  title: '程序日志',
-                  subtitle: '提供局域网状态和程序日志查看',
+                  icon: Icons.backup,
+                  title: '数据备份与恢复',
+                  subtitle: '导出或导入应用配置和数据',
                   onTap: () {
-                    Navigator.pushNamed(context, '/log_test');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const BackupPage(),
+                      ),
+                    );
                   },
                 ),
                 SettingSwitchListTile(
@@ -210,6 +216,14 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                         builder: (context) => const PortTestPage(),
                       ),
                     );
+                  },
+                ),
+                SettingListTile(
+                  icon: Icons.article,
+                  title: '程序日志',
+                  subtitle: '提供局域网状态和程序日志查看',
+                  onTap: () {
+                    Navigator.pushNamed(context, '/log_test');
                   },
                 ),
                 _buildSectionHeader('关于'),
@@ -291,6 +305,18 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const PrivacyDebugPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  SettingListTile(
+                    icon: Icons.backup,
+                    title: '备份调试',
+                    subtitle: '测试备份导出和预览功能',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const BackupDebugPage(),
                         ),
                       );
                     },

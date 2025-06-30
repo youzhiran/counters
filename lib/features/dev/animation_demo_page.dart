@@ -22,7 +22,7 @@ class AnimationDemoPage extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            Container(
+            SizedBox(
               height: 400, // 固定高度
               child: GridView.count(
                 crossAxisCount: 2,

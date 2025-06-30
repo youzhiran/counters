@@ -54,6 +54,9 @@ dependencies:
   web_socket_channel: ^3.0.3
   side_sheet: ^1.0.4
   clarity_flutter: ^1.0.0
+  archive: ^4.0.7
+  permission_handler: ^12.0.0+1
+  crypto: ^3.0.6
 
 
 dev_dependencies:

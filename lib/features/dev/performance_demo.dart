@@ -128,7 +128,7 @@ class _PerformanceDemoPageState extends ConsumerState<PerformanceDemoPage> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
-                      Container(
+                      SizedBox(
                         height: 300, // 固定高度
                         child: SingleChildScrollView(
                           child: Text(
