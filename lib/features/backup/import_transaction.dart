@@ -137,10 +137,10 @@ class ImportTransaction {
       );
 
       final collectedData =
-          await BackupService.collectBackupData(options: options);
+      await BackupService.collectBackupData(options: options);
       final backupData = collectedData['backupData'] as BackupData;
       final databaseData =
-          collectedData['databaseData'] as Map<String, Uint8List>;
+      collectedData['databaseData'] as Map<String, Uint8List>;
 
       // 创建备份文件
       final finalZipData = BackupService.createStandardZipData(
