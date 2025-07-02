@@ -12,6 +12,7 @@ class Config {
       'https://api.github.com/repos/youzhiran/counters/releases';
   static const String urlDevyi = 'https://devyi.com';
   static const String urlApp = 'https://counters.devyi.com/?ref=app';
+  static const String urlContact = 'https://counters.devyi.com/contact';
 
   // 常量字符串 - JSON
   static const String jsonPrivacyVersion =

@@ -90,7 +90,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 SettingListTile(
                   icon: Icons.dark_mode,
                   title: '深色模式',
-                  subtitle: '选择 自动 ，将根据系统设置自动切换',
+                  subtitle: '自动 / 浅色 / 深色',
                   trailing: Text(
                     _getThemeModeText(ref.watch(themeProvider).themeMode),
                     style: TextStyle(
@@ -169,18 +169,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     onTap: _showStoragePathDialog,
                   ),
                 SettingListTile(
-                  icon: Icons.settings_backup_restore,
-                  title: '重置设置',
-                  subtitle: '恢复 ${Config.appName} 默认设置',
-                  onTap: _resetSettings,
-                ),
-                SettingListTile(
-                  icon: Icons.delete_forever,
-                  title: '重置数据库',
-                  subtitle: '重置 ${Config.appName} 数据库',
-                  onTap: _resetDatabase,
-                ),
-                SettingListTile(
                   icon: Icons.backup,
                   title: '数据备份与恢复',
                   subtitle: '导出或导入应用配置和数据',
@@ -192,6 +180,19 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     );
                   },
                 ),
+                SettingListTile(
+                  icon: Icons.settings_backup_restore,
+                  title: '重置设置',
+                  subtitle: '恢复 ${Config.appName} 默认设置',
+                  onTap: _resetSettings,
+                ),
+                SettingListTile(
+                  icon: Icons.delete_forever,
+                  title: '重置数据库',
+                  subtitle: '重置 ${Config.appName} 数据库',
+                  onTap: _resetDatabase,
+                ),
+
                 SettingSwitchListTile(
                   icon: Icons.desktop_windows,
                   title: '启用桌面模式适配',
@@ -230,7 +231,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 SettingListTile(
                   icon: Icons.info,
                   title: '关于应用',
-                  subtitle: '了解 ${Config.appName}',
+                  subtitle: '了解 ${Config.appName}，访问官网和项目地址',
                   onTap: () {
                     AboutPage.showAsSideSheet(context);
                   },
@@ -246,7 +247,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   title: '问题反馈',
                   subtitle: '反馈bug与建议',
                   onTap: () => globalState.openUrl(
-                    Config.urlGithub,
+                    Config.urlContact,
                   ),
                 ),
                 if (_showDevOptions) ...[
@@ -1119,15 +1120,18 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   ),
                   const SizedBox(height: 8),
                   InkWell(
-                    onTap: portConfig.isLoading ? null : () {
-                      _showDiscoveryPortMenu(context, ref);
-                    },
+                    onTap: portConfig.isLoading
+                        ? null
+                        : () {
+                            _showDiscoveryPortMenu(context, ref);
+                          },
                     onTapDown: (details) {
                       // 保存点击位置用于菜单定位
                       _lastTapPosition = details.globalPosition;
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
                         borderRadius: BorderRadius.circular(4),
@@ -1135,8 +1139,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('${portConfig.discoveryPort}${portConfig.discoveryPort == Config.discoveryPort ? ' (默认)' : ''}'),
-                          Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                          Text(
+                              '${portConfig.discoveryPort}${portConfig.discoveryPort == Config.discoveryPort ? ' (默认)' : ''}'),
+                          Icon(Icons.arrow_drop_down,
+                              color: Colors.grey.shade600),
                         ],
                       ),
                     ),
@@ -1153,15 +1159,18 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   ),
                   const SizedBox(height: 8),
                   InkWell(
-                    onTap: portConfig.isLoading ? null : () {
-                      _showWebSocketPortMenu(context, ref);
-                    },
+                    onTap: portConfig.isLoading
+                        ? null
+                        : () {
+                            _showWebSocketPortMenu(context, ref);
+                          },
                     onTapDown: (details) {
                       // 保存点击位置用于菜单定位
                       _lastTapPosition = details.globalPosition;
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
                         borderRadius: BorderRadius.circular(4),
@@ -1169,8 +1178,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('${portConfig.webSocketPort}${portConfig.webSocketPort == Config.webSocketPort ? ' (默认)' : ''}'),
-                          Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                          Text(
+                              '${portConfig.webSocketPort}${portConfig.webSocketPort == Config.webSocketPort ? ' (默认)' : ''}'),
+                          Icon(Icons.arrow_drop_down,
+                              color: Colors.grey.shade600),
                         ],
                       ),
                     ),
@@ -1198,8 +1209,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   const SizedBox(height: 12),
                   Text(
                     '注意：\n①无特殊情况请不要修改端口设置。\n'
-                        '②修改端口后需重启局域网服务才能生效。\n'
-                        '③修改端口后主机和客户端端口设置需保持一致方可正常联机。',
+                    '②修改端口后需重启局域网服务才能生效。\n'
+                    '③修改端口后主机和客户端端口设置需保持一致方可正常联机。',
                     style: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 12,

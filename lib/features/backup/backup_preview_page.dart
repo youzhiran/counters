@@ -29,14 +29,16 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
     super.initState();
     // 开始分析备份文件
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(backupPreviewManagerProvider.notifier).analyzeBackupFile(widget.filePath);
+      ref
+          .read(backupPreviewManagerProvider.notifier)
+          .analyzeBackupFile(widget.filePath);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final previewState = ref.watch(backupPreviewManagerProvider);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('备份预览'),
@@ -127,45 +129,72 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 警告信息
+          _buildWarningSection(state.previewInfo!),
+
           // 兼容性检查结果
           if (state.previewInfo!.compatibilityInfo != null)
             _buildCompatibilitySection(state.previewInfo!.compatibilityInfo!),
           if (state.previewInfo!.compatibilityInfo != null)
-            const SizedBox(height: 16),
 
-          // 文件完整性状态
-          _buildIntegritySection(state.previewInfo!),
-          const SizedBox(height: 16),
+            // 文件完整性状态
+            _buildIntegritySection(state.previewInfo!),
 
           // 备份基本信息
           _buildBasicInfoSection(state.previewInfo!),
-          const SizedBox(height: 16),
 
           // 数据统计
           _buildDataStatisticsSection(state.previewInfo!),
-          const SizedBox(height: 16),
 
           // 数据类型
           _buildDataTypesSection(state.previewInfo!),
-          const SizedBox(height: 16),
-
-          // 警告信息
-          _buildWarningSection(state.previewInfo!),
         ],
       ),
     );
   }
 
   Widget _buildCompatibilitySection(CompatibilityInfo compatibilityInfo) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     Color getColorForLevel(CompatibilityLevel level) {
       switch (level) {
         case CompatibilityLevel.compatible:
-          return Colors.green;
+          return isDark ? Colors.green.shade300 : Colors.green.shade700;
         case CompatibilityLevel.warning:
-          return Colors.orange;
+          return isDark ? Colors.orange.shade300 : Colors.orange.shade700;
         case CompatibilityLevel.incompatible:
-          return Colors.red;
+          return isDark ? Colors.red.shade300 : Colors.red.shade700;
       }
+    }
+
+    Color getBackgroundColorForLevel(CompatibilityLevel level) {
+      if (isDark) {
+        switch (level) {
+          case CompatibilityLevel.compatible:
+            return Colors.green.shade900.withValues(alpha: 0.3);
+          case CompatibilityLevel.warning:
+            return Colors.orange.shade900.withValues(alpha: 0.3);
+          case CompatibilityLevel.incompatible:
+            return Colors.red.shade900.withValues(alpha: 0.3);
+        }
+      } else {
+        switch (level) {
+          case CompatibilityLevel.compatible:
+            return Colors.green.shade50;
+          case CompatibilityLevel.warning:
+            return Colors.orange.shade50;
+          case CompatibilityLevel.incompatible:
+            return Colors.red.shade50;
+        }
+      }
+    }
+
+    Color getWarningTextColor() {
+      return isDark ? Colors.orange.shade300 : Colors.orange.shade800;
+    }
+
+    Color getErrorTextColor() {
+      return isDark ? Colors.red.shade300 : Colors.red.shade800;
     }
 
     IconData getIconForLevel(CompatibilityLevel level) {
@@ -191,11 +220,7 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
     }
 
     return Card(
-      color: compatibilityInfo.level == CompatibilityLevel.compatible
-          ? Colors.green.shade50
-          : compatibilityInfo.level == CompatibilityLevel.warning
-              ? Colors.orange.shade50
-              : Colors.red.shade50,
+      color: getBackgroundColorForLevel(compatibilityInfo.level),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -211,8 +236,8 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
                 Text(
                   getTitleForLevel(compatibilityInfo.level),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: getColorForLevel(compatibilityInfo.level),
-                  ),
+                        color: getColorForLevel(compatibilityInfo.level),
+                      ),
                 ),
               ],
             ),
@@ -230,7 +255,7 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
                 '警告:',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade800,
+                  color: getWarningTextColor(),
                 ),
               ),
               ...compatibilityInfo.warnings!.map(
@@ -238,7 +263,7 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
                   padding: const EdgeInsets.only(left: 8, top: 4),
                   child: Text(
                     '• $warning',
-                    style: TextStyle(color: Colors.orange.shade800),
+                    style: TextStyle(color: getWarningTextColor()),
                   ),
                 ),
               ),
@@ -249,7 +274,7 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
                 '错误:',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.red.shade800,
+                  color: getErrorTextColor(),
                 ),
               ),
               ...compatibilityInfo.errors!.map(
@@ -257,7 +282,7 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
                   padding: const EdgeInsets.only(left: 8, top: 4),
                   child: Text(
                     '• $error',
-                    style: TextStyle(color: Colors.red.shade800),
+                    style: TextStyle(color: getErrorTextColor()),
                   ),
                 ),
               ),
@@ -269,6 +294,10 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
   }
 
   Widget _buildIntegritySection(BackupPreviewInfo previewInfo) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final successColor = isDark ? Colors.green.shade300 : Colors.green.shade700;
+    final errorColor = isDark ? Colors.red.shade300 : Colors.red.shade700;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -279,9 +308,7 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
               children: [
                 Icon(
                   previewInfo.hashValid ? Icons.verified : Icons.warning,
-                  color: previewInfo.hashValid
-                      ? Colors.green
-                      : Colors.red,
+                  color: previewInfo.hashValid ? successColor : errorColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -296,13 +323,13 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
                 Icon(
                   previewInfo.hashValid ? Icons.check_circle : Icons.error,
                   size: 16,
-                  color: previewInfo.hashValid ? Colors.green : Colors.red,
+                  color: previewInfo.hashValid ? successColor : errorColor,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   previewInfo.hashValid ? '文件哈希验证通过' : '文件哈希验证失败',
                   style: TextStyle(
-                    color: previewInfo.hashValid ? Colors.green : Colors.red,
+                    color: previewInfo.hashValid ? successColor : errorColor,
                   ),
                 ),
               ],
@@ -338,7 +365,8 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
-            _buildInfoRow('创建时间', '${createTime.year}-${createTime.month.toString().padLeft(2, '0')}-${createTime.day.toString().padLeft(2, '0')} ${createTime.hour.toString().padLeft(2, '0')}:${createTime.minute.toString().padLeft(2, '0')}'),
+            _buildInfoRow('创建时间',
+                '${createTime.year}-${createTime.month.toString().padLeft(2, '0')}-${createTime.day.toString().padLeft(2, '0')} ${createTime.hour.toString().padLeft(2, '0')}:${createTime.minute.toString().padLeft(2, '0')}'),
             _buildInfoRow('应用版本', metadata.appVersion),
             _buildInfoRow('构建号', metadata.buildNumber),
             _buildInfoRow('平台', metadata.platform),
@@ -386,19 +414,19 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
             ),
             const SizedBox(height: 12),
             ...previewInfo.dataTypes.map((type) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    size: 16,
-                    color: Colors.green,
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: Colors.green,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(type),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(type),
-                ],
-              ),
-            )),
+                )),
           ],
         ),
       ),
@@ -429,8 +457,15 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
       warnings.add('无法检查版本兼容性，请谨慎操作');
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final warningColor = isDark ? Colors.orange.shade300 : Colors.orange.shade700;
+    final warningTextColor = isDark ? Colors.orange.shade300 : Colors.orange.shade800;
+    final warningBackgroundColor = isDark
+        ? Colors.orange.shade900.withValues(alpha: 0.3)
+        : Colors.orange.shade50;
+
     return Card(
-      color: Colors.orange.shade50,
+      color: warningBackgroundColor,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -440,14 +475,14 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
               children: [
                 Icon(
                   Icons.warning,
-                  color: Colors.orange,
+                  color: warningColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   '重要提醒',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.orange.shade800,
-                  ),
+                        color: warningTextColor,
+                      ),
                 ),
               ],
             ),
@@ -455,7 +490,7 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
             Text(
               warnings.map((warning) => '• $warning').join('\n'),
               style: TextStyle(
-                color: Colors.orange.shade800,
+                color: warningTextColor,
                 height: 1.5,
               ),
             ),
@@ -496,8 +531,9 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
     final canImport = state.previewInfo != null && state.error == null;
     final hasIntegrityIssue = state.previewInfo?.hashValid == false;
     final compatibilityInfo = state.previewInfo?.compatibilityInfo;
-    final hasCompatibilityIssue = compatibilityInfo?.level == CompatibilityLevel.warning ||
-                                  compatibilityInfo?.level == CompatibilityLevel.incompatible;
+    final hasCompatibilityIssue =
+        compatibilityInfo?.level == CompatibilityLevel.warning ||
+            compatibilityInfo?.level == CompatibilityLevel.incompatible;
 
     return Row(
       children: [
@@ -513,14 +549,17 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
-            onPressed: canImport ? () {
-              if (hasIntegrityIssue || hasCompatibilityIssue) {
-                // 显示综合警告对话框
-                _showRiskWarningDialog(hasIntegrityIssue, compatibilityInfo);
-              } else {
-                _confirmImport();
-              }
-            } : null,
+            onPressed: canImport
+                ? () {
+                    if (hasIntegrityIssue || hasCompatibilityIssue) {
+                      // 显示综合警告对话框
+                      _showRiskWarningDialog(
+                          hasIntegrityIssue, compatibilityInfo);
+                    } else {
+                      _confirmImport();
+                    }
+                  }
+                : null,
             child: const Text('确认导入'),
           ),
         ),
@@ -528,7 +567,8 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
     );
   }
 
-  void _showRiskWarningDialog(bool hasIntegrityIssue, CompatibilityInfo? compatibilityInfo) {
+  void _showRiskWarningDialog(
+      bool hasIntegrityIssue, CompatibilityInfo? compatibilityInfo) {
     final warnings = <String>[];
 
     if (hasIntegrityIssue) {
@@ -544,7 +584,8 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
     }
 
     String title = '导入风险警告';
-    if (hasIntegrityIssue && compatibilityInfo?.level == CompatibilityLevel.incompatible) {
+    if (hasIntegrityIssue &&
+        compatibilityInfo?.level == CompatibilityLevel.incompatible) {
       title = '严重风险警告';
     } else if (hasIntegrityIssue) {
       title = '文件完整性警告';
@@ -568,9 +609,9 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
             ),
             const SizedBox(height: 8),
             ...warnings.map((warning) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text('• $warning'),
-            )),
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('• $warning'),
+                )),
             const SizedBox(height: 12),
             const Text(
               '继续导入可能会导致数据损坏或应用异常。\n\n'

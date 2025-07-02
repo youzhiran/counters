@@ -17,7 +17,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ImportTransaction {
   final ImportOptions _options;
   final String _transactionId;
-  final DateTime _startTime;
 
   // 备份数据
   String? _currentDataBackupPath;
@@ -28,16 +27,15 @@ class ImportTransaction {
   bool _isCommitted = false;
   bool _isRolledBack = false;
 
-  ImportTransaction._(this._options, this._transactionId, this._startTime);
+  ImportTransaction._(this._options, this._transactionId);
 
   /// 开始导入事务
   static Future<ImportTransaction> begin(ImportOptions options) async {
     final transactionId = 'import_${DateTime.now().millisecondsSinceEpoch}';
-    final startTime = DateTime.now();
 
     Log.i('ImportTransaction: 开始导入事务 [$transactionId]');
 
-    final transaction = ImportTransaction._(options, transactionId, startTime);
+    final transaction = ImportTransaction._(options, transactionId);
     await transaction._initialize();
 
     return transaction;
@@ -137,10 +135,10 @@ class ImportTransaction {
       );
 
       final collectedData =
-      await BackupService.collectBackupData(options: options);
+          await BackupService.collectBackupData(options: options);
       final backupData = collectedData['backupData'] as BackupData;
       final databaseData =
-      collectedData['databaseData'] as Map<String, Uint8List>;
+          collectedData['databaseData'] as Map<String, Uint8List>;
 
       // 创建备份文件
       final finalZipData = BackupService.createStandardZipData(
@@ -152,7 +150,7 @@ class ImportTransaction {
 
       // 保存备份文件
       final backupDir = await _getTransactionBackupDir();
-      final backupFileName = 'pre_import_backup_$_transactionId.zip';
+      final backupFileName = 'auto_backup_$_transactionId.zip';
       final backupPath = path.join(backupDir, backupFileName);
 
       await Directory(backupDir).create(recursive: true);

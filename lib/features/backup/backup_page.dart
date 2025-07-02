@@ -35,6 +35,13 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       appBar: AppBar(
         title: const Text('数据备份与恢复'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: '使用说明',
+            onPressed: _showUsageDialog,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -59,11 +66,6 @@ class _BackupPageState extends ConsumerState<BackupPage> {
 
             // 还原区域
             _buildRestoreSection(backupFilesState),
-
-            const SizedBox(height: 24),
-
-            // 说明信息
-            _buildInfoSection(),
           ],
         ),
       ),
@@ -306,7 +308,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              '从已有的备份文件中还原数据，不会自动备份当前数据',
+              '从已有的自动备份文件中还原数据，不会自动备份当前数据',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -352,10 +354,9 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       return;
     }
 
-    // 显示备份文件选择对话框
-    showDialog<void>(
-      context: context,
-      builder: (context) => _RestoreDialog(
+    // 使用 showCommonDialog 显示备份文件选择对话框
+    await globalState.showCommonDialog<void>(
+      child: _RestoreDialog(
         backupFiles: backupFilesState.backupFiles,
         onRestore: _handleRestoreBackup,
       ),
@@ -364,41 +365,30 @@ class _BackupPageState extends ConsumerState<BackupPage> {
 
 
 
-  /// 构建说明信息
-  Widget _buildInfoSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '使用说明',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '• 导出功能会将您的配置和数据打包成ZIP文件，并生成哈希\n'
-              '• 推荐使用"预览并导入"功能，可查看备份详情和验证文件完整性\n'
-              '• 导入前会自动验证文件完整性和哈希\n'
-              '• 强烈建议在导入前备份当前数据，提供安全保障\n'
-              '• "还原备份"功能直接从备份文件还原数据，不会自动备份当前数据\n'
-              '• 版本不同的备份文件可能存在兼容性问题\n'
-              '• 导入和还原操作会覆盖现有数据，请谨慎操作\n'
-              '• 如果操作失败，系统会自动尝试恢复原始数据',
-              style: TextStyle(height: 1.5),
-            ),
-          ],
+  /// 显示使用说明对话框
+  Future<void> _showUsageDialog() async {
+    await globalState.showCommonDialog<void>(
+      child: AlertDialog(
+        title: const Text('使用说明'),
+        content: const SingleChildScrollView(
+          child: Text(
+            '• 导出功能会将您的配置和数据打包成ZIP文件，并生成哈希\n'
+            '• 使用"预览并导入"功能，可查看备份详情和验证文件完整性\n'
+            '• 导入前会自动验证文件完整性和哈希\n'
+            '• 强烈建议在导入前备份当前数据，提供安全保障\n'
+            '• "还原备份"功能直接从备份文件还原数据，不会自动备份当前数据\n'
+            '• 版本不同的备份文件可能存在兼容性问题\n'
+            '• 导入和还原操作会覆盖现有数据，请谨慎操作\n'
+            '• 如果操作失败，系统会自动尝试恢复原始数据',
+            style: TextStyle(height: 1.5),
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
+            child: const Text('确定'),
+          ),
+        ],
       ),
     );
   }
@@ -736,57 +726,157 @@ class _RestoreDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.width > 600;
+    final isMobile = screenSize.width < 600;
+
+    // 响应式尺寸计算
+    final dialogWidth = isTablet
+        ? screenSize.width * 0.6  // 平板：60% 宽度
+        : screenSize.width * 0.9; // 手机：90% 宽度
+
+    final dialogHeight = isTablet
+        ? screenSize.height * 0.7  // 平板：70% 高度
+        : screenSize.height * 0.8; // 手机：80% 高度
+
+    final maxDialogWidth = isTablet ? 600.0 : double.infinity;
+
     return AlertDialog(
       title: const Text('选择备份文件'),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 400,
-        child: ListView.separated(
-          itemCount: backupFiles.length,
-          separatorBuilder: (context, index) => const Divider(),
-          itemBuilder: (context, index) {
-            final backupFile = backupFiles[index];
-            return _buildBackupFileItem(context, backupFile);
-          },
+      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: maxDialogWidth,
+          maxHeight: dialogHeight,
+        ),
+        child: SizedBox(
+          width: dialogWidth,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (backupFiles.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text('未找到可用的备份文件'),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: backupFiles.length,
+                    separatorBuilder: (context, index) => Divider(
+                      height: 1,
+                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                    ),
+                    itemBuilder: (context, index) {
+                      final backupFile = backupFiles[index];
+                      return _buildBackupFileItem(context, backupFile, isMobile);
+                    },
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => globalState.navigatorKey.currentState?.pop(),
           child: const Text('取消'),
         ),
       ],
     );
   }
 
-  Widget _buildBackupFileItem(BuildContext context, BackupFileInfo backupFile) {
+  Widget _buildBackupFileItem(BuildContext context, BackupFileInfo backupFile, bool isMobile) {
     final fileSize = _formatFileSize(backupFile.fileSize);
     final createdTime = _formatDateTime(backupFile.createdTime);
 
-    return ListTile(
-      leading: Icon(
-        Icons.archive,
-        color: Theme.of(context).colorScheme.secondary,
-      ),
-      title: Text(
-        backupFile.fileName,
-        style: const TextStyle(fontWeight: FontWeight.w500),
-      ),
-      subtitle: Text('$fileSize • $createdTime'),
-      trailing: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.of(context).pop();
-          onRestore(backupFile);
-        },
-        icon: const Icon(Icons.restore, size: 16),
-        label: const Text('还原'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.secondary,
-          foregroundColor: Theme.of(context).colorScheme.onSecondary,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    if (isMobile) {
+      // 手机布局：垂直排列，按钮占满宽度
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.archive,
+                  color: Theme.of(context).colorScheme.secondary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    backupFile.fileName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 28),
+              child: Text(
+                '$fileSize • $createdTime',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  globalState.navigatorKey.currentState?.pop();
+                  onRestore(backupFile);
+                },
+                icon: const Icon(Icons.restore, size: 16),
+                label: const Text('预览并还原'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-    );
+      );
+    } else {
+      // 平板/桌面布局：水平排列
+      return ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        leading: Icon(
+          Icons.archive,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+        title: Text(
+          backupFile.fileName,
+          style: const TextStyle(fontWeight: FontWeight.w500),
+        ),
+        subtitle: Text('$fileSize • $createdTime'),
+        trailing: ElevatedButton.icon(
+          onPressed: () {
+            globalState.navigatorKey.currentState?.pop();
+            onRestore(backupFile);
+          },
+          icon: const Icon(Icons.restore, size: 16),
+          label: const Text('预览并还原'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+            foregroundColor: Theme.of(context).colorScheme.onSecondary,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+        ),
+      );
+    }
   }
 
   String _formatFileSize(int bytes) {
