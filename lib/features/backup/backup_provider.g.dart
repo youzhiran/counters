@@ -6,7 +6,7 @@ part of 'backup_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$backupManagerHash() => r'f651cac5454024ef522bae491f0408ed4398e5ca';
+String _$backupManagerHash() => r'b0cd3eb81a241bb449cb7230a558d8189a4e1d52';
 
 /// 备份状态管理
 ///
@@ -62,5 +62,43 @@ final importOptionsManagerProvider =
 );
 
 typedef _$ImportOptionsManager = AutoDisposeNotifier<ImportOptions>;
+String _$restoreOptionsManagerHash() =>
+    r'c4327712864364170444e24f3afb0612aa41b7f2';
+
+/// 还原选项提供者
+///
+/// Copied from [RestoreOptionsManager].
+@ProviderFor(RestoreOptionsManager)
+final restoreOptionsManagerProvider =
+    AutoDisposeNotifierProvider<RestoreOptionsManager, RestoreOptions>.internal(
+  RestoreOptionsManager.new,
+  name: r'restoreOptionsManagerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$restoreOptionsManagerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$RestoreOptionsManager = AutoDisposeNotifier<RestoreOptions>;
+String _$backupFilesManagerHash() =>
+    r'0a57fd29fd41def38ad9ce6ecc330da54730c4f3';
+
+/// 备份文件管理器
+///
+/// Copied from [BackupFilesManager].
+@ProviderFor(BackupFilesManager)
+final backupFilesManagerProvider =
+    AutoDisposeNotifierProvider<BackupFilesManager, BackupFilesState>.internal(
+  BackupFilesManager.new,
+  name: r'backupFilesManagerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$backupFilesManagerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$BackupFilesManager = AutoDisposeNotifier<BackupFilesState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

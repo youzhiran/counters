@@ -89,6 +89,39 @@ sealed class ImportOptions with _$ImportOptions {
   }) = _ImportOptions;
 }
 
+/// 还原选项
+@freezed
+sealed class RestoreOptions with _$RestoreOptions {
+  const factory RestoreOptions({
+    @Default(true) bool restoreSharedPreferences,
+    @Default(true) bool restoreDatabases,
+    @Default(false) bool forceRestore,
+  }) = _RestoreOptions;
+}
+
+/// 备份文件信息
+@freezed
+sealed class BackupFileInfo with _$BackupFileInfo {
+  const factory BackupFileInfo({
+    required String fileName,
+    required String filePath,
+    required int fileSize,
+    required DateTime createdTime,
+    BackupMetadata? metadata,
+    String? description,
+  }) = _BackupFileInfo;
+}
+
+/// 备份文件列表状态
+@freezed
+sealed class BackupFilesState with _$BackupFilesState {
+  const factory BackupFilesState({
+    @Default(false) bool isLoading,
+    @Default([]) List<BackupFileInfo> backupFiles,
+    String? error,
+  }) = _BackupFilesState;
+}
+
 /// 导出选项
 @freezed
 sealed class ExportOptions with _$ExportOptions {

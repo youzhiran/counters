@@ -4,7 +4,9 @@ import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/features/backup/backup_models.dart';
 import 'package:counters/features/backup/backup_service.dart';
+import 'package:counters/features/setting/data_manager.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -183,6 +185,67 @@ class BackupManager extends _$BackupManager {
         currentOperation: null,
       );
       ErrorHandler.handle(e, stackTrace, prefix: '数据导入失败');
+      return false;
+    }
+  }
+
+  /// 还原备份数据（用于预览后的还原）
+  Future<bool> restoreDataFromFile(
+    String filePath, {
+    RestoreOptions? options,
+  }) async {
+    try {
+      state = state.copyWith(
+        isLoading: true,
+        isImporting: true,
+        progress: 0.0,
+        error: null,
+      );
+
+      // 检查权限
+      if (!await _checkPermissions()) {
+        throw Exception('缺少必要的文件访问权限');
+      }
+
+      final restoreOptions = options ?? const RestoreOptions();
+
+      // 将还原选项转换为导入选项（不创建备份）
+      final importOptions = ImportOptions(
+        importSharedPreferences: restoreOptions.restoreSharedPreferences,
+        importDatabases: restoreOptions.restoreDatabases,
+        createBackup: false, // 还原操作不创建备份
+        forceImport: restoreOptions.forceRestore,
+      );
+
+      await BackupService.importData(
+        zipPath: filePath,
+        options: importOptions,
+        onProgress: (message, progress) {
+          Log.v('还原进度: $message ($progress)');
+          state = state.copyWith(
+            currentOperation: message.replaceAll('导入', '还原'),
+            progress: progress,
+          );
+        },
+      );
+
+      state = state.copyWith(
+        isLoading: false,
+        isImporting: false,
+        progress: 1.0,
+        currentOperation: '还原完成',
+      );
+
+      return true;
+    } catch (e, stackTrace) {
+      Log.e('还原失败: $e');
+      state = state.copyWith(
+        isLoading: false,
+        isImporting: false,
+        error: e.toString(),
+        currentOperation: null,
+      );
+      ErrorHandler.handle(e, stackTrace, prefix: '数据还原失败');
       return false;
     }
   }
@@ -378,5 +441,117 @@ class ImportOptionsManager extends _$ImportOptionsManager {
     state = state.copyWith(
       forceImport: !state.forceImport,
     );
+  }
+}
+
+/// 还原选项提供者
+@riverpod
+class RestoreOptionsManager extends _$RestoreOptionsManager {
+  @override
+  RestoreOptions build() {
+    return const RestoreOptions();
+  }
+
+  void updateOptions(RestoreOptions options) {
+    state = options;
+  }
+
+  void toggleSharedPreferences() {
+    state = state.copyWith(
+      restoreSharedPreferences: !state.restoreSharedPreferences,
+    );
+  }
+
+  void toggleDatabases() {
+    state = state.copyWith(
+      restoreDatabases: !state.restoreDatabases,
+    );
+  }
+
+  void toggleForceRestore() {
+    state = state.copyWith(
+      forceRestore: !state.forceRestore,
+    );
+  }
+}
+
+/// 备份文件管理器
+@riverpod
+class BackupFilesManager extends _$BackupFilesManager {
+  @override
+  BackupFilesState build() {
+    return const BackupFilesState();
+  }
+
+  /// 扫描并获取所有备份文件
+  Future<void> scanBackupFiles() async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+
+      final backupFiles = <BackupFileInfo>[];
+
+      // 扫描事务备份目录
+      final transactionBackupDir = await _getTransactionBackupDir();
+      if (await Directory(transactionBackupDir).exists()) {
+        final transactionFiles = await _scanDirectory(transactionBackupDir);
+        backupFiles.addAll(transactionFiles);
+      }
+
+      // 按创建时间倒序排列
+      backupFiles.sort((a, b) => b.createdTime.compareTo(a.createdTime));
+
+      state = state.copyWith(
+        isLoading: false,
+        backupFiles: backupFiles,
+      );
+    } catch (e, stackTrace) {
+      Log.e('扫描备份文件失败: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      ErrorHandler.handle(e, stackTrace, prefix: '扫描备份文件失败');
+    }
+  }
+
+  /// 扫描指定目录的备份文件
+  Future<List<BackupFileInfo>> _scanDirectory(String dirPath) async {
+    final backupFiles = <BackupFileInfo>[];
+    final dir = Directory(dirPath);
+
+    await for (final entity in dir.list()) {
+      if (entity is File && entity.path.endsWith('.zip')) {
+        try {
+          final stat = await entity.stat();
+          final fileName = path.basename(entity.path);
+
+          final backupFileInfo = BackupFileInfo(
+            fileName: fileName,
+            filePath: entity.path,
+            fileSize: stat.size,
+            createdTime: stat.modified,
+            metadata: null, // 不在扫描时读取元数据
+            description: null,
+          );
+
+          backupFiles.add(backupFileInfo);
+        } catch (e) {
+          Log.w('处理备份文件失败: ${entity.path}, 错误: $e');
+        }
+      }
+    }
+
+    return backupFiles;
+  }
+
+  /// 获取事务备份目录
+  Future<String> _getTransactionBackupDir() async {
+    final dataDir = await DataManager.getCurrentDataDir();
+    return path.join(dataDir, 'transaction_backups');
+  }
+
+  /// 清除错误状态
+  void clearError() {
+    state = state.copyWith(error: null);
   }
 }

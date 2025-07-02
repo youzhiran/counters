@@ -19,10 +19,17 @@ class BackupPage extends ConsumerStatefulWidget {
 
 class _BackupPageState extends ConsumerState<BackupPage> {
   @override
+  void initState() {
+    super.initState();
+    // 移除自动扫描，改为按需扫描
+  }
+
+  @override
   Widget build(BuildContext context) {
     final backupState = ref.watch(backupManagerProvider);
     final exportOptions = ref.watch(exportOptionsManagerProvider);
     final importOptions = ref.watch(importOptionsManagerProvider);
+    final backupFilesState = ref.watch(backupFilesManagerProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -47,6 +54,11 @@ class _BackupPageState extends ConsumerState<BackupPage> {
 
             // 导入区域
             _buildImportSection(importOptions),
+
+            const SizedBox(height: 24),
+
+            // 还原区域
+            _buildRestoreSection(backupFilesState),
 
             const SizedBox(height: 24),
 
@@ -271,6 +283,87 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     );
   }
 
+  /// 构建还原区域
+  Widget _buildRestoreSection(BackupFilesState backupFilesState) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.restore,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '还原备份',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '从已有的备份文件中还原数据，不会自动备份当前数据',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 还原按钮
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showRestoreDialog(),
+                icon: const Icon(Icons.restore),
+                label: const Text('选择备份文件还原'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 显示还原对话框
+  Future<void> _showRestoreDialog() async {
+    // 先扫描备份文件
+    await ref.read(backupFilesManagerProvider.notifier).scanBackupFiles();
+
+    if (!mounted) return;
+
+    final backupFilesState = ref.read(backupFilesManagerProvider);
+
+    if (backupFilesState.error != null) {
+      ref.showWarning('扫描备份文件失败: ${backupFilesState.error}');
+      return;
+    }
+
+    if (backupFilesState.backupFiles.isEmpty) {
+      ref.showWarning('未找到可用的备份文件');
+      return;
+    }
+
+    // 显示备份文件选择对话框
+    showDialog<void>(
+      context: context,
+      builder: (context) => _RestoreDialog(
+        backupFiles: backupFilesState.backupFiles,
+        onRestore: _handleRestoreBackup,
+      ),
+    );
+  }
+
+
+
   /// 构建说明信息
   Widget _buildInfoSection() {
     return Card(
@@ -298,9 +391,10 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               '• 推荐使用"预览并导入"功能，可查看备份详情和验证文件完整性\n'
               '• 导入前会自动验证文件完整性和哈希\n'
               '• 强烈建议在导入前备份当前数据，提供安全保障\n'
+              '• "还原备份"功能直接从备份文件还原数据，不会自动备份当前数据\n'
               '• 版本不同的备份文件可能存在兼容性问题\n'
-              '• 导入操作会覆盖现有数据，请谨慎操作\n'
-              '• 如果导入失败，系统会自动尝试恢复原始数据',
+              '• 导入和还原操作会覆盖现有数据，请谨慎操作\n'
+              '• 如果操作失败，系统会自动尝试恢复原始数据',
               style: TextStyle(height: 1.5),
             ),
           ],
@@ -322,6 +416,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     return !backupState.isLoading &&
            (options.importSharedPreferences || options.importDatabases);
   }
+
+
 
   /// 处理导出
   Future<void> _handleExport() async {
@@ -413,6 +509,54 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         await _handlePermissionError(e.toString());
       } else {
         ErrorHandler.handle(e, StackTrace.current, prefix: '导入操作失败');
+      }
+    }
+  }
+
+  /// 处理还原备份
+  Future<void> _handleRestoreBackup(BackupFileInfo backupFile) async {
+    try {
+      // 导航到预览页面
+      if (mounted) {
+        Navigator.of(context).pushWithSlide(
+          BackupPreviewPage(
+            filePath: backupFile.filePath,
+            onConfirmImport: () => _executeRestore(backupFile.filePath),
+            onCancel: () {
+              // 预览取消，不执行任何操作
+            },
+          ),
+          direction: SlideDirection.fromRight,
+          duration: const Duration(milliseconds: 300),
+        );
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '预览还原失败');
+    }
+  }
+
+  /// 执行还原操作
+  Future<void> _executeRestore(String filePath) async {
+    try {
+      // 使用默认的还原选项（还原所有数据，不强制还原）
+      const restoreOptions = RestoreOptions(
+        restoreSharedPreferences: true,
+        restoreDatabases: true,
+        forceRestore: false,
+      );
+
+      final success = await ref.read(backupManagerProvider.notifier)
+          .restoreDataFromFile(filePath, options: restoreOptions);
+
+      if (success && mounted) {
+        ref.showSuccess('数据还原成功！\n请重启应用以应用所有更改。');
+      }
+    } catch (e) {
+      // 检查是否是权限相关错误
+      if (e.toString().contains('权限')) {
+        await _handlePermissionError(e.toString());
+      } else {
+        ErrorHandler.handle(e, StackTrace.current, prefix: '还原操作失败');
       }
     }
   }
@@ -577,5 +721,82 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         ],
       ),
     );
+  }
+}
+
+/// 还原对话框组件
+class _RestoreDialog extends StatelessWidget {
+  final List<BackupFileInfo> backupFiles;
+  final Function(BackupFileInfo) onRestore;
+
+  const _RestoreDialog({
+    required this.backupFiles,
+    required this.onRestore,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('选择备份文件'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: ListView.separated(
+          itemCount: backupFiles.length,
+          separatorBuilder: (context, index) => const Divider(),
+          itemBuilder: (context, index) {
+            final backupFile = backupFiles[index];
+            return _buildBackupFileItem(context, backupFile);
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBackupFileItem(BuildContext context, BackupFileInfo backupFile) {
+    final fileSize = _formatFileSize(backupFile.fileSize);
+    final createdTime = _formatDateTime(backupFile.createdTime);
+
+    return ListTile(
+      leading: Icon(
+        Icons.archive,
+        color: Theme.of(context).colorScheme.secondary,
+      ),
+      title: Text(
+        backupFile.fileName,
+        style: const TextStyle(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text('$fileSize • $createdTime'),
+      trailing: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.of(context).pop();
+          onRestore(backupFile);
+        },
+        icon: const Icon(Icons.restore, size: 16),
+        label: const Text('还原'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.secondary,
+          foregroundColor: Theme.of(context).colorScheme.onSecondary,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+      ),
+    );
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '${bytes}B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
+           '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

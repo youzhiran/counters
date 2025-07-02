@@ -1417,6 +1417,636 @@ class __$ImportOptionsCopyWithImpl<$Res>
 }
 
 /// @nodoc
+mixin _$RestoreOptions {
+  bool get restoreSharedPreferences;
+  bool get restoreDatabases;
+  bool get forceRestore;
+
+  /// Create a copy of RestoreOptions
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $RestoreOptionsCopyWith<RestoreOptions> get copyWith =>
+      _$RestoreOptionsCopyWithImpl<RestoreOptions>(
+          this as RestoreOptions, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is RestoreOptions &&
+            (identical(
+                    other.restoreSharedPreferences, restoreSharedPreferences) ||
+                other.restoreSharedPreferences == restoreSharedPreferences) &&
+            (identical(other.restoreDatabases, restoreDatabases) ||
+                other.restoreDatabases == restoreDatabases) &&
+            (identical(other.forceRestore, forceRestore) ||
+                other.forceRestore == forceRestore));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType, restoreSharedPreferences, restoreDatabases, forceRestore);
+
+  @override
+  String toString() {
+    return 'RestoreOptions(restoreSharedPreferences: $restoreSharedPreferences, restoreDatabases: $restoreDatabases, forceRestore: $forceRestore)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $RestoreOptionsCopyWith<$Res> {
+  factory $RestoreOptionsCopyWith(
+          RestoreOptions value, $Res Function(RestoreOptions) _then) =
+      _$RestoreOptionsCopyWithImpl;
+  @useResult
+  $Res call(
+      {bool restoreSharedPreferences,
+      bool restoreDatabases,
+      bool forceRestore});
+}
+
+/// @nodoc
+class _$RestoreOptionsCopyWithImpl<$Res>
+    implements $RestoreOptionsCopyWith<$Res> {
+  _$RestoreOptionsCopyWithImpl(this._self, this._then);
+
+  final RestoreOptions _self;
+  final $Res Function(RestoreOptions) _then;
+
+  /// Create a copy of RestoreOptions
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? restoreSharedPreferences = null,
+    Object? restoreDatabases = null,
+    Object? forceRestore = null,
+  }) {
+    return _then(_self.copyWith(
+      restoreSharedPreferences: null == restoreSharedPreferences
+          ? _self.restoreSharedPreferences
+          : restoreSharedPreferences // ignore: cast_nullable_to_non_nullable
+              as bool,
+      restoreDatabases: null == restoreDatabases
+          ? _self.restoreDatabases
+          : restoreDatabases // ignore: cast_nullable_to_non_nullable
+              as bool,
+      forceRestore: null == forceRestore
+          ? _self.forceRestore
+          : forceRestore // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _RestoreOptions implements RestoreOptions {
+  const _RestoreOptions(
+      {this.restoreSharedPreferences = true,
+      this.restoreDatabases = true,
+      this.forceRestore = false});
+
+  @override
+  @JsonKey()
+  final bool restoreSharedPreferences;
+  @override
+  @JsonKey()
+  final bool restoreDatabases;
+  @override
+  @JsonKey()
+  final bool forceRestore;
+
+  /// Create a copy of RestoreOptions
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$RestoreOptionsCopyWith<_RestoreOptions> get copyWith =>
+      __$RestoreOptionsCopyWithImpl<_RestoreOptions>(this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _RestoreOptions &&
+            (identical(
+                    other.restoreSharedPreferences, restoreSharedPreferences) ||
+                other.restoreSharedPreferences == restoreSharedPreferences) &&
+            (identical(other.restoreDatabases, restoreDatabases) ||
+                other.restoreDatabases == restoreDatabases) &&
+            (identical(other.forceRestore, forceRestore) ||
+                other.forceRestore == forceRestore));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType, restoreSharedPreferences, restoreDatabases, forceRestore);
+
+  @override
+  String toString() {
+    return 'RestoreOptions(restoreSharedPreferences: $restoreSharedPreferences, restoreDatabases: $restoreDatabases, forceRestore: $forceRestore)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$RestoreOptionsCopyWith<$Res>
+    implements $RestoreOptionsCopyWith<$Res> {
+  factory _$RestoreOptionsCopyWith(
+          _RestoreOptions value, $Res Function(_RestoreOptions) _then) =
+      __$RestoreOptionsCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {bool restoreSharedPreferences,
+      bool restoreDatabases,
+      bool forceRestore});
+}
+
+/// @nodoc
+class __$RestoreOptionsCopyWithImpl<$Res>
+    implements _$RestoreOptionsCopyWith<$Res> {
+  __$RestoreOptionsCopyWithImpl(this._self, this._then);
+
+  final _RestoreOptions _self;
+  final $Res Function(_RestoreOptions) _then;
+
+  /// Create a copy of RestoreOptions
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? restoreSharedPreferences = null,
+    Object? restoreDatabases = null,
+    Object? forceRestore = null,
+  }) {
+    return _then(_RestoreOptions(
+      restoreSharedPreferences: null == restoreSharedPreferences
+          ? _self.restoreSharedPreferences
+          : restoreSharedPreferences // ignore: cast_nullable_to_non_nullable
+              as bool,
+      restoreDatabases: null == restoreDatabases
+          ? _self.restoreDatabases
+          : restoreDatabases // ignore: cast_nullable_to_non_nullable
+              as bool,
+      forceRestore: null == forceRestore
+          ? _self.forceRestore
+          : forceRestore // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ));
+  }
+}
+
+/// @nodoc
+mixin _$BackupFileInfo {
+  String get fileName;
+  String get filePath;
+  int get fileSize;
+  DateTime get createdTime;
+  BackupMetadata? get metadata;
+  String? get description;
+
+  /// Create a copy of BackupFileInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $BackupFileInfoCopyWith<BackupFileInfo> get copyWith =>
+      _$BackupFileInfoCopyWithImpl<BackupFileInfo>(
+          this as BackupFileInfo, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is BackupFileInfo &&
+            (identical(other.fileName, fileName) ||
+                other.fileName == fileName) &&
+            (identical(other.filePath, filePath) ||
+                other.filePath == filePath) &&
+            (identical(other.fileSize, fileSize) ||
+                other.fileSize == fileSize) &&
+            (identical(other.createdTime, createdTime) ||
+                other.createdTime == createdTime) &&
+            (identical(other.metadata, metadata) ||
+                other.metadata == metadata) &&
+            (identical(other.description, description) ||
+                other.description == description));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, fileName, filePath, fileSize,
+      createdTime, metadata, description);
+
+  @override
+  String toString() {
+    return 'BackupFileInfo(fileName: $fileName, filePath: $filePath, fileSize: $fileSize, createdTime: $createdTime, metadata: $metadata, description: $description)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $BackupFileInfoCopyWith<$Res> {
+  factory $BackupFileInfoCopyWith(
+          BackupFileInfo value, $Res Function(BackupFileInfo) _then) =
+      _$BackupFileInfoCopyWithImpl;
+  @useResult
+  $Res call(
+      {String fileName,
+      String filePath,
+      int fileSize,
+      DateTime createdTime,
+      BackupMetadata? metadata,
+      String? description});
+
+  $BackupMetadataCopyWith<$Res>? get metadata;
+}
+
+/// @nodoc
+class _$BackupFileInfoCopyWithImpl<$Res>
+    implements $BackupFileInfoCopyWith<$Res> {
+  _$BackupFileInfoCopyWithImpl(this._self, this._then);
+
+  final BackupFileInfo _self;
+  final $Res Function(BackupFileInfo) _then;
+
+  /// Create a copy of BackupFileInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? fileName = null,
+    Object? filePath = null,
+    Object? fileSize = null,
+    Object? createdTime = null,
+    Object? metadata = freezed,
+    Object? description = freezed,
+  }) {
+    return _then(_self.copyWith(
+      fileName: null == fileName
+          ? _self.fileName
+          : fileName // ignore: cast_nullable_to_non_nullable
+              as String,
+      filePath: null == filePath
+          ? _self.filePath
+          : filePath // ignore: cast_nullable_to_non_nullable
+              as String,
+      fileSize: null == fileSize
+          ? _self.fileSize
+          : fileSize // ignore: cast_nullable_to_non_nullable
+              as int,
+      createdTime: null == createdTime
+          ? _self.createdTime
+          : createdTime // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      metadata: freezed == metadata
+          ? _self.metadata
+          : metadata // ignore: cast_nullable_to_non_nullable
+              as BackupMetadata?,
+      description: freezed == description
+          ? _self.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+
+  /// Create a copy of BackupFileInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $BackupMetadataCopyWith<$Res>? get metadata {
+    if (_self.metadata == null) {
+      return null;
+    }
+
+    return $BackupMetadataCopyWith<$Res>(_self.metadata!, (value) {
+      return _then(_self.copyWith(metadata: value));
+    });
+  }
+}
+
+/// @nodoc
+
+class _BackupFileInfo implements BackupFileInfo {
+  const _BackupFileInfo(
+      {required this.fileName,
+      required this.filePath,
+      required this.fileSize,
+      required this.createdTime,
+      this.metadata,
+      this.description});
+
+  @override
+  final String fileName;
+  @override
+  final String filePath;
+  @override
+  final int fileSize;
+  @override
+  final DateTime createdTime;
+  @override
+  final BackupMetadata? metadata;
+  @override
+  final String? description;
+
+  /// Create a copy of BackupFileInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$BackupFileInfoCopyWith<_BackupFileInfo> get copyWith =>
+      __$BackupFileInfoCopyWithImpl<_BackupFileInfo>(this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _BackupFileInfo &&
+            (identical(other.fileName, fileName) ||
+                other.fileName == fileName) &&
+            (identical(other.filePath, filePath) ||
+                other.filePath == filePath) &&
+            (identical(other.fileSize, fileSize) ||
+                other.fileSize == fileSize) &&
+            (identical(other.createdTime, createdTime) ||
+                other.createdTime == createdTime) &&
+            (identical(other.metadata, metadata) ||
+                other.metadata == metadata) &&
+            (identical(other.description, description) ||
+                other.description == description));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, fileName, filePath, fileSize,
+      createdTime, metadata, description);
+
+  @override
+  String toString() {
+    return 'BackupFileInfo(fileName: $fileName, filePath: $filePath, fileSize: $fileSize, createdTime: $createdTime, metadata: $metadata, description: $description)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$BackupFileInfoCopyWith<$Res>
+    implements $BackupFileInfoCopyWith<$Res> {
+  factory _$BackupFileInfoCopyWith(
+          _BackupFileInfo value, $Res Function(_BackupFileInfo) _then) =
+      __$BackupFileInfoCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {String fileName,
+      String filePath,
+      int fileSize,
+      DateTime createdTime,
+      BackupMetadata? metadata,
+      String? description});
+
+  @override
+  $BackupMetadataCopyWith<$Res>? get metadata;
+}
+
+/// @nodoc
+class __$BackupFileInfoCopyWithImpl<$Res>
+    implements _$BackupFileInfoCopyWith<$Res> {
+  __$BackupFileInfoCopyWithImpl(this._self, this._then);
+
+  final _BackupFileInfo _self;
+  final $Res Function(_BackupFileInfo) _then;
+
+  /// Create a copy of BackupFileInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? fileName = null,
+    Object? filePath = null,
+    Object? fileSize = null,
+    Object? createdTime = null,
+    Object? metadata = freezed,
+    Object? description = freezed,
+  }) {
+    return _then(_BackupFileInfo(
+      fileName: null == fileName
+          ? _self.fileName
+          : fileName // ignore: cast_nullable_to_non_nullable
+              as String,
+      filePath: null == filePath
+          ? _self.filePath
+          : filePath // ignore: cast_nullable_to_non_nullable
+              as String,
+      fileSize: null == fileSize
+          ? _self.fileSize
+          : fileSize // ignore: cast_nullable_to_non_nullable
+              as int,
+      createdTime: null == createdTime
+          ? _self.createdTime
+          : createdTime // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      metadata: freezed == metadata
+          ? _self.metadata
+          : metadata // ignore: cast_nullable_to_non_nullable
+              as BackupMetadata?,
+      description: freezed == description
+          ? _self.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+
+  /// Create a copy of BackupFileInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $BackupMetadataCopyWith<$Res>? get metadata {
+    if (_self.metadata == null) {
+      return null;
+    }
+
+    return $BackupMetadataCopyWith<$Res>(_self.metadata!, (value) {
+      return _then(_self.copyWith(metadata: value));
+    });
+  }
+}
+
+/// @nodoc
+mixin _$BackupFilesState {
+  bool get isLoading;
+  List<BackupFileInfo> get backupFiles;
+  String? get error;
+
+  /// Create a copy of BackupFilesState
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $BackupFilesStateCopyWith<BackupFilesState> get copyWith =>
+      _$BackupFilesStateCopyWithImpl<BackupFilesState>(
+          this as BackupFilesState, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is BackupFilesState &&
+            (identical(other.isLoading, isLoading) ||
+                other.isLoading == isLoading) &&
+            const DeepCollectionEquality()
+                .equals(other.backupFiles, backupFiles) &&
+            (identical(other.error, error) || other.error == error));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, isLoading,
+      const DeepCollectionEquality().hash(backupFiles), error);
+
+  @override
+  String toString() {
+    return 'BackupFilesState(isLoading: $isLoading, backupFiles: $backupFiles, error: $error)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $BackupFilesStateCopyWith<$Res> {
+  factory $BackupFilesStateCopyWith(
+          BackupFilesState value, $Res Function(BackupFilesState) _then) =
+      _$BackupFilesStateCopyWithImpl;
+  @useResult
+  $Res call({bool isLoading, List<BackupFileInfo> backupFiles, String? error});
+}
+
+/// @nodoc
+class _$BackupFilesStateCopyWithImpl<$Res>
+    implements $BackupFilesStateCopyWith<$Res> {
+  _$BackupFilesStateCopyWithImpl(this._self, this._then);
+
+  final BackupFilesState _self;
+  final $Res Function(BackupFilesState) _then;
+
+  /// Create a copy of BackupFilesState
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? isLoading = null,
+    Object? backupFiles = null,
+    Object? error = freezed,
+  }) {
+    return _then(_self.copyWith(
+      isLoading: null == isLoading
+          ? _self.isLoading
+          : isLoading // ignore: cast_nullable_to_non_nullable
+              as bool,
+      backupFiles: null == backupFiles
+          ? _self.backupFiles
+          : backupFiles // ignore: cast_nullable_to_non_nullable
+              as List<BackupFileInfo>,
+      error: freezed == error
+          ? _self.error
+          : error // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _BackupFilesState implements BackupFilesState {
+  const _BackupFilesState(
+      {this.isLoading = false,
+      final List<BackupFileInfo> backupFiles = const [],
+      this.error})
+      : _backupFiles = backupFiles;
+
+  @override
+  @JsonKey()
+  final bool isLoading;
+  final List<BackupFileInfo> _backupFiles;
+  @override
+  @JsonKey()
+  List<BackupFileInfo> get backupFiles {
+    if (_backupFiles is EqualUnmodifiableListView) return _backupFiles;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_backupFiles);
+  }
+
+  @override
+  final String? error;
+
+  /// Create a copy of BackupFilesState
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$BackupFilesStateCopyWith<_BackupFilesState> get copyWith =>
+      __$BackupFilesStateCopyWithImpl<_BackupFilesState>(this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _BackupFilesState &&
+            (identical(other.isLoading, isLoading) ||
+                other.isLoading == isLoading) &&
+            const DeepCollectionEquality()
+                .equals(other._backupFiles, _backupFiles) &&
+            (identical(other.error, error) || other.error == error));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, isLoading,
+      const DeepCollectionEquality().hash(_backupFiles), error);
+
+  @override
+  String toString() {
+    return 'BackupFilesState(isLoading: $isLoading, backupFiles: $backupFiles, error: $error)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$BackupFilesStateCopyWith<$Res>
+    implements $BackupFilesStateCopyWith<$Res> {
+  factory _$BackupFilesStateCopyWith(
+          _BackupFilesState value, $Res Function(_BackupFilesState) _then) =
+      __$BackupFilesStateCopyWithImpl;
+  @override
+  @useResult
+  $Res call({bool isLoading, List<BackupFileInfo> backupFiles, String? error});
+}
+
+/// @nodoc
+class __$BackupFilesStateCopyWithImpl<$Res>
+    implements _$BackupFilesStateCopyWith<$Res> {
+  __$BackupFilesStateCopyWithImpl(this._self, this._then);
+
+  final _BackupFilesState _self;
+  final $Res Function(_BackupFilesState) _then;
+
+  /// Create a copy of BackupFilesState
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? isLoading = null,
+    Object? backupFiles = null,
+    Object? error = freezed,
+  }) {
+    return _then(_BackupFilesState(
+      isLoading: null == isLoading
+          ? _self.isLoading
+          : isLoading // ignore: cast_nullable_to_non_nullable
+              as bool,
+      backupFiles: null == backupFiles
+          ? _self._backupFiles
+          : backupFiles // ignore: cast_nullable_to_non_nullable
+              as List<BackupFileInfo>,
+      error: freezed == error
+          ? _self.error
+          : error // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
 mixin _$ExportOptions {
   bool get includeSharedPreferences;
   bool get includeDatabases;

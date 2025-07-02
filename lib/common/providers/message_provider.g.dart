@@ -6,7 +6,7 @@ part of 'message_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$messageManagerHash() => r'7a99de7bb11273477b98715c33caa56877808a5f';
+String _$messageManagerHash() => r'690855364cfcb667ce264081dfa869042c629de0';
 
 /// 消息管理 Provider
 ///
