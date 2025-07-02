@@ -727,19 +727,19 @@ class _RestoreDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final isTablet = screenSize.width > 600;
-    final isMobile = screenSize.width < 600;
+    final isDesktop = globalState.isDesktopMode(context);
+    final isMobile = !isDesktop;
 
     // 响应式尺寸计算
-    final dialogWidth = isTablet
-        ? screenSize.width * 0.6  // 平板：60% 宽度
-        : screenSize.width * 0.9; // 手机：90% 宽度
+    final dialogWidth = isDesktop
+        ? screenSize.width * 0.6  // 响应式布局：60% 宽度
+        : screenSize.width * 0.9; // 移动布局：90% 宽度
 
-    final dialogHeight = isTablet
-        ? screenSize.height * 0.7  // 平板：70% 高度
-        : screenSize.height * 0.8; // 手机：80% 高度
+    final dialogHeight = isDesktop
+        ? screenSize.height * 0.7  // 响应式布局：70% 高度
+        : screenSize.height * 0.8; // 移动布局：80% 高度
 
-    final maxDialogWidth = isTablet ? 600.0 : double.infinity;
+    final maxDialogWidth = isDesktop ? 600.0 : double.infinity;
 
     return AlertDialog(
       title: const Text('选择备份文件'),

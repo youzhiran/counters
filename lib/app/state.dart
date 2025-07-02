@@ -8,6 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// 响应式布局相关常量
+class ResponsiveConstants {
+  /// 响应式布局的最小屏幕宽度阈值（桌面/平板模式）
+  static const double responsiveMinWidth = 600.0;
+
+  /// NavigationRail 扩展显示的最小屏幕宽度阈值
+  static const double navigationRailExtendedMinWidth = 800.0;
+}
+
 // 状态数据类
 class GlobalStateData {
   final GlobalKey<NavigatorState> navigatorKey;
@@ -195,6 +204,36 @@ class GlobalState {
   // 获取当前桌面模式设置
   bool get enableDesktopMode => _state.enableDesktopMode;
 
+  // /// 判断当前是否为响应式布局模式（宽屏/桌面/平板模式）
+  // /// 仅基于屏幕宽度判断，不依赖用户设置
+  // bool isResponsiveMode(BuildContext context) {
+  //   final width = MediaQuery.of(context).size.width;
+  //   return width >= ResponsiveConstants.responsiveMinWidth;
+  // }
+
+  /// 判断当前是否处于桌面模式
+  /// 桌面模式的条件是：用户在设置中启用了桌面模式 AND 屏幕为响应式布局模式
+  bool isDesktopMode(BuildContext context) {
+    if (!enableDesktopMode) return false;
+
+    final width = MediaQuery.of(context).size.width;
+    return width >= ResponsiveConstants.responsiveMinWidth;
+  }
+
+  /// 判断当前是否应该扩展显示 NavigationRail
+  bool shouldExtendNavigationRail(BuildContext context) {
+    if (!isDesktopMode(context)) return false;
+
+    final width = MediaQuery.of(context).size.width;
+    return width >= ResponsiveConstants.navigationRailExtendedMinWidth;
+  }
+
+  /// 更新桌面模式设置
+  Future<void> setEnableDesktopMode(bool enable) async {
+    await _prefs.setBool('enable_desktop_mode', enable);
+    _state = _state.copyWith(enableDesktopMode: enable);
+  }
+
   /// 显示一个带进度更新的异步任务对话框
   ///
   /// 参数：
@@ -370,6 +409,21 @@ class GlobalState {
 
 // 全局实例
 final globalState = GlobalState();
+
+// 桌面模式设置 Provider（仅返回用户设置，不包含屏幕尺寸判断）
+final desktopModeSettingProvider = Provider<bool>((ref) {
+  return globalState.enableDesktopMode;
+});
+
+// 桌面模式状态 Provider（用户设置 + 响应式布局）
+final desktopModeProvider = Provider.family<bool, BuildContext>((ref, context) {
+  return globalState.isDesktopMode(context);
+});
+
+// NavigationRail 扩展状态 Provider
+final navigationRailExtendedProvider = Provider.family<bool, BuildContext>((ref, context) {
+  return globalState.shouldExtendNavigationRail(context);
+});
 
 // 新增：用于提供 Provider 日志在启动时的实际状态
 final providerLoggerActuallyEnabledProvider = Provider<bool>((ref) {

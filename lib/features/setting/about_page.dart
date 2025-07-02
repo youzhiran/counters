@@ -17,9 +17,8 @@ class AboutPage extends StatefulWidget {
 
   // 添加新的静态方法，使用side_sheet从右侧显示
   static void showAsSideSheet(BuildContext context) {
-    // 检查当前是否处于桌面模式
-    final width = MediaQuery.of(context).size.width;
-    final isDesktopMode = globalState.enableDesktopMode && width >= 600;
+    // 使用统一的桌面模式判断逻辑
+    final isDesktopMode = globalState.isDesktopMode(context);
 
     if (isDesktopMode) {
       // 桌面模式：使用侧边栏
@@ -78,8 +77,8 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
   void _checkAndUpdateMode() {
     if (!mounted) return;
 
-    final width = MediaQuery.of(context).size.width;
-    final isDesktopMode = globalState.enableDesktopMode && width >= 600;
+    // 使用统一的桌面模式判断逻辑
+    final isDesktopMode = globalState.isDesktopMode(context);
 
     // 如果模式发生变化且当前是以侧边栏方式显示
     if (isDesktopMode != _wasDesktopMode && widget.isShownAsSideSheet) {

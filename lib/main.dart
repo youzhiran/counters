@@ -342,22 +342,11 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
     const SettingPage(),
   ];
 
-  // 判断当前是否处于桌面模式。
-  // 桌面模式的条件是：用户在设置中启用了桌面模式 AND 屏幕宽度大于等于 600。
+  // 判断当前是否处于桌面模式
+  // 使用统一的桌面模式判断逻辑
   bool get isDesktopMode {
     if (!mounted) return false;
-
-    // 获取用户设置中是否启用桌面模式。
-    final enableDesktopMode = globalState.enableDesktopMode;
-
-    // 获取当前屏幕宽度。
-    final width = MediaQuery.of(context).size.width;
-    // 只有当启用桌面模式且宽度达到阈值时才返回 true。
-    var bool = enableDesktopMode && width >= 600; // 只有设置启用且宽度大于等于600时才认为是桌面模式
-
-    // Log.i('enableDesktopMode: $enableDesktopMode');
-    // Log.i('桌面模式: $bool');
-    return bool;
+    return globalState.isDesktopMode(context);
   }
 
   @override
@@ -440,8 +429,8 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
           children: [
             // 侧边导航栏 NavigationRail。
             NavigationRail(
-              // extended 属性根据屏幕宽度决定是否显示文本标签。
-              extended: MediaQuery.of(context).size.width >= 800,
+              // 使用统一的 NavigationRail 扩展判断逻辑
+              extended: globalState.shouldExtendNavigationRail(context),
               selectedIndex: _selectedIndex,
               // 使用 _selectedIndex
               onDestinationSelected: _onItemTapped,
