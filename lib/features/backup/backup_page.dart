@@ -8,6 +8,7 @@ import 'package:counters/features/backup/backup_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class BackupPage extends ConsumerStatefulWidget {
   const BackupPage({super.key});
@@ -36,19 +37,19 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             // 状态显示区域
             if (backupState.isLoading) _buildProgressCard(backupState),
             if (backupState.error != null) _buildErrorCard(backupState.error!),
-            
+
             const SizedBox(height: 16),
-            
+
             // 导出区域
             _buildExportSection(exportOptions),
-            
+
             const SizedBox(height: 24),
-            
+
             // 导入区域
             _buildImportSection(importOptions),
-            
+
             const SizedBox(height: 24),
-            
+
             // 说明信息
             _buildInfoSection(),
           ],
@@ -148,7 +149,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // 导出选项
             CheckboxListTile(
               title: const Text('包含配置数据'),
@@ -168,9 +169,9 @@ class _BackupPageState extends ConsumerState<BackupPage> {
                     .toggleDatabases();
               },
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 导出按钮
             SizedBox(
               width: double.infinity,
@@ -211,7 +212,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // 导入选项
             CheckboxListTile(
               title: const Text('恢复配置数据'),
@@ -249,9 +250,9 @@ class _BackupPageState extends ConsumerState<BackupPage> {
                     .toggleForceImport();
               },
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 导入按钮
             SizedBox(
               width: double.infinity,
@@ -310,7 +311,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   /// 检查是否可以导出
   bool _canExport(ExportOptions options) {
     final backupState = ref.read(backupManagerProvider);
-    return !backupState.isLoading && 
+    return !backupState.isLoading &&
            (options.includeSharedPreferences || options.includeDatabases);
   }
 
@@ -345,7 +346,12 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         ref.showSuccess('数据导出成功！\n文件保存至: $result');
       }
     } catch (e) {
-      ErrorHandler.handle(e, StackTrace.current, prefix: '导出操作失败');
+      // 检查是否是权限相关错误
+      if (e.toString().contains('权限')) {
+        await _handlePermissionError(e.toString());
+      } else {
+        ErrorHandler.handle(e, StackTrace.current, prefix: '导出操作失败');
+      }
     }
   }
 
@@ -401,7 +407,12 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         ref.showSuccess('数据导入成功！\n请重启应用以应用所有更改。');
       }
     } catch (e) {
-      ErrorHandler.handle(e, StackTrace.current, prefix: '导入操作失败');
+      // 检查是否是权限相关错误
+      if (e.toString().contains('权限')) {
+        await _handlePermissionError(e.toString());
+      } else {
+        ErrorHandler.handle(e, StackTrace.current, prefix: '导入操作失败');
+      }
     }
   }
 
@@ -504,4 +515,66 @@ class _BackupPageState extends ConsumerState<BackupPage> {
 
 
 
+  /// 处理权限错误
+  Future<void> _handlePermissionError(String errorMessage) async {
+    if (!mounted) return;
+
+    // 显示权限错误对话框
+    await globalState.showCommonDialog(
+      child: AlertDialog(
+        title: const Text('权限不足'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(errorMessage),
+              const SizedBox(height: 16),
+              const Text(
+                '备份功能需要存储权限才能正常工作。请按照以下步骤授权：',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '方法一：授权"所有文件访问权限"（推荐）',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
+              ),
+              const SizedBox(height: 4),
+              const Text('1. 点击"打开设置"按钮'),
+              const Text('2. 找到"特殊应用访问权限"或"特殊权限"'),
+              const Text('3. 选择"所有文件访问权限"'),
+              const Text('4. 开启本应用的权限'),
+              const SizedBox(height: 12),
+              const Text(
+                '方法二：授权存储权限',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blue),
+              ),
+              const SizedBox(height: 4),
+              const Text('1. 点击"打开设置"按钮'),
+              const Text('2. 找到"权限"或"应用权限"'),
+              const Text('3. 开启"存储"或"文件和媒体"权限'),
+              const SizedBox(height: 8),
+              const Text('4. 返回应用重试'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              // 打开应用设置页面
+              await openAppSettings();
+            },
+            child: const Text('打开设置'),
+          ),
+        ],
+      ),
+    );
+  }
 }

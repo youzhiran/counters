@@ -222,30 +222,72 @@ class BackupManager extends _$BackupManager {
   Future<bool> _checkPermissions() async {
     try {
       if (Platform.isAndroid) {
-        // Android权限检查
-        final storageStatus = await Permission.storage.status;
-        if (!storageStatus.isGranted) {
-          final result = await Permission.storage.request();
-          if (!result.isGranted) {
-            return false;
+        Log.v('开始检查Android存储权限');
+
+        // Android 13+ (API 33+) 使用新的权限模型
+        // 首先尝试请求管理外部存储权限（推荐用于文件管理应用）
+        try {
+          final manageStatus = await Permission.manageExternalStorage.status;
+          Log.v('管理外部存储权限状态: $manageStatus');
+
+          if (!manageStatus.isGranted) {
+            Log.v('请求管理外部存储权限');
+            final result = await Permission.manageExternalStorage.request();
+            Log.v('管理外部存储权限请求结果: $result');
+
+            if (result.isGranted) {
+              Log.v('管理外部存储权限已授权');
+              return true;
+            } else {
+              Log.w('管理外部存储权限被拒绝，尝试其他权限');
+              if (result == PermissionStatus.permanentlyDenied) {
+                Log.w('管理外部存储权限被永久拒绝');
+              }
+            }
+          } else {
+            Log.v('管理外部存储权限已授权');
+            return true;
           }
+        } catch (e) {
+          Log.v('管理外部存储权限检查失败，可能是旧版本Android: $e');
         }
 
-        // Android 13+需要额外权限
-        if (Platform.version.contains('13') || Platform.version.contains('14')) {
-          final manageStatus = await Permission.manageExternalStorage.status;
-          if (!manageStatus.isGranted) {
-            final result = await Permission.manageExternalStorage.request();
-            if (!result.isGranted) {
-              Log.w('未获得管理外部存储权限，可能影响文件访问');
+        // 如果管理外部存储权限不可用或被拒绝，尝试传统存储权限（Android 12及以下）
+        try {
+          final storageStatus = await Permission.storage.status;
+          Log.v('传统存储权限状态: $storageStatus');
+
+          if (!storageStatus.isGranted) {
+            Log.v('请求传统存储权限');
+            final result = await Permission.storage.request();
+            Log.v('传统存储权限请求结果: $result');
+
+            if (result.isGranted) {
+              Log.v('传统存储权限已授权');
+              return true;
+            } else {
+              Log.w('传统存储权限被拒绝');
+              if (result == PermissionStatus.permanentlyDenied) {
+                throw Exception('存储权限被永久拒绝，请在系统设置中手动授权后重试');
+              }
             }
+          } else {
+            Log.v('传统存储权限已授权');
+            return true;
           }
+        } catch (e) {
+          Log.v('传统存储权限检查失败: $e');
         }
+
+        // 如果以上权限都不可用，抛出错误
+        throw Exception('无法获取存储权限。请在系统设置中手动授权存储权限，或者授权"所有文件访问权限"');
       }
+
+      Log.v('权限检查完成');
       return true;
     } catch (e) {
       Log.e('权限检查失败: $e');
-      return false;
+      rethrow; // 重新抛出异常，让上层处理
     }
   }
 

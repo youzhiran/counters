@@ -11,6 +11,7 @@ import 'package:counters/features/setting/data_manager.dart';
 import 'package:crypto/crypto.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 备份服务类
@@ -361,9 +362,22 @@ class BackupService {
     if (Platform.isWindows) {
       final documentsDir = await DataManager.getDefaultBaseDir();
       return path.join(documentsDir, 'counters_backups');
+    } else if (Platform.isAndroid) {
+      // Android平台使用外部存储的Downloads目录
+      try {
+        final externalDir = await getExternalStorageDirectory();
+        if (externalDir != null) {
+          return path.join(externalDir.path, 'Download', 'counters_backups');
+        }
+      } catch (e) {
+        Log.w('无法获取外部存储目录: $e');
+      }
+      // 如果外部存储不可用，使用应用文档目录
+      final documentsDir = await DataManager.getDefaultBaseDir();
+      return path.join(documentsDir, 'counters_backups');
     } else {
       final documentsDir = await DataManager.getDefaultBaseDir();
-      return documentsDir;
+      return path.join(documentsDir, 'counters_backups');
     }
   }
 
