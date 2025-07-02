@@ -85,6 +85,17 @@ class DatabaseHelper {
     return path;
   }
 
+  /// 重置数据库连接
+  /// 关闭现有连接，下次访问时会重新初始化
+  Future<void> resetConnection() async {
+    Log.v('DatabaseHelper: 重置数据库连接');
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+      Log.v('DatabaseHelper: 数据库连接已关闭并重置');
+    }
+  }
+
   /// 删除并重新创建数据库
   Future<void> resetDatabase() async {
     // 关闭现有数据库连接

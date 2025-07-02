@@ -7,6 +7,7 @@ import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/backup/backup_models.dart';
+import 'package:counters/features/backup/import_transaction.dart';
 import 'package:counters/features/backup/services/hash_service.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:crypto/crypto.dart';
@@ -59,12 +60,14 @@ class BackupService {
     }
   }
 
-  /// 导入数据从ZIP文件
+  /// 导入数据从ZIP文件（带原子性保证和回滚机制）
   static Future<void> importData({
     required String zipPath,
     required ImportOptions options,
     required Function(String message, double progress) onProgress,
   }) async {
+    ImportTransaction? transaction;
+
     try {
       onProgress('开始导入...', 0.0);
 
@@ -96,30 +99,52 @@ class BackupService {
         throw Exception('版本不兼容: ${compatibility.message}');
       }
 
-      // 6. 创建当前数据备份
+      // 6. 创建导入事务，开始原子性操作
+      onProgress('准备导入事务...', 0.35);
+      transaction = await ImportTransaction.begin(options);
+
+      // 7. 创建当前数据备份（如果启用）
       if (options.createBackup) {
         onProgress('自动备份当前数据...', 0.4);
-        await _createAutoDataBackup();
+        await transaction.createCurrentDataBackup();
       }
 
-      // 7. 导入SharedPreferences
-      if (options.importSharedPreferences) {
-        onProgress('恢复配置数据...', 0.6);
-        await _importSharedPreferences(dataArchive);
-      }
+      // 8. 执行原子性导入操作
+      onProgress('执行原子性导入...', 0.5);
+      await transaction.executeImport(
+        dataArchive: dataArchive,
+        onProgress: (message, progress) {
+          // 将事务内部进度映射到总体进度 (0.5-0.9)
+          final mappedProgress = 0.5 + (progress * 0.4);
+          onProgress(message, mappedProgress);
+        },
+      );
 
-      // 8. 导入数据库
-      if (options.importDatabases) {
-        onProgress('恢复数据库...', 0.8);
-        await _importDatabases(dataArchive);
-      }
+      // 9. 提交事务
+      onProgress('提交导入事务...', 0.95);
+      await transaction.commit();
 
       onProgress('导入完成', 1.0);
       Log.i('数据导入成功');
+      GlobalMsgManager.showSuccess('数据导入成功');
     } catch (e, stackTrace) {
       Log.e('导入数据失败: $e');
-      Log.e('StackTrace: $stackTrace');
-      ErrorHandler.handle(e, stackTrace, prefix: '导入数据失败');
+
+      // 执行回滚操作
+      if (transaction != null) {
+        try {
+          onProgress('回滚导入操作...', 0.0);
+          await transaction.rollback();
+          Log.i('导入失败，已成功回滚到原始状态');
+          GlobalMsgManager.showWarn('导入失败，已恢复到原始状态');
+        } catch (rollbackError, rollbackStack) {
+          Log.e('回滚操作失败: $rollbackError');
+          ErrorHandler.handle(rollbackError, rollbackStack, prefix: '回滚操作失败');
+          GlobalMsgManager.showError('导入失败且回滚失败，数据可能处于不一致状态');
+        }
+      }
+
+      ErrorHandler.handle(e, stackTrace, prefix: '数据导入失败');
       rethrow;
     }
   }
@@ -238,7 +263,15 @@ class BackupService {
     return {'files': files, 'data': data};
   }
 
-  /// 收集备份数据
+  /// 收集备份数据（公开方法，供ImportTransaction使用）
+  static Future<Map<String, dynamic>> collectBackupData({
+    required ExportOptions options,
+    Function(String message, double progress)? onProgress,
+  }) async {
+    return await _collectBackupData(options: options, onProgress: onProgress);
+  }
+
+  /// 收集备份数据（内部实现）
   static Future<Map<String, dynamic>> _collectBackupData({
     required ExportOptions options,
     Function(String message, double progress)? onProgress,
@@ -278,7 +311,22 @@ class BackupService {
     };
   }
 
-  /// 创建标准格式的ZIP备份数据
+  /// 创建标准格式的ZIP备份数据（公开方法，供ImportTransaction使用）
+  static List<int> createStandardZipData({
+    required BackupData backupData,
+    required Map<String, Uint8List> databaseData,
+    required ExportOptions options,
+    String logPrefix = 'BackupService',
+  }) {
+    return _createStandardZipData(
+      backupData: backupData,
+      databaseData: databaseData,
+      options: options,
+      logPrefix: logPrefix,
+    );
+  }
+
+  /// 创建标准格式的ZIP备份数据（内部实现）
   static List<int> _createStandardZipData({
     required BackupData backupData,
     required Map<String, Uint8List> databaseData,
@@ -618,7 +666,7 @@ class BackupService {
     return parts.isNotEmpty ? parts[0] : '0';
   }
 
-  /// 创建当前数据备份
+  /// 创建自动数据备份
   static Future<void> _createAutoDataBackup() async {
     try {
       Log.i('开始创建当前数据备份...');
