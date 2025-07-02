@@ -269,6 +269,13 @@ class ImportTransaction {
         return;
       }
 
+      // 关键修复：在删除数据库文件前强制关闭所有数据库连接
+      Log.v('ImportTransaction: 强制关闭数据库连接以释放文件锁');
+      await DatabaseHelper.instance.resetConnection();
+
+      // 等待一小段时间确保连接完全关闭
+      await Future.delayed(const Duration(milliseconds: 100));
+
       // 原子性操作：先删除现有文件，再恢复新文件
       await _clearCurrentDatabases(dbDir);
       await _restoreDatabaseFiles(dbFiles, dataDir);
@@ -287,8 +294,42 @@ class ImportTransaction {
     if (await dbDir.exists()) {
       await for (final entity in dbDir.list(recursive: true)) {
         if (entity is File) {
-          await entity.delete();
+          // 使用重试机制删除文件，处理文件被占用的情况
+          await _deleteFileWithRetry(entity);
         }
+      }
+    }
+  }
+
+  /// 带重试机制的文件删除方法
+  Future<void> _deleteFileWithRetry(File file, {int maxRetries = 3}) async {
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        Log.v('ImportTransaction: 尝试删除文件 ${file.path} (第 $attempt 次)');
+        await file.delete();
+        Log.v('ImportTransaction: 文件删除成功 ${file.path}');
+        return; // 删除成功，退出重试循环
+      } catch (e) {
+        Log.w('ImportTransaction: 删除文件失败 ${file.path} (第 $attempt 次): $e');
+
+        if (attempt == maxRetries) {
+          // 最后一次尝试失败，抛出异常
+          throw Exception('无法删除数据库文件 ${file.path}: $e\n'
+              '可能原因：\n'
+              '1. 文件正在被其他程序使用\n'
+              '2. 权限不足\n'
+              '3. 文件被锁定\n'
+              '建议：关闭所有可能使用该数据库的程序后重试');
+        }
+
+        // 等待一段时间后重试
+        final waitTime = Duration(milliseconds: 200 * attempt);
+        Log.v('ImportTransaction: 等待 ${waitTime.inMilliseconds}ms 后重试');
+        await Future.delayed(waitTime);
+
+        // 在重试前再次尝试关闭数据库连接
+        await DatabaseHelper.instance.resetConnection();
+        await Future.delayed(const Duration(milliseconds: 50));
       }
     }
   }
@@ -409,6 +450,13 @@ class ImportTransaction {
       Log.v('ImportTransaction: 恢复原始数据库文件');
       final dataDir = await DataManager.getCurrentDataDir();
       final dbDir = Directory(path.join(dataDir, 'databases'));
+
+      // 关键修复：在删除数据库文件前强制关闭所有数据库连接
+      Log.v('ImportTransaction: 强制关闭数据库连接以释放文件锁（回滚操作）');
+      await DatabaseHelper.instance.resetConnection();
+
+      // 等待一小段时间确保连接完全关闭
+      await Future.delayed(const Duration(milliseconds: 100));
 
       // 清除当前数据库文件
       await _clearCurrentDatabases(dbDir);

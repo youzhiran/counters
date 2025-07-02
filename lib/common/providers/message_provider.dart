@@ -153,7 +153,7 @@ class MessageManager extends _$MessageManager {
     updatedMessages[messageIndex] = updatedMessages[messageIndex].copyWith(status: MessageStatus.exiting);
 
     state = state.copyWith(activeMessages: updatedMessages);
-    Log.v('MessageManager: 标记消息为退出状态 - ID: $messageId');
+    // Log.v('MessageManager: 标记消息为退出状态 - ID: $messageId');
 
     // 延迟移除消息，给退出动画时间
     Future.delayed(const Duration(milliseconds: 400), () {
@@ -167,7 +167,7 @@ class MessageManager extends _$MessageManager {
 
     if (newActiveMessages.length != state.activeMessages.length) {
       state = state.copyWith(activeMessages: newActiveMessages);
-      Log.v('MessageManager: 移除消息 - ID: $messageId (剩余活跃消息: ${newActiveMessages.length})');
+      // Log.v('MessageManager: 移除消息 - ID: $messageId (剩余活跃消息: ${newActiveMessages.length})');
     }
   }
 

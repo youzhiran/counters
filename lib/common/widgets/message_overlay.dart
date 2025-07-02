@@ -68,7 +68,7 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   void _triggerMessageExit(String messageId) {
     final messageCardKey = _messageCardKeys[messageId];
     if (messageCardKey?.currentState != null) {
-      Log.v('MessageOverlay: 触发消息退出动画 - ID: $messageId');
+      // Log.v('MessageOverlay: 触发消息退出动画 - ID: $messageId');
       messageCardKey!.currentState!.startExitAnimation();
     }
   }
@@ -110,7 +110,7 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
         // 使用 Overlay 在最顶层显示消息
         final overlay = Overlay.of(context, rootOverlay: true);
         overlay.insert(overlayEntry);
-        Log.v('MessageOverlay: 成功显示消息 [ID:${message.id}] - ${message.content}');
+        // Log.v('MessageOverlay: 成功显示消息 [ID:${message.id}] - ${message.content}');
 
         // 显示后重新计算所有消息位置
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -139,14 +139,14 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
       _overlayEntries.remove(messageId);
       _messageKeys.remove(messageId);
       _messageCardKeys.remove(messageId);
-      Log.v('MessageOverlay: 成功隐藏消息 - ID: $messageId');
+      // Log.v('MessageOverlay: 成功隐藏消息 - ID: $messageId');
 
       // 隐藏后重新计算剩余消息位置
       if (mounted) {
         _updateAllMessagePositions();
       }
     } catch (e) {
-      Log.e('MessageOverlay: 隐藏消息失败 - $e');
+      // Log.e('MessageOverlay: 隐藏消息失败 - $e');
       _overlayEntries.remove(messageId);
       _messageKeys.remove(messageId);
       _messageCardKeys.remove(messageId);
@@ -263,8 +263,8 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
     final safeTop =
         statusBarHeight + (hasAppBar ? appBarHeight : 0) + _topPadding;
 
-    Log.v(
-        'MessageOverlay: 计算安全位置 - 状态栏:${statusBarHeight}px, AppBar:${hasAppBar ? appBarHeight : 0}px (检测到:$hasAppBar), 总计:${safeTop}px');
+    // Log.v(
+    //     'MessageOverlay: 计算安全位置 - 状态栏:${statusBarHeight}px, AppBar:${hasAppBar ? appBarHeight : 0}px (检测到:$hasAppBar), 总计:${safeTop}px');
 
     return safeTop;
   }
@@ -289,8 +289,8 @@ class _MessageOverlayState extends ConsumerState<MessageOverlay> {
   Widget build(BuildContext context) {
     // 监听消息状态变化
     ref.listen<MessageState>(messageManagerProvider, (previous, next) {
-      Log.v(
-          'MessageOverlay: 活跃消息变化 ${previous?.activeMessages.length ?? 0} -> ${next.activeMessages.length}');
+      // Log.v(
+      //     'MessageOverlay: 活跃消息变化 ${previous?.activeMessages.length ?? 0} -> ${next.activeMessages.length}');
       _syncActiveMessages();
     });
 
@@ -548,8 +548,8 @@ class _MessageCardState extends State<_MessageCard>
   void _dismiss() async {
     if (_isExiting) return; // 防止重复调用
 
-    Log.v(
-        'MessageCard [ID:${widget.message.id}]: 开始关闭动画 - ${widget.message.content}');
+    // Log.v(
+    //     'MessageCard [ID:${widget.message.id}]: 开始关闭动画 - ${widget.message.content}');
 
     setState(() {
       _isExiting = true;
@@ -563,7 +563,7 @@ class _MessageCardState extends State<_MessageCard>
     await _animationController.forward();
 
     if (mounted) {
-      Log.v('MessageCard [ID:${widget.message.id}]: 动画完成，触发关闭回调');
+      // Log.v('MessageCard [ID:${widget.message.id}]: 动画完成，触发关闭回调');
       widget.onDismiss();
     }
   }

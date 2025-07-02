@@ -234,7 +234,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             ),
             CheckboxListTile(
               title: const Text('备份当前数据'),
-              subtitle: const Text('导入前自动备份现有数据'),
+              subtitle: const Text('导入前自动备份现有数据，提供安全保障'),
               value: options.createBackup,
               onChanged: (value) {
                 ref.read(importOptionsManagerProvider.notifier)
@@ -297,9 +297,10 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               '• 导出功能会将您的配置和数据打包成ZIP文件，并生成哈希\n'
               '• 推荐使用"预览并导入"功能，可查看备份详情和验证文件完整性\n'
               '• 导入前会自动验证文件完整性和哈希\n'
-              '• 强烈建议在导入前备份当前数据\n'
+              '• 强烈建议在导入前备份当前数据，提供安全保障\n'
               '• 版本不同的备份文件可能存在兼容性问题\n'
-              '• 导入操作会覆盖现有数据，请谨慎操作',
+              '• 导入操作会覆盖现有数据，请谨慎操作\n'
+              '• 如果导入失败，系统会自动尝试恢复原始数据',
               style: TextStyle(height: 1.5),
             ),
           ],
