@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/backup/backup_models.dart';
 import 'package:counters/features/backup/services/hash_service.dart';
 import 'package:counters/features/setting/data_manager.dart';
@@ -21,7 +22,6 @@ class BackupService {
   static const String _preferencesFileName = 'shared_preferences.json';
   static const String _hashFileName = 'backup_hash.json';
   static const String _dataFileName = 'backup_data.zip';
-  static const String _databasesFolder = 'databases';
 
   /// 导出数据到ZIP文件
   static Future<String> exportData({
@@ -31,40 +31,20 @@ class BackupService {
     try {
       onProgress('开始导出...', 0.0);
 
-      // 1. 收集元数据
-      onProgress('收集应用信息...', 0.1);
-      final metadata = await _collectMetadata();
-
-      // 2. 收集SharedPreferences数据
-      Map<String, dynamic>? prefsData;
-      if (options.includeSharedPreferences) {
-        onProgress('导出配置数据...', 0.2);
-        prefsData = await _exportSharedPreferences();
-      }
-
-      // 3. 收集数据库文件
-      List<DatabaseFile>? dbFiles;
-      Map<String, Uint8List>? dbData;
-      if (options.includeDatabases) {
-        onProgress('导出数据库...', 0.4);
-        final dbResult = await _exportDatabases();
-        dbFiles = dbResult['files'] as List<DatabaseFile>;
-        dbData = dbResult['data'] as Map<String, Uint8List>;
-      }
-
-      // 4. 创建备份数据结构
-      onProgress('打包数据...', 0.7);
-      final backupData = BackupData(
-        metadata: metadata,
-        sharedPreferences: prefsData ?? {},
-        databases: dbFiles ?? [],
+      // 1. 收集备份数据
+      final collectedData = await _collectBackupData(
+        options: options,
+        onProgress: onProgress,
       );
+      final backupData = collectedData['backupData'] as BackupData;
+      final databaseData =
+          collectedData['databaseData'] as Map<String, Uint8List>;
 
-      // 5. 创建ZIP文件
+      // 2. 创建ZIP文件
       onProgress('生成ZIP文件...', 0.8);
       final zipPath = await _createZipFile(
         backupData: backupData,
-        databaseData: dbData ?? {},
+        databaseData: databaseData,
         options: options,
       );
 
@@ -118,8 +98,8 @@ class BackupService {
 
       // 6. 创建当前数据备份
       if (options.createBackup) {
-        onProgress('备份当前数据...', 0.4);
-        await _createCurrentDataBackup();
+        onProgress('自动备份当前数据...', 0.4);
+        await _createAutoDataBackup();
       }
 
       // 7. 导入SharedPreferences
@@ -258,12 +238,53 @@ class BackupService {
     return {'files': files, 'data': data};
   }
 
-  /// 创建ZIP文件
-  static Future<String> _createZipFile({
+  /// 收集备份数据
+  static Future<Map<String, dynamic>> _collectBackupData({
+    required ExportOptions options,
+    Function(String message, double progress)? onProgress,
+  }) async {
+    // 1. 收集元数据
+    onProgress?.call('收集应用信息...', 0.1);
+    final metadata = await _collectMetadata();
+
+    // 2. 收集SharedPreferences数据
+    Map<String, dynamic>? prefsData;
+    if (options.includeSharedPreferences) {
+      onProgress?.call('导出配置数据...', 0.2);
+      prefsData = await _exportSharedPreferences();
+    }
+
+    // 3. 收集数据库文件
+    List<DatabaseFile>? dbFiles;
+    Map<String, Uint8List>? dbData;
+    if (options.includeDatabases) {
+      onProgress?.call('导出数据库...', 0.4);
+      final dbResult = await _exportDatabases();
+      dbFiles = dbResult['files'] as List<DatabaseFile>;
+      dbData = dbResult['data'] as Map<String, Uint8List>;
+    }
+
+    // 4. 创建备份数据结构
+    onProgress?.call('打包数据...', 0.7);
+    final backupData = BackupData(
+      metadata: metadata,
+      sharedPreferences: prefsData ?? {},
+      databases: dbFiles ?? [],
+    );
+
+    return {
+      'backupData': backupData,
+      'databaseData': dbData ?? <String, Uint8List>{},
+    };
+  }
+
+  /// 创建标准格式的ZIP备份数据
+  static List<int> _createStandardZipData({
     required BackupData backupData,
     required Map<String, Uint8List> databaseData,
     required ExportOptions options,
-  }) async {
+    String logPrefix = 'BackupService',
+  }) {
     final archive = Archive();
 
     // 添加元数据文件
@@ -287,22 +308,22 @@ class BackupService {
 
     // 添加数据库文件
     if (options.includeDatabases) {
-      Log.v('BackupService: 添加数据库文件到ZIP，数量: ${databaseData.length}');
+      Log.v('$logPrefix: 添加数据库文件到ZIP，数量: ${databaseData.length}');
       if (databaseData.isEmpty) {
-        Log.w('BackupService: 警告 - 数据库数据为空，但选项要求包含数据库');
+        Log.w('$logPrefix: 警告 - 数据库数据为空，但选项要求包含数据库');
       }
       for (final entry in databaseData.entries) {
         Log.v(
-            'BackupService: 添加数据库文件到ZIP - 路径: ${entry.key}, 大小: ${entry.value.length} bytes');
+            '$logPrefix: 添加数据库文件到ZIP - 路径: ${entry.key}, 大小: ${entry.value.length} bytes');
         archive.addFile(ArchiveFile(
           entry.key,
           entry.value.length,
           entry.value,
         ));
       }
-      Log.v('BackupService: 数据库文件添加完成，Archive中总文件数: ${archive.files.length}');
+      Log.v('$logPrefix: 数据库文件添加完成，Archive中总文件数: ${archive.files.length}');
     } else {
-      Log.v('BackupService: 跳过数据库文件导出');
+      Log.v('$logPrefix: 跳过数据库文件导出');
     }
 
     // 生成原始数据ZIP文件
@@ -310,10 +331,10 @@ class BackupService {
     if (originalZipData.isEmpty) {
       throw Exception('创建原始数据ZIP文件失败');
     }
-    Log.v('BackupService: 原始ZIP数据长度: ${originalZipData.length} 字节');
+    Log.v('$logPrefix: 原始ZIP数据长度: ${originalZipData.length} 字节');
 
     // 生成文件哈希（基于原始ZIP数据）
-    Log.v('BackupService: 生成文件哈希');
+    Log.v('$logPrefix: 生成文件哈希');
     final hashInfo =
         HashService.generateHash(Uint8List.fromList(originalZipData));
 
@@ -340,6 +361,23 @@ class BackupService {
     if (finalZipData.isEmpty) {
       throw Exception('创建最终ZIP文件失败');
     }
+
+    return finalZipData;
+  }
+
+  /// 创建ZIP文件
+  static Future<String> _createZipFile({
+    required BackupData backupData,
+    required Map<String, Uint8List> databaseData,
+    required ExportOptions options,
+  }) async {
+    // 使用公共方法创建ZIP数据
+    final finalZipData = _createStandardZipData(
+      backupData: backupData,
+      databaseData: databaseData,
+      options: options,
+      logPrefix: 'BackupService',
+    );
 
     // 确定保存路径
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -581,41 +619,49 @@ class BackupService {
   }
 
   /// 创建当前数据备份
-  static Future<void> _createCurrentDataBackup() async {
+  static Future<void> _createAutoDataBackup() async {
     try {
+      Log.i('开始创建当前数据备份...');
+
+      // 1. 创建导出选项（包含所有数据）
+      const options = ExportOptions(
+        includeSharedPreferences: true,
+        includeDatabases: true,
+      );
+
+      // 2. 收集备份数据
+      final collectedData = await _collectBackupData(options: options);
+      final backupData = collectedData['backupData'] as BackupData;
+      final databaseData =
+          collectedData['databaseData'] as Map<String, Uint8List>;
+
+      // 3. 使用公共方法创建标准格式的ZIP数据
+      final finalZipData = _createStandardZipData(
+        backupData: backupData,
+        databaseData: databaseData,
+        options: options,
+        logPrefix: 'BackupService: 自动备份',
+      );
+
+      // 4. 生成ZIP文件路径
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final backupPath = await _getDefaultExportPath();
-      final backupDir =
-          Directory(path.join(backupPath, 'auto_backup_$timestamp'));
-      await backupDir.create(recursive: true);
+      final fileName = 'auto_backup_$timestamp.zip';
+      final fullPath = path.join(backupPath, fileName);
 
-      // 备份SharedPreferences
-      final prefs = await _exportSharedPreferences();
-      final prefsFile = File(path.join(backupDir.path, _preferencesFileName));
-      await prefsFile.writeAsString(jsonEncode(prefs));
+      // 5. 确保目录存在
+      await Directory(backupPath).create(recursive: true);
 
-      // 备份数据库
-      final dataDir = await DataManager.getCurrentDataDir();
-      final dbDir = Directory(path.join(dataDir, 'databases'));
-      if (await dbDir.exists()) {
-        final backupDbDir =
-            Directory(path.join(backupDir.path, _databasesFolder));
-        await backupDbDir.create(recursive: true);
+      // 6. 写入文件
+      final file = File(fullPath);
+      await file.writeAsBytes(finalZipData);
 
-        await for (final entity in dbDir.list(recursive: true)) {
-          if (entity is File) {
-            final relativePath = path.relative(entity.path, from: dbDir.path);
-            final backupFile = File(path.join(backupDbDir.path, relativePath));
-            await backupFile.parent.create(recursive: true);
-            await entity.copy(backupFile.path);
-          }
-        }
-      }
-
-      Log.i('当前数据备份完成: ${backupDir.path}');
-    } catch (e) {
-      Log.w('创建当前数据备份失败: $e');
-      // 不抛出异常，因为这不是关键操作
+      Log.i('自动数据备份完成: $fullPath');
+      GlobalMsgManager.showSuccess('自动数据备份完成，位置: $fullPath');
+    } catch (e, stackTrace) {
+      Log.e('创建自动数据备份失败: $e');
+      Log.e('StackTrace: $stackTrace');
+      ErrorHandler.handle(e, stackTrace, prefix: '创建自动数据备份失败');
     }
   }
 
