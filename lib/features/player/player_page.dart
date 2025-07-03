@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/features/player/add_players.dart';
@@ -264,7 +265,21 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
     );
     if (!mounted) return;
     if (result == true) {
-      ref.read(playerProvider.notifier).cleanUnusedPlayers();
+      try {
+        final deletedCount = await ref.read(playerProvider.notifier).cleanUnusedPlayers();
+        if (!mounted) return;
+
+        if (deletedCount > 0) {
+          ref.showSuccess('已删除 $deletedCount 个未使用的玩家');
+        } else {
+          ref.showMessage('没有找到未使用的玩家');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        // 错误已经在 cleanUnusedPlayers 方法中通过 ErrorHandler.handle 处理
+        // 这里只需要显示用户友好的提示
+        ref.showWarning('删除操作失败，请稍后重试');
+      }
     }
   }
 

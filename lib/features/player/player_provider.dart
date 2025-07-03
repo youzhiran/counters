@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/player_info.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sqflite/sqflite.dart';
@@ -190,26 +191,13 @@ class Player extends _$Player {
     return (result.first['is_used'] as int) == 1;
   }
 
-  Future<void> cleanUnusedPlayers() async {
-    final db = await _dbHelper.database;
+  Future<int> cleanUnusedPlayers() async {
+    try {
+      final db = await _dbHelper.database;
 
-    // 先获取要删除的玩家ID列表
-    final toDeleteResult = await db.rawQuery('''
-      SELECT pid FROM players
-      WHERE pid NOT IN (
-        SELECT DISTINCT player_id FROM player_scores
-        UNION
-        SELECT DISTINCT player_id FROM template_players
-      )
-    ''');
-
-    final toDeleteIds =
-        toDeleteResult.map((row) => row['pid'] as String).toSet();
-
-    if (toDeleteIds.isNotEmpty) {
-      // 执行删除操作
-      await db.rawDelete('''
-        DELETE FROM players
+      // 先获取要删除的玩家ID列表
+      final toDeleteResult = await db.rawQuery('''
+        SELECT pid FROM players
         WHERE pid NOT IN (
           SELECT DISTINCT player_id FROM player_scores
           UNION
@@ -217,22 +205,43 @@ class Player extends _$Player {
         )
       ''');
 
-      // 优化：只清除被删除玩家的缓存
-      if (state.players != null) {
-        final newPlayers =
-            state.players!.where((p) => !toDeleteIds.contains(p.pid)).toList();
-        final newCache = Map<String, int>.from(state.playCountCache);
-        for (final id in toDeleteIds) {
-          newCache.remove(id);
-        }
+      final toDeleteIds =
+          toDeleteResult.map((row) => row['pid'] as String).toSet();
 
-        state = state.copyWith(
-          players: newPlayers,
-          playCountCache: newCache,
-        );
-      } else {
-        await loadPlayers();
+      if (toDeleteIds.isNotEmpty) {
+        // 执行删除操作
+        await db.rawDelete('''
+          DELETE FROM players
+          WHERE pid NOT IN (
+            SELECT DISTINCT player_id FROM player_scores
+            UNION
+            SELECT DISTINCT player_id FROM template_players
+          )
+        ''');
+
+        // 优化：只清除被删除玩家的缓存
+        if (state.players != null) {
+          final newPlayers =
+              state.players!.where((p) => !toDeleteIds.contains(p.pid)).toList();
+          final newCache = Map<String, int>.from(state.playCountCache);
+          for (final id in toDeleteIds) {
+            newCache.remove(id);
+          }
+
+          state = state.copyWith(
+            players: newPlayers,
+            playCountCache: newCache,
+          );
+        } else {
+          await loadPlayers();
+        }
       }
+
+      return toDeleteIds.length;
+    } catch (e) {
+      // 使用统一的错误处理器
+      ErrorHandler.handle(e, StackTrace.current, prefix: '清理未使用玩家失败');
+      return 0;
     }
   }
 
