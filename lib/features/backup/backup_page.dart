@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:counters/app/state.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
@@ -8,6 +10,7 @@ import 'package:counters/features/backup/backup_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
 
 class BackupPage extends ConsumerStatefulWidget {
@@ -359,6 +362,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       child: _RestoreDialog(
         backupFiles: backupFilesState.backupFiles,
         onRestore: _handleRestoreBackup,
+        onDelete: _handleDeleteBackup,
+        onExport: _handleExportBackup,
       ),
     );
   }
@@ -551,6 +556,97 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     }
   }
 
+  /// 处理删除备份文件
+  Future<void> _handleDeleteBackup(BackupFileInfo backupFile) async {
+    try {
+      // 显示删除确认对话框
+      final confirmed = await globalState.showCommonDialog<bool>(
+        child: AlertDialog(
+          title: const Text('删除备份文件'),
+          content: Text('确定要删除备份文件 "${backupFile.fileName}" 吗？\n此操作不可撤销！'),
+          actions: [
+            TextButton(
+              onPressed: () => globalState.navigatorKey.currentState?.pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => globalState.navigatorKey.currentState?.pop(true),
+              child: const Text('删除', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      // 删除文件
+      final file = File(backupFile.filePath);
+      if (await file.exists()) {
+        await file.delete();
+        ref.showSuccess('备份文件删除成功');
+
+        // 重新扫描备份文件列表
+        await ref.read(backupFilesManagerProvider.notifier).scanBackupFiles();
+      } else {
+        ref.showWarning('备份文件不存在');
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '删除备份文件失败');
+    }
+  }
+
+  /// 处理导出备份文件
+  Future<void> _handleExportBackup(BackupFileInfo backupFile) async {
+    try {
+      // 选择保存位置
+      final selectedDirectory = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: '选择备份文件导出位置',
+      );
+
+      if (selectedDirectory == null) {
+        return; // 用户取消选择
+      }
+
+      // 复制文件到选择的位置
+      final sourceFile = File(backupFile.filePath);
+      if (!await sourceFile.exists()) {
+        ref.showWarning('备份文件不存在');
+        return;
+      }
+
+      final targetPath = path.join(selectedDirectory, backupFile.fileName);
+      final targetFile = File(targetPath);
+
+      // 检查目标文件是否已存在
+      if (await targetFile.exists()) {
+        final overwrite = await globalState.showCommonDialog<bool>(
+          child: AlertDialog(
+            title: const Text('文件已存在'),
+            content: Text('目标位置已存在文件 "${backupFile.fileName}"，是否覆盖？'),
+            actions: [
+              TextButton(
+                onPressed: () => globalState.navigatorKey.currentState?.pop(false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => globalState.navigatorKey.currentState?.pop(true),
+                child: const Text('覆盖', style: TextStyle(color: Colors.orange)),
+              ),
+            ],
+          ),
+        );
+
+        if (overwrite != true) return;
+      }
+
+      // 复制文件
+      await sourceFile.copy(targetPath);
+      ref.showSuccess('备份文件导出成功！\n文件保存至: $targetPath');
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '导出备份文件失败');
+    }
+  }
+
   /// 显示导出配置对话框
   Future<Map<String, String>?> _showExportConfigDialog() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -718,10 +814,14 @@ class _BackupPageState extends ConsumerState<BackupPage> {
 class _RestoreDialog extends StatelessWidget {
   final List<BackupFileInfo> backupFiles;
   final Function(BackupFileInfo) onRestore;
+  final Function(BackupFileInfo) onDelete;
+  final Function(BackupFileInfo) onExport;
 
   const _RestoreDialog({
     required this.backupFiles,
     required this.onRestore,
+    required this.onDelete,
+    required this.onExport,
   });
 
   @override
@@ -742,7 +842,7 @@ class _RestoreDialog extends StatelessWidget {
     final maxDialogWidth = isDesktop ? 600.0 : double.infinity;
 
     return AlertDialog(
-      title: const Text('选择备份文件'),
+      title: const Text('管理备份文件'),
       contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       content: ConstrainedBox(
         constraints: BoxConstraints(
@@ -754,6 +854,23 @@ class _RestoreDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // 使用说明
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '点击备份文件可预览并还原，使用下方按钮可删除或导出备份文件',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
               if (backupFiles.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(32),
@@ -798,53 +915,89 @@ class _RestoreDialog extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.archive,
-                  color: Theme.of(context).colorScheme.secondary,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    backupFile.fileName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
+            // 点击区域：文件信息
+            InkWell(
+              onTap: () {
+                globalState.navigatorKey.currentState?.pop();
+                onRestore(backupFile);
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.archive,
+                          color: Theme.of(context).colorScheme.secondary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            backupFile.fileName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(left: 28),
-              child: Text(
-                '$fileSize • $createdTime',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 28),
+                      child: Text(
+                        '$fileSize • $createdTime',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  globalState.navigatorKey.currentState?.pop();
-                  onRestore(backupFile);
-                },
-                icon: const Icon(Icons.restore, size: 16),
-                label: const Text('预览并还原'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            // 操作按钮行
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      globalState.navigatorKey.currentState?.pop();
+                      onDelete(backupFile);
+                    },
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    label: const Text('删除'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      globalState.navigatorKey.currentState?.pop();
+                      onExport(backupFile);
+                    },
+                    icon: const Icon(Icons.file_upload_outlined, size: 16),
+                    label: const Text('导出'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -862,18 +1015,33 @@ class _RestoreDialog extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
         subtitle: Text('$fileSize • $createdTime'),
-        trailing: ElevatedButton.icon(
-          onPressed: () {
-            globalState.navigatorKey.currentState?.pop();
-            onRestore(backupFile);
-          },
-          icon: const Icon(Icons.restore, size: 16),
-          label: const Text('预览并还原'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.secondary,
-            foregroundColor: Theme.of(context).colorScheme.onSecondary,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
+        onTap: () {
+          globalState.navigatorKey.currentState?.pop();
+          onRestore(backupFile);
+        },
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              onPressed: () {
+                globalState.navigatorKey.currentState?.pop();
+                onDelete(backupFile);
+              },
+              icon: const Icon(Icons.delete_outline),
+              color: Theme.of(context).colorScheme.error,
+              tooltip: '删除',
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              onPressed: () {
+                globalState.navigatorKey.currentState?.pop();
+                onExport(backupFile);
+              },
+              icon: const Icon(Icons.file_upload_outlined),
+              color: Theme.of(context).colorScheme.primary,
+              tooltip: '导出',
+            ),
+          ],
         ),
       );
     }
