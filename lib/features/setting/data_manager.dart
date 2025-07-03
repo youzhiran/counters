@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,11 +28,20 @@ class DataManager {
   }
 
   /// 获取当前实际的数据存储目录
+  /// 仅在Windows平台使用SharedPreferences中的设置，其他平台使用默认目录
   static Future<String> getCurrentDataDir() async {
-    final prefs = await SharedPreferences.getInstance();
     final defaultDir = await getDefaultBaseDir();
-    final baseDir = prefs.getString('data_storage_path') ?? defaultDir;
-    return getDataDir(baseDir);
+
+    // 仅在Windows平台使用SharedPreferences设置
+    if (Platform.isWindows) {
+      final prefs = await SharedPreferences.getInstance();
+      final baseDir = prefs.getString('data_storage_path') ?? defaultDir;
+      return getDataDir(baseDir);
+    } else {
+      // 非Windows平台使用默认目录，并清理SharedPreferences中的相关设置
+      await _cleanupNonWindowsSettings();
+      return getDataDir(defaultDir);
+    }
   }
 
   /// 根据基础目录获取实际数据存储目录
@@ -139,6 +149,62 @@ class DataManager {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// 清理非Windows平台的数据目录相关SharedPreferences设置
+  /// 这确保非Windows平台不会受到SharedPreferences中数据目录设置的影响
+  static Future<void> _cleanupNonWindowsSettings() async {
+    if (Platform.isWindows) return; // Windows平台不需要清理
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      bool hasChanges = false;
+
+      // 清理数据存储路径设置
+      if (prefs.containsKey('data_storage_path')) {
+        await prefs.remove('data_storage_path');
+        hasChanges = true;
+        Log.i('DataManager: 已清理非Windows平台的data_storage_path设置');
+      }
+
+      // 清理自定义路径标记
+      if (prefs.containsKey('is_custom_path')) {
+        await prefs.remove('is_custom_path');
+        hasChanges = true;
+        Log.i('DataManager: 已清理非Windows平台的is_custom_path设置');
+      }
+
+      if (hasChanges) {
+        Log.i('DataManager: 非Windows平台数据目录设置清理完成，将使用默认目录');
+      }
+    } catch (e, stackTrace) {
+      // 使用ErrorHandler处理错误，但不抛出异常，避免影响正常功能
+      ErrorHandler.handle(e, stackTrace, prefix: '清理非Windows平台数据目录设置失败');
+    }
+  }
+
+  /// 初始化数据管理器
+  /// 在应用启动时调用，确保非Windows平台使用正确的数据目录设置
+  static Future<void> initialize() async {
+    try {
+      Log.i('DataManager: 开始初始化数据管理器');
+
+      // 非Windows平台清理SharedPreferences中的数据目录设置
+      if (!Platform.isWindows) {
+        await _cleanupNonWindowsSettings();
+      }
+
+      // 确保数据目录存在
+      final currentDataDir = await getCurrentDataDir();
+      final baseDir = currentDataDir.substring(0,
+          currentDataDir.lastIndexOf('${Platform.pathSeparator}counters-data'));
+      await ensureDataDirExists(baseDir);
+
+      Log.i('DataManager: 数据管理器初始化完成，当前数据目录: $currentDataDir');
+    } catch (e, stackTrace) {
+      ErrorHandler.handle(e, stackTrace, prefix: '数据管理器初始化失败');
+      rethrow;
     }
   }
 }

@@ -17,6 +17,7 @@ import 'package:counters/features/dev/message_debug_page.dart';
 import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
+import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
@@ -64,6 +65,13 @@ void main() async {
     await dbHelper.database;
   } catch (e) {
     Log.e('数据库初始化失败: $e');
+  }
+
+  // 初始化数据管理器
+  try {
+    await DataManager.initialize();
+  } catch (e) {
+    Log.e('数据管理器初始化失败: $e');
   }
 
   // 初始化全局状态
