@@ -171,10 +171,31 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   }
                 }
               }
-              // 普通模式直接退出
+              // 单机模式退出提示
               else {
-                if (mounted) {
-                  globalState.navigatorKey.currentState?.pop();
+                final confirmed = await globalState.showCommonDialog(
+                  child: AlertDialog(
+                    title: Text('确认退出'),
+                    content: Text('确定要退出当前游戏吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () =>
+                            globalState.navigatorKey.currentState?.pop(false),
+                        child: Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          globalState.navigatorKey.currentState?.pop(true);
+                        },
+                        child: Text('确认退出'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  if (mounted) {
+                    globalState.navigatorKey.currentState?.pop();
+                  }
                 }
               }
             },
