@@ -7,13 +7,9 @@ import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/net.dart';
 import 'package:counters/common/utils/popup_menu_utils.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
-import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/setting_list_tile.dart';
 import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/backup/backup_page.dart';
-import 'package:counters/features/dev/animation_demo_page.dart';
-import 'package:counters/features/dev/backup_debug_page.dart';
-import 'package:counters/features/dev/performance_demo.dart';
 import 'package:counters/features/dev/port_test_page.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
 import 'package:counters/features/setting/data_manager.dart';
@@ -267,26 +263,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     },
                   ),
                   SettingListTile(
-                    icon: Icons.animation,
-                    title: '页面动画演示',
-                    subtitle: '查看各种页面切换动画效果',
-                    onTap: () => Navigator.of(context).pushWithSlide(
-                      const AnimationDemoPage(),
-                      direction: SlideDirection.fromRight,
-                      duration: const Duration(milliseconds: 300),
-                    ),
-                  ),
-                  SettingListTile(
-                    icon: Icons.speed,
-                    title: '性能测试',
-                    subtitle: '性能测试',
-                    onTap: () => Navigator.of(context).pushWithSlide(
-                      const PerformanceDemoPage(),
-                      direction: SlideDirection.fromRight,
-                      duration: const Duration(milliseconds: 300),
-                    ),
-                  ),
-                  SettingListTile(
                     icon: Icons.article,
                     title: '日志设置',
                     subtitle: '配置日志级别和查看程序日志',
@@ -306,18 +282,6 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const PrivacyDebugPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  SettingListTile(
-                    icon: Icons.backup,
-                    title: '备份调试',
-                    subtitle: '测试备份导出和预览功能',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const BackupDebugPage(),
                         ),
                       );
                     },
