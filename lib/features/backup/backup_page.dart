@@ -311,7 +311,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              '从已有的自动备份文件中还原数据，不会自动备份当前数据',
+              '从已有的自动备份文件中还原数据，还原前不会自动备份当前数据',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
