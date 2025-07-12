@@ -22,6 +22,7 @@ import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
+import 'package:counters/features/setting/analytics_provider.dart';
 import 'package:counters/features/template/template_page.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/foundation.dart';
@@ -77,11 +78,12 @@ void main() async {
   // 初始化全局状态
   await globalState.init();
 
-  // 获取Provider调试设置、Verbose日志设置和Clarity调试设置
+  // 获取Provider调试设置、Verbose日志设置、Clarity调试设置和匿名统计设置
   final prefs = await SharedPreferences.getInstance();
   final enableProviderLogger = prefs.getBool('enable_provider_logger') ?? false;
   final enableVerboseLog = prefs.getBool('enable_verbose_log') ?? false;
   final enableClarityDebug = prefs.getBool('enable_clarity_debug') ?? false;
+  final enableAnalytics = await AnalyticsNotifier.getAnalyticsEnabled();
 
   // 根据设置初始化日志级别
   if (enableVerboseLog) {
@@ -93,24 +95,35 @@ void main() async {
     Log.i('应用启动: Verbose日志已禁用');
   }
 
-  // 创建 Clarity 配置
-  final clarityConfig = ClarityConfig(
-    projectId: "r8m6tk8tfr",
-    logLevel: enableClarityDebug ? LogLevel.Debug : LogLevel.None, // 根据设置决定日志级别
-  );
-
-  // 输出 Clarity 初始化信息
+  // 输出匿名统计和Clarity初始化信息
+  Log.i('匿名统计设置: ${enableAnalytics ? '启用' : '禁用'}');
   Log.i('Clarity 初始化: 项目ID=r8m6tk8tfr, 调试模式=${enableClarityDebug ? '启用' : '禁用'}');
+
+  // 创建应用Widget
+  Widget app = const MyApp();
+
+  // 根据匿名统计设置决定是否包装ClarityWidget
+  if (enableAnalytics) {
+    final clarityConfig = ClarityConfig(
+      projectId: "r8m6tk8tfr",
+      logLevel: enableClarityDebug ? LogLevel.Debug : LogLevel.None,
+    );
+
+    app = ClarityWidget(
+      clarityConfig: clarityConfig,
+      app: app,
+    );
+    Log.i('Clarity已启用');
+  } else {
+    Log.i('Clarity已禁用（匿名统计关闭）');
+  }
 
   // 创建 ProviderScope，不再使用废弃的 parent 参数
   runApp(
     ProviderScope(
       observers: enableProviderLogger ? [PLogger()] : null,
       // 根据设置决定是否启用Provider调试
-      child: ClarityWidget(
-        clarityConfig: clarityConfig,
-        app: const MyApp(),
-      ),
+      child: app,
     ),
   );
 }

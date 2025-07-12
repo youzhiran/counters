@@ -44,7 +44,7 @@ class _TemplateSelector extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '暂无可使用的模板\n请先在模板管理中创建',
+                        '暂无可使用的模板\n请先选择系统模板创建自定义模板',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey[600]),
                       ),

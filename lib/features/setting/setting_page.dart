@@ -18,6 +18,7 @@ import 'package:counters/features/setting/port_config_provider.dart';
 import 'package:counters/features/setting/privacy_debug_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
+import 'package:counters/features/setting/analytics_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -195,6 +196,23 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   subtitle: '测试中功能，启用并重启后程序支持横屏界面',
                   value: _enableDesktopMode,
                   onChanged: _saveDesktopModeSetting,
+                ),
+                // 匿名统计设置
+                Consumer(
+                  builder: (context, ref, child) {
+                    final analyticsState = ref.watch(analyticsProvider);
+                    final analyticsNotifier = ref.read(analyticsProvider.notifier);
+
+                    return SettingSwitchListTile(
+                      icon: Icons.analytics,
+                      title: '匿名统计',
+                      subtitle: '我们使用 Microsoft Clarity 帮助改进应用体验，不收集个人信息',
+                      value: analyticsState.isEnabled,
+                      onChanged: analyticsState.isLoading
+                          ? null
+                          : (value) => _handleAnalyticsToggle(analyticsNotifier, value),
+                    );
+                  },
                 ),
                 _buildSectionHeader('高级'),
                 SettingListTile(
@@ -1251,5 +1269,59 @@ class _SettingPageState extends ConsumerState<SettingPage> {
         portConfigNotifier.setWebSocketPort(value);
       }
     });
+  }
+
+  /// 处理匿名统计开关切换
+  Future<void> _handleAnalyticsToggle(AnalyticsNotifier notifier, bool value) async {
+    // 如果是关闭统计，显示确认弹窗
+    if (!value) {
+      final confirmed = await _showAnalyticsDisableConfirmDialog();
+      if (!confirmed) {
+        return; // 用户取消，不执行关闭操作
+      }
+    }
+
+    try {
+      await notifier.setAnalyticsEnabled(value);
+
+      if (mounted) {
+        GlobalMsgManager.showMessage(
+          '匿名统计已${value ? '启用' : '禁用'}，重启应用后生效',
+        );
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '切换匿名统计设置失败');
+    }
+  }
+
+  /// 显示关闭匿名统计确认弹窗
+  Future<bool> _showAnalyticsDisableConfirmDialog() async {
+    final result = await globalState.showCommonDialog<bool>(
+      child: AlertDialog(
+        title: const Text('关闭匿名统计'),
+        content: const Text(
+          '真的要关闭统计吗？\n\n'
+          '我们不收集个人信息，只是想了解用户如何使用应用，从而改进应用使用体验。\n\n'
+          '作为一个开源免费的应用，开发者看到没人使用 ${Config.appName}，可能就没动力更新了......😢😭\n\n'
+          '如果您觉得 ${Config.appName} 好用，希望能给开发者一个 star ⭐。\n\n'
+          '您可以随时在设置中重新开启。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('我再想想'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.orange,
+            ),
+            child: const Text('确定关闭'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false; // 如果用户点击外部关闭弹窗，默认为取消
   }
 }
