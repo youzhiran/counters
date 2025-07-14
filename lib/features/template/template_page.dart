@@ -1,3 +1,4 @@
+import 'package:counters/app/state.dart';
 import 'package:counters/common/widgets/template_card.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,30 @@ class TemplatePage extends ConsumerStatefulWidget {
 }
 
 class _TemplatePageState extends ConsumerState<TemplatePage> {
+  /// 显示创建模板帮助弹窗
+  void _showCreateTemplateHelp() {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: const Text('如何创建用户模板'),
+        content: const Text(
+          '要创建用于计分的用户模板，请按以下步骤操作：\n\n'
+          '1. 浏览下方的系统模板\n'
+          '2. 点击您需要的系统模板\n'
+          '3. 选择"另存新模板"选项\n'
+          '4. 按要求填写信息并保存\n\n'
+          '这样就可以创建一个属于您的用户模板，用于计分游戏！',
+          style: TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final templatesAsync = ref.watch(templatesProvider);
@@ -19,6 +44,13 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
       appBar: AppBar(
         title: const Text('模板'),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: '如何创建用户模板',
+            onPressed: _showCreateTemplateHelp,
+          ),
+        ],
       ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
