@@ -13,6 +13,7 @@ import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/lan/widgets/lan_status_button.dart';
+import 'package:counters/features/lan/widgets/ping_widget.dart';
 import 'package:counters/features/score/counter/config.dart';
 import 'package:counters/features/score/landlords/config.dart';
 import 'package:counters/features/score/mahjong/config.dart';
@@ -372,7 +373,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   body: buildGameBody(context, template, session),
                 ),
                 // 在联机状态下显示ping值
-                // const PingWidget(),
+                const PingWidget(),
               ],
             ));
       },

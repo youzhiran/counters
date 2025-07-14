@@ -118,8 +118,9 @@ class Ping extends _$Ping {
 
   /// 处理LAN状态变化
   void _handleLanStateChange(LanState? previous, LanState current) {
-    final shouldBeActive = current.isConnected || current.isHost;
-    
+    // 修复：只在客户端模式且已连接时激活ping，主机端隐藏ping显示
+    final shouldBeActive = current.isConnected && !current.isHost;
+
     if (shouldBeActive && !state.isActive) {
       // 开始ping测量
       _startPing();
