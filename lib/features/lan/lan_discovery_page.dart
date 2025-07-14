@@ -250,11 +250,36 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
         children: [
           // 显示错误信息
           if (discoveryState.error != null)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                '错误: ${discoveryState.error}',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+            Container(
+              margin: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .error
+                      .withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Theme.of(context).colorScheme.error,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '错误: ${discoveryState.error}',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           // 显示本机IP地址和操作按钮
@@ -266,13 +291,20 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
           // 显示正在接受广播的端口
           if (discoveryState.listeningPort != null)
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              margin:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8.0),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outline
+                      .withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
@@ -283,10 +315,14 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    '正在监听广播端口: ${discoveryState.listeningPort}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  Expanded(
+                    child: Text(
+                      '正在监听广播端口: ${discoveryState.listeningPort}\n'
+                      '提示：其他主机需要在任意计分中，右上角选择"开启局域网联机"，方可被本客户端发现',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                     ),
                   ),
                 ],
@@ -300,8 +336,19 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
           else if (!discoveryState.isScanning &&
               discoveryState.hosts.isEmpty &&
               discoveryState.error == null)
-            const Expanded(
-              child: Center(child: Text('未发现局域网中的主机\n请确保主机已启动并发送广播')),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    '未发现局域网中的主机\n请确保主机已启动并发送广播',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+              ),
             )
           // 显示主机列表
           else
@@ -313,10 +360,16 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
                   return ListTile(
                     leading: const Icon(Icons.dns_outlined),
                     // 主机图标
-                    title: Text(host.hostName),
+                    title: Text(
+                      host.hostName,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     // 显示主机名
                     subtitle: Text(
-                        '${host.ip}:${host.port} (模板: ${_getTemplateName(host)})'),
+                      '${host.ip}:${host.port} (模板: ${_getTemplateName(host)})',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _connectToHost(host), // 点击连接
                   );

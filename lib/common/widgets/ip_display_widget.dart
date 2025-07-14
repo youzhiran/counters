@@ -20,8 +20,16 @@ class IpDisplayWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         children: [
-          Text('你的IP地址: $localIp ($interfaceName)',
-              style: Theme.of(context).textTheme.titleMedium),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              '你的IP地址: $localIp ($interfaceName)',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
