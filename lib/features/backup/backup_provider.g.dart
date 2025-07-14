@@ -82,7 +82,7 @@ final restoreOptionsManagerProvider =
 
 typedef _$RestoreOptionsManager = AutoDisposeNotifier<RestoreOptions>;
 String _$backupFilesManagerHash() =>
-    r'0a57fd29fd41def38ad9ce6ecc330da54730c4f3';
+    r'9c7abe9afedd024151a50d968f82ccbf58192e90';
 
 /// 备份文件管理器
 ///

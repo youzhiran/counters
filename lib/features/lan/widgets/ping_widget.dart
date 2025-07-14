@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:counters/common/utils/log.dart';
 import 'package:counters/features/lan/ping_provider.dart';
+import 'package:counters/features/setting/ping_display_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -121,7 +123,8 @@ class _PingWidgetState extends ConsumerState<PingWidget>
   bool _shouldReduceOpacity(PingState pingState) {
     if (pingState.error != null) return false;
     if (pingState.pingMs == null) return false;
-    return pingState.pingMs! <= 100; // 网络状态良好时才降低透明度
+    // 网络状态为excellent或good时才降低透明度
+    return pingState.status == PingStatus.excellent || pingState.status == PingStatus.good;
   }
 
   /// 确保位置在屏幕边界内
@@ -135,12 +138,34 @@ class _PingWidgetState extends ConsumerState<PingWidget>
     );
   }
 
+  /// 检测并调整位置，确保组件在屏幕范围内
+  void _ensurePositionInBounds(Size screenSize) {
+    Log.v('PingWidget: 检测并调整位置，确保组件在屏幕范围内');
+    // 估算组件大小（与拖动时使用的估算值一致）
+    const Size estimatedWidgetSize = Size(100, 30);
+
+    // 计算调整后的位置
+    final Offset adjustedPosition = _clampPosition(_position, screenSize, estimatedWidgetSize);
+
+    // 如果位置需要调整，更新位置
+    if (adjustedPosition != _position) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _position = adjustedPosition;
+          });
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pingState = ref.watch(pingProvider);
+    final showPingWidget = ref.watch(pingDisplaySettingProvider);
 
-    // 如果ping不活跃，不显示组件
-    if (!pingState.isActive) {
+    // 如果ping不活跃或用户设置不显示，不显示组件
+    if (!pingState.isActive || !showPingWidget) {
       return const SizedBox.shrink();
     }
 
@@ -151,6 +176,9 @@ class _PingWidgetState extends ConsumerState<PingWidget>
     _manageSmartOpacity(pingState);
 
     final screenSize = MediaQuery.of(context).size;
+
+    // 检测并调整位置，确保组件在屏幕范围内
+    _ensurePositionInBounds(screenSize);
 
     return Positioned(
       left: _position.dx,

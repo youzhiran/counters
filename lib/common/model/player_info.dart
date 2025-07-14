@@ -8,7 +8,7 @@ part 'player_info.g.dart';
 abstract class PlayerInfo with _$PlayerInfo {
   const PlayerInfo._(); // 添加私有构造函数以支持自定义方法
 
-  const factory PlayerInfo._internal({
+  const factory PlayerInfo.internal({
     required String pid,
     required String name,
     required String avatar,
@@ -19,7 +19,7 @@ abstract class PlayerInfo with _$PlayerInfo {
     required String name,
     required String avatar,
   }) {
-    return PlayerInfo._internal(
+    return PlayerInfo.internal(
       pid: pid ?? Uuid().v4(),
       name: name,
       avatar: avatar,

@@ -1,5 +1,5 @@
 import 'package:counters/features/lan/lan_provider.dart';
-import 'package:counters/features/lan/widgets/lan_status_dialog.dart';
+import 'package:counters/features/lan/widgets/lan_status_sheet.dart';
 import 'package:counters/features/lan/widgets/lan_status_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -115,6 +115,6 @@ class _LanStatusButtonState extends ConsumerState<LanStatusButton>
 
   /// 显示LAN状态对话框
   void _showLanStatus(BuildContext context) {
-    showLanStatusDialog();
+    showLanStatusSheet();
   }
 }

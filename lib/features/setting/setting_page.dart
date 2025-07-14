@@ -15,6 +15,7 @@ import 'package:counters/features/setting/about_page.dart'; // 导入新的关�
 import 'package:counters/features/setting/analytics_provider.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/log_settings_page.dart';
+import 'package:counters/features/setting/ping_display_provider.dart';
 import 'package:counters/features/setting/port_config_provider.dart';
 import 'package:counters/features/setting/privacy_debug_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
@@ -216,6 +217,28 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   },
                 ),
                 _buildSectionHeader('高级'),
+                // PingWidget 显示设置
+                Consumer(
+                  builder: (context, ref, child) {
+                    final showPingWidget = ref.watch(pingDisplaySettingProvider);
+                    final pingDisplayNotifier = ref.read(pingDisplaySettingProvider.notifier);
+
+                    return SettingSwitchListTile(
+                      icon: Icons.network_ping,
+                      title: 'Ping 显示',
+                      subtitle: '在计分界面显示网络延迟信息（仅客户端模式）',
+                      value: showPingWidget,
+                      onChanged: (value) async {
+                        try {
+                          await pingDisplayNotifier.setShowPingWidget(value);
+                          ref.showSuccess(value ? 'Ping 显示已开启' : 'Ping 显示已关闭');
+                        } catch (e) {
+                          ref.showError('设置失败: $e');
+                        }
+                      },
+                    );
+                  },
+                ),
                 SettingListTile(
                   icon: Icons.settings_ethernet,
                   title: '端口配置',

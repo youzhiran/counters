@@ -15,7 +15,7 @@ import 'package:counters/common/widgets/template_card.dart';
 import 'package:counters/features/history/history_page.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
-import 'package:counters/features/lan/widgets/lan_status_dialog.dart';
+import 'package:counters/features/lan/widgets/lan_status_sheet.dart';
 import 'package:counters/features/score/counter/counter_page.dart';
 import 'package:counters/features/score/landlords/landlords_page.dart';
 import 'package:counters/features/score/mahjong/mahjong_page.dart';
@@ -205,7 +205,7 @@ class HomePage extends ConsumerWidget {
       ),
       onPressed: isShowState
           ? () {
-              showLanStatusDialog();
+              showLanStatusSheet();
             }
           : () {
               Navigator.of(ref.context).pushWithSlide(
