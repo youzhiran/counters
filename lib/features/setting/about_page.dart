@@ -165,8 +165,7 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
               const SizedBox(height: 12),
               Text(
                 '本应用部分图标来自\n'
-                'iconscout.com\n'
-                'yesicon.app\n\n'
+                'www.freeicons.org\n\n'
                 '© 2025 counters.devyi.com',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
