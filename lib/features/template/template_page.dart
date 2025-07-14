@@ -24,6 +24,13 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
         duration: const Duration(milliseconds: 200),
         switchInCurve: Curves.easeInOut,
         switchOutCurve: Curves.easeInOut,
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          // 使用淡入淡出动画替代默认的滑动动画，避免从上方滑落的视觉效果
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
         child: templatesAsync.when(
           loading: () => const Center(
             key: ValueKey('loading'),
@@ -45,6 +52,7 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
               key: const ValueKey('grid'),
               onRefresh: () async => ref.invalidate(templatesProvider),
               child: GridView.builder(
+                key: const PageStorageKey('template_grid'),
                 padding: const EdgeInsets.all(12),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 200,

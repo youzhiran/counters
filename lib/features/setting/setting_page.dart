@@ -12,13 +12,13 @@ import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/backup/backup_page.dart';
 import 'package:counters/features/dev/port_test_page.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
+import 'package:counters/features/setting/analytics_provider.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/setting/port_config_provider.dart';
 import 'package:counters/features/setting/privacy_debug_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
-import 'package:counters/features/setting/analytics_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,6 +81,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
         children: [
           Expanded(
             child: ListView(
+              key: const PageStorageKey('setting_list'),
               padding: const EdgeInsets.symmetric(vertical: 0),
               children: [
                 _buildSectionHeader('主题'),
