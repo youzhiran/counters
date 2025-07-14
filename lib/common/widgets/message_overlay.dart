@@ -433,6 +433,20 @@ class _MessagePositionedState extends State<_MessagePositioned>
   }
 }
 
+/// 滑动删除方向枚举
+enum SwipeDismissDirection {
+  up,
+  left,
+  right,
+}
+
+/// 滑动状态枚举
+enum SwipeState {
+  idle,      // 空闲状态
+  dragging,  // 拖拽中
+  dismissing, // 正在删除
+}
+
 /// 消息卡片组件
 class _MessageCard extends StatefulWidget {
   final GlobalKey messageKey;
@@ -456,6 +470,16 @@ class _MessageCardState extends State<_MessageCard>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
   bool _isExiting = false;
+
+  // 滑动删除相关状态
+  SwipeState _swipeState = SwipeState.idle;
+  Offset _totalDragOffset = Offset.zero; // 累计滑动偏移量
+  SwipeDismissDirection? _detectedDirection; // 检测到的滑动方向
+
+  // 滑动阈值配置
+  static const double _swipeThreshold = 120.0; // 滑动删除阈值（像素）
+  static const double _velocityThreshold = 300.0; // 速度阈值（像素/秒）
+  static const double _directionDetectionThreshold = 30.0; // 方向检测阈值（像素）
 
   @override
   void initState() {
@@ -489,10 +513,30 @@ class _MessageCardState extends State<_MessageCard>
   }
 
   /// 设置退出动画
-  void _setupExitAnimation() {
+  void _setupExitAnimation({SwipeDismissDirection? direction}) {
+    Offset endOffset;
+
+    // 根据滑动方向设置不同的退出动画
+    if (direction != null) {
+      switch (direction) {
+        case SwipeDismissDirection.up:
+          endOffset = const Offset(0, -2); // 向上退出
+          break;
+        case SwipeDismissDirection.left:
+          endOffset = const Offset(-2, 0); // 向左退出
+          break;
+        case SwipeDismissDirection.right:
+          endOffset = const Offset(2, 0); // 向右退出
+          break;
+      }
+    } else {
+      // 默认向上退出（兼容原有逻辑）
+      endOffset = const Offset(0, -1);
+    }
+
     _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -1),
+      begin: Offset.zero, // 从原位置开始
+      end: endOffset,
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeInBack,
@@ -545,7 +589,7 @@ class _MessageCardState extends State<_MessageCard>
     _dismiss();
   }
 
-  void _dismiss() async {
+  void _dismiss({SwipeDismissDirection? direction}) async {
     if (_isExiting) return; // 防止重复调用
 
     // Log.v(
@@ -553,10 +597,11 @@ class _MessageCardState extends State<_MessageCard>
 
     setState(() {
       _isExiting = true;
+      _swipeState = SwipeState.dismissing;
     });
 
     // 设置退出动画
-    _setupExitAnimation();
+    _setupExitAnimation(direction: direction);
 
     // 重置动画控制器并播放退出动画
     _animationController.reset();
@@ -566,6 +611,111 @@ class _MessageCardState extends State<_MessageCard>
       // Log.v('MessageCard [ID:${widget.message.id}]: 动画完成，触发关闭回调');
       widget.onDismiss();
     }
+  }
+
+  /// 处理滑动开始
+  void _onPanStart(DragStartDetails details) {
+    if (_isExiting || _swipeState == SwipeState.dismissing) return;
+
+    setState(() {
+      _swipeState = SwipeState.dragging;
+      _totalDragOffset = Offset.zero;
+      _detectedDirection = null; // 重置检测到的方向
+    });
+  }
+
+  /// 处理滑动更新
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (_isExiting || _swipeState != SwipeState.dragging) return;
+
+    // 累计滑动偏移量
+    _totalDragOffset += details.delta;
+
+    // 如果还没有检测到方向，检查是否需要确定方向
+    if (_detectedDirection == null) {
+      final dx = _totalDragOffset.dx.abs();
+      final dy = _totalDragOffset.dy.abs();
+
+      // 达到方向检测阈值时确定滑动方向
+      if (dx > _directionDetectionThreshold || dy > _directionDetectionThreshold) {
+        if (dx > dy) {
+          // 水平滑动
+          _detectedDirection = _totalDragOffset.dx > 0 ? SwipeDismissDirection.right : SwipeDismissDirection.left;
+        } else if (_totalDragOffset.dy < 0) {
+          // 只允许向上的垂直滑动
+          _detectedDirection = SwipeDismissDirection.up;
+        } else {
+          // 向下滑动不允许，重置状态
+          _resetToIdle();
+          return;
+        }
+      }
+    }
+
+    // 检查是否达到删除阈值
+    if (_detectedDirection != null) {
+      bool shouldDismiss = false;
+
+      switch (_detectedDirection!) {
+        case SwipeDismissDirection.up:
+          shouldDismiss = _totalDragOffset.dy < -_swipeThreshold;
+          break;
+        case SwipeDismissDirection.left:
+          shouldDismiss = _totalDragOffset.dx < -_swipeThreshold;
+          break;
+        case SwipeDismissDirection.right:
+          shouldDismiss = _totalDragOffset.dx > _swipeThreshold;
+          break;
+      }
+
+      if (shouldDismiss) {
+        // 立即触发删除动画
+        _dismiss(direction: _detectedDirection);
+        return;
+      }
+    }
+  }
+
+  /// 处理滑动结束
+  void _onPanEnd(DragEndDetails details) {
+    if (_isExiting || _swipeState != SwipeState.dragging) return;
+
+    final velocity = details.velocity.pixelsPerSecond;
+
+    // 如果已经检测到方向，检查速度是否达到删除条件
+    if (_detectedDirection != null) {
+      bool shouldDismiss = false;
+
+      switch (_detectedDirection!) {
+        case SwipeDismissDirection.up:
+          shouldDismiss = velocity.dy < -_velocityThreshold;
+          break;
+        case SwipeDismissDirection.left:
+          shouldDismiss = velocity.dx < -_velocityThreshold;
+          break;
+        case SwipeDismissDirection.right:
+          shouldDismiss = velocity.dx > _velocityThreshold;
+          break;
+      }
+
+      if (shouldDismiss) {
+        // 触发滑动删除
+        _dismiss(direction: _detectedDirection);
+        return;
+      }
+    }
+
+    // 没有达到删除条件，重置状态
+    _resetToIdle();
+  }
+
+  /// 重置到空闲状态
+  void _resetToIdle() {
+    setState(() {
+      _swipeState = SwipeState.idle;
+      _totalDragOffset = Offset.zero;
+      _detectedDirection = null;
+    });
   }
 
   @override
@@ -581,70 +731,78 @@ class _MessageCardState extends State<_MessageCard>
             // 当opacity接近0时，elevation也接近0，避免阴影残留
             final dynamicElevation = _fadeAnimation.value * 3.0;
 
-            return Material(
-              color: Colors.transparent,
-              elevation: dynamicElevation, // 动态elevation，与fade动画同步
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                key: widget.messageKey, // 使用传入的messageKey用于高度测量
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _getBackgroundColor(widget.message.type),
+            return Transform.translate(
+              offset: _slideAnimation.value, // 只使用slideAnimation的值
+              child: GestureDetector(
+                onPanStart: _onPanStart,
+                onPanUpdate: _onPanUpdate,
+                onPanEnd: _onPanEnd,
+                child: Material(
+                  color: Colors.transparent,
+                  elevation: dynamicElevation, // 动态elevation，与fade动画同步
                   borderRadius: BorderRadius.circular(12),
-                  // 使用柔和的自定义阴影，符合Material 3设计规范
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08 * _fadeAnimation.value), // 阴影透明度也与动画同步
-                      blurRadius: 6, // 减少模糊半径
-                      spreadRadius: 0, // 不扩散，避免"脏"的效果
-                      offset: const Offset(0, 2), // 轻微向下偏移，自然的投影
-                    ),
-                    // 添加第二层更淡的阴影，增加层次感但不突兀
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04 * _fadeAnimation.value), // 阴影透明度也与动画同步
-                      blurRadius: 12,
-                      spreadRadius: 0,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _getIcon(widget.message.type),
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.message.content,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                  child: Container(
+                    key: widget.messageKey, // 使用传入的messageKey用于高度测量
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _getBackgroundColor(widget.message.type),
+                      borderRadius: BorderRadius.circular(12),
+                      // 使用柔和的自定义阴影，符合Material 3设计规范
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08 * _fadeAnimation.value), // 阴影透明度也与动画同步
+                          blurRadius: 6, // 减少模糊半径
+                          spreadRadius: 0, // 不扩散，避免"脏"的效果
+                          offset: const Offset(0, 2), // 轻微向下偏移，自然的投影
                         ),
-                      ),
+                        // 添加第二层更淡的阴影，增加层次感但不突兀
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04 * _fadeAnimation.value), // 阴影透明度也与动画同步
+                          blurRadius: 12,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    // 使用InkWell替代GestureDetector，提供更好的触摸反馈
-                    InkWell(
-                      onTap: _dismiss,
-                      borderRadius: BorderRadius.circular(4),
-                      child: Container(
-                        padding: const EdgeInsets.all(8), // 增大触摸区域
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _getIcon(widget.message.type),
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.message.content,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // 使用InkWell替代GestureDetector，提供更好的触摸反馈
+                        InkWell(
+                          onTap: () => _dismiss(),
                           borderRadius: BorderRadius.circular(4),
+                          child: Container(
+                            padding: const EdgeInsets.all(8), // 增大触摸区域
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             );
