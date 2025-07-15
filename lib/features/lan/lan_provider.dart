@@ -16,7 +16,6 @@ import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/network_manager.dart';
 import 'package:counters/features/lan/ping_provider.dart';
-
 // 引入 Score Provider 和 消息 Payload 类
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -228,7 +227,7 @@ class Lan extends _$Lan {
   }
 
   void _handleMessageReceived(String rawMessage) async {
-    Log.d('收到原始网络消息: $rawMessage');
+    Log.v('收到原始网络消息: $rawMessage');
     final currentMessages = List<String>.from(state.receivedMessages);
     currentMessages.insert(0, "原始: $rawMessage");
     if (currentMessages.length > 100) {
@@ -242,7 +241,7 @@ class Lan extends _$Lan {
       final type = receivedMessage.type;
       final data = receivedMessage.data;
 
-      Log.i('收到解析后消息: $type');
+      Log.v('收到解析后消息: $type');
 
       if (!state.isHost) {
         switch (type) {
