@@ -8,6 +8,7 @@ import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/wakelock_helper.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
@@ -22,6 +23,7 @@ import 'package:counters/features/score/poker50/config.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:counters/features/score/widgets/score_chart_bottom_sheet.dart';
+import 'package:counters/features/setting/screen_wakelock_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,7 +37,57 @@ abstract class BaseSessionPage extends ConsumerStatefulWidget {
 abstract class BaseSessionPageState<T extends BaseSessionPage>
     extends ConsumerState<T> {
   @override
+  void initState() {
+    super.initState();
+    // 页面初始化时根据设置启用屏幕常亮
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleScreenWakelock();
+    });
+  }
+
+  @override
+  void dispose() {
+    // 页面销毁时禁用屏幕常亮
+    // 使用 WakelockHelper 的安全方法，避免使用可能已失效的 ref
+    WakelockHelper.safeDisable();
+    super.dispose();
+  }
+
+  /// 处理屏幕常亮设置
+  void _handleScreenWakelock() {
+    try {
+      if (mounted) {
+        final wakelockNotifier =
+            ref.read(screenWakelockSettingProvider.notifier);
+        wakelockNotifier.enableWakelock();
+      }
+    } catch (e) {
+      // 在初始化过程中的错误可以使用 ErrorHandler，因为 widget 还未销毁
+      ErrorHandler.handle(e, StackTrace.current, prefix: '启用屏幕常亮失败');
+    }
+  }
+
+  /// 确保屏幕常亮状态正确（在 build 方法中调用）
+  /// 根据 wakelock_plus 文档建议，应该持续调用以防止 OS 释放 wakelock
+  void _ensureScreenWakelockState() {
+    try {
+      if (mounted) {
+        final wakelockState = ref.read(screenWakelockSettingProvider);
+        // 使用 WakelockHelper 的 toggle 方法，它是幂等的
+        WakelockHelper.toggle(enable: wakelockState.isEnabled);
+      }
+    } catch (e) {
+      // 在 build 过程中的错误只记录，不影响 UI 构建
+      Log.w('确保屏幕常亮状态失败: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // 根据 wakelock_plus 文档建议，在 build 方法中持续调用 enable
+    // 因为 OS 可能随时释放 wakelock，需要持续检查和启用
+    _ensureScreenWakelockState();
+
     final template =
         ref.watch(templatesProvider.notifier).getTemplate(widget.templateId);
 
@@ -192,88 +244,109 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                                 duration: const Duration(milliseconds: 300),
                               );
                               break;
+                            case 'screen_wakelock':
+                              _toggleScreenWakelock();
+                              break;
                             default:
                               Log.warn('未知选项: $value');
                               break;
                           }
                         },
-                        itemBuilder: (BuildContext context) =>
-                            <PopupMenuEntry<String>>[
-                          PopupMenuItem<String>(
-                            value: 'lan_test',
-                            child: Row(
-                              children: [
-                                Icon(Icons.article),
-                                SizedBox(width: 8),
-                                Text('程序日志'),
-                              ],
+                        itemBuilder: (BuildContext context) {
+                          final wakelockState =
+                              ref.watch(screenWakelockSettingProvider);
+                          return <PopupMenuEntry<String>>[
+                            PopupMenuItem<String>(
+                              value: 'lan_test',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.article),
+                                  SizedBox(width: 8),
+                                  Text('程序日志'),
+                                ],
+                              ),
                             ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'lan_conn',
-                            enabled:
-                                !lanState.isConnected && !lanState.isClientMode,
-                            child: Row(
-                              children: [
-                                Icon(
-                                    lanState.isHost
-                                        ? Icons.wifi_off
-                                        : Icons.wifi,
-                                    color: (!lanState.isConnected &&
-                                            !lanState.isClientMode)
-                                        ? null
-                                        : Colors.grey),
-                                SizedBox(width: 8),
-                                Text(lanState.isHost ? '停止主机' : '开启局域网联机',
-                                    style: TextStyle(
-                                        color: (!lanState.isConnected &&
-                                                !lanState.isClientMode)
-                                            ? null
-                                            : Colors.grey)),
-                              ],
+                            PopupMenuItem<String>(
+                              value: 'lan_conn',
+                              enabled: !lanState.isConnected &&
+                                  !lanState.isClientMode,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                      lanState.isHost
+                                          ? Icons.wifi_off
+                                          : Icons.wifi,
+                                      color: (!lanState.isConnected &&
+                                              !lanState.isClientMode)
+                                          ? null
+                                          : Colors.grey),
+                                  SizedBox(width: 8),
+                                  Text(lanState.isHost ? '停止主机' : '开启局域网联机',
+                                      style: TextStyle(
+                                          color: (!lanState.isConnected &&
+                                                  !lanState.isClientMode)
+                                              ? null
+                                              : Colors.grey)),
+                                ],
+                              ),
                             ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'lan_discovery',
-                            enabled: !lanState.isHost && !lanState.isClientMode,
-                            child: Row(
-                              children: [
-                                Icon(Icons.search,
-                                    color: (!lanState.isHost &&
-                                            !lanState.isClientMode)
-                                        ? null
-                                        : Colors.grey),
-                                SizedBox(width: 8),
-                                Text('发现局域网游戏',
-                                    style: TextStyle(
-                                        color: (!lanState.isHost &&
-                                                !lanState.isClientMode)
-                                            ? null
-                                            : Colors.grey)),
-                              ],
+                            PopupMenuItem<String>(
+                              value: 'lan_discovery',
+                              enabled:
+                                  !lanState.isHost && !lanState.isClientMode,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.search,
+                                      color: (!lanState.isHost &&
+                                              !lanState.isClientMode)
+                                          ? null
+                                          : Colors.grey),
+                                  SizedBox(width: 8),
+                                  Text('发现局域网游戏',
+                                      style: TextStyle(
+                                          color: (!lanState.isHost &&
+                                                  !lanState.isClientMode)
+                                              ? null
+                                              : Colors.grey)),
+                                ],
+                              ),
                             ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'reset_game',
-                            child: Row(
-                              children: [
-                                Icon(Icons.restart_alt_rounded),
-                                SizedBox(width: 8),
-                                Text('重置游戏'),
-                              ],
+                            PopupMenuItem<String>(
+                              value: 'reset_game',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.restart_alt_rounded),
+                                  SizedBox(width: 8),
+                                  Text('重置游戏'),
+                                ],
+                              ),
                             ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'Template_set',
-                            child: Row(
-                              children: [
-                                Icon(Icons.info_outline),
-                                SizedBox(width: 8),
-                                Text('查看模板设置'),
-                              ],
+                            PopupMenuItem<String>(
+                              value: 'Template_set',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline),
+                                  SizedBox(width: 8),
+                                  Text('查看模板设置'),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                            // 屏幕常亮开关（支持所有平台）
+                            PopupMenuDivider(),
+                            PopupMenuItem<String>(
+                              value: 'screen_wakelock',
+                              child: Row(
+                                children: [
+                                  Icon(wakelockState.isEnabled
+                                      ? Icons.flashlight_on_outlined
+                                      : Icons.flashlight_off_outlined),
+                                  SizedBox(width: 8),
+                                  Expanded(child: Text('切换屏幕常亮')),
+                                ],
+                              ),
+                            ),
+                          ];
+                        },
                       ),
                     ],
                   ),
@@ -655,22 +728,17 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   /// 获取客户端模式退出信息
-  ({String content, String actionText}) _getClientModeExitInfo(dynamic lanState) {
+  ({String content, String actionText}) _getClientModeExitInfo(
+      dynamic lanState) {
     if (lanState.isConnected) {
-      return (
-        content: '退出当前页面将会断开与主机的连接，确定要退出吗？',
-        actionText: '断开并退出'
-      );
+      return (content: '退出当前页面将会断开与主机的连接，确定要退出吗？', actionText: '断开并退出');
     } else if (lanState.isReconnecting) {
       return (
         content: '当前正在重连中，退出将停止重连并退出客户端模式，确定要退出吗？',
         actionText: '停止重连并退出'
       );
     } else {
-      return (
-        content: '退出当前页面将退出客户端模式，确定要退出吗？',
-        actionText: '退出客户端模式'
-      );
+      return (content: '退出当前页面将退出客户端模式，确定要退出吗？', actionText: '退出客户端模式');
     }
   }
 
@@ -713,14 +781,12 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   ({String content, String actionText}) _getHostModeExitInfo(dynamic lanState) {
     if (lanState.connectedClientIps.isNotEmpty) {
       return (
-        content: '离开此页面将停止主机服务，所有连接的客户端（${lanState.connectedClientIps.length}个）将断开连接，确定要离开吗？',
+        content:
+            '离开此页面将停止主机服务，所有连接的客户端（${lanState.connectedClientIps.length}个）将断开连接，确定要离开吗？',
         actionText: '确认离开'
       );
     } else {
-      return (
-        content: '离开此页面将停止主机服务，确定要离开吗？',
-        actionText: '确认离开'
-      );
+      return (content: '离开此页面将停止主机服务，确定要离开吗？', actionText: '确认离开');
     }
   }
 
@@ -792,5 +858,29 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         ],
       ),
     );
+  }
+
+  /// 切换屏幕常亮设置
+  void _toggleScreenWakelock() async {
+    try {
+      final wakelockNotifier = ref.read(screenWakelockSettingProvider.notifier);
+      final currentState = ref.read(screenWakelockSettingProvider);
+      final newValue = !currentState.isEnabled;
+
+      // 立即更新UI状态，提供即时反馈
+      await wakelockNotifier.setEnabled(newValue);
+
+      // 根据新状态启用或禁用屏幕常亮
+      if (newValue) {
+        await wakelockNotifier.enableWakelock();
+        ref.showSuccess('屏幕常亮已启用');
+      } else {
+        await wakelockNotifier.disableWakelock();
+        ref.showSuccess('屏幕常亮已关闭');
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '切换屏幕常亮设置失败');
+      ref.showError('设置屏幕常亮失败');
+    }
   }
 }

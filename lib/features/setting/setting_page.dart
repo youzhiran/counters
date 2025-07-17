@@ -18,6 +18,7 @@ import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/setting/ping_display_provider.dart';
 import 'package:counters/features/setting/port_config_provider.dart';
 import 'package:counters/features/setting/privacy_debug_page.dart';
+import 'package:counters/features/setting/screen_wakelock_provider.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -203,7 +204,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 Consumer(
                   builder: (context, ref, child) {
                     final analyticsState = ref.watch(analyticsProvider);
-                    final analyticsNotifier = ref.read(analyticsProvider.notifier);
+                    final analyticsNotifier =
+                        ref.read(analyticsProvider.notifier);
 
                     return SettingSwitchListTile(
                       icon: Icons.analytics,
@@ -212,16 +214,39 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       value: analyticsState.isEnabled,
                       onChanged: analyticsState.isLoading
                           ? null
-                          : (value) => _handleAnalyticsToggle(analyticsNotifier, value),
+                          : (value) =>
+                              _handleAnalyticsToggle(analyticsNotifier, value),
                     );
                   },
                 ),
                 _buildSectionHeader('高级'),
+                // 屏幕常亮设置
+                Consumer(
+                  builder: (context, ref, child) {
+                    final wakelockState =
+                        ref.watch(screenWakelockSettingProvider);
+                    final wakelockNotifier =
+                        ref.read(screenWakelockSettingProvider.notifier);
+
+                    return SettingSwitchListTile(
+                      icon: Icons.flashlight_on_outlined,
+                      title: '计分时屏幕常亮',
+                      subtitle: '在计分页面期间保持屏幕常亮，防止自动锁屏',
+                      value: wakelockState.isEnabled,
+                      onChanged: wakelockState.isLoading
+                          ? null
+                          : (value) =>
+                              _handleWakelockToggle(wakelockNotifier, value),
+                    );
+                  },
+                ),
                 // PingWidget 显示设置
                 Consumer(
                   builder: (context, ref, child) {
-                    final showPingWidget = ref.watch(pingDisplaySettingProvider);
-                    final pingDisplayNotifier = ref.read(pingDisplaySettingProvider.notifier);
+                    final showPingWidget =
+                        ref.watch(pingDisplaySettingProvider);
+                    final pingDisplayNotifier =
+                        ref.read(pingDisplaySettingProvider.notifier);
 
                     return SettingSwitchListTile(
                       icon: Icons.network_ping,
@@ -1296,7 +1321,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   }
 
   /// 处理匿名统计开关切换
-  Future<void> _handleAnalyticsToggle(AnalyticsNotifier notifier, bool value) async {
+  Future<void> _handleAnalyticsToggle(
+      AnalyticsNotifier notifier, bool value) async {
     // 如果是关闭统计，显示确认弹窗
     if (!value) {
       final confirmed = await _showAnalyticsDisableConfirmDialog();
@@ -1315,6 +1341,18 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       }
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '切换匿名统计设置失败');
+    }
+  }
+
+  /// 处理屏幕常亮开关切换
+  Future<void> _handleWakelockToggle(
+      ScreenWakelockSetting wakelockNotifier, bool value) async {
+    try {
+      await wakelockNotifier.setEnabled(value);
+      ref.showSuccess(value ? '屏幕常亮已启用' : '屏幕常亮已关闭');
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '切换屏幕常亮设置失败');
+      ref.showError('设置屏幕常亮失败');
     }
   }
 
