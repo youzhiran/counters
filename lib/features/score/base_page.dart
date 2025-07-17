@@ -72,134 +72,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         return PopScope(
             canPop: false,
             onPopInvokedWithResult: (bool didPop, Object? result) async {
-              if (didPop) {
-                return;
-              }
-              final lanState = ref.read(lanProvider);
-
-              // 客户端模式退出提示
-              if (lanState.isClientMode && !lanState.isHost) {
-                String dialogContent;
-                String actionText;
-
-                if (lanState.isConnected) {
-                  dialogContent = '退出当前页面将会断开与主机的连接，确定要退出吗？';
-                  actionText = '断开并退出';
-                } else if (lanState.isReconnecting) {
-                  dialogContent = '当前正在重连中，退出将停止重连并退出客户端模式，确定要退出吗？';
-                  actionText = '停止重连并退出';
-                } else {
-                  dialogContent = '退出当前页面将退出客户端模式，确定要退出吗？';
-                  actionText = '退出客户端模式';
-                }
-
-                final confirmed = await globalState.showCommonDialog(
-                  child: AlertDialog(
-                    title: Text('确认退出'),
-                    content: Text(dialogContent),
-                    actions: [
-                      TextButton(
-                        onPressed: () =>
-                            globalState.navigatorKey.currentState?.pop(false),
-                        child: Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          globalState.navigatorKey.currentState?.pop(true);
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.error,
-                        ),
-                        child: Text(actionText),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed == true) {
-                  // 使用exitClientMode来完全退出客户端模式
-                  await ref.read(lanProvider.notifier).exitClientMode();
-                  ref.invalidate(scoreProvider);
-                  if (mounted && context.mounted) {
-                    // 修复：客户端断开连接时返回到带有底部导航栏的主界面
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/main',
-                      (route) => false,
-                    );
-                  }
-                }
-              }
-              // 主机模式退出提示
-              else if (lanState.isHost) {
-                String dialogContent;
-                String actionText;
-
-                if (lanState.connectedClientIps.isNotEmpty) {
-                  dialogContent =
-                      '离开此页面将停止主机服务，所有连接的客户端（${lanState.connectedClientIps.length}个）将断开连接，确定要离开吗？';
-                  actionText = '确认离开';
-                } else {
-                  dialogContent = '离开此页面将停止主机服务，确定要离开吗？';
-                  actionText = '确认离开';
-                }
-
-                final confirmed = await globalState.showCommonDialog(
-                  child: AlertDialog(
-                    title: Text('确认离开'),
-                    content: Text(dialogContent),
-                    actions: [
-                      TextButton(
-                        onPressed: () =>
-                            globalState.navigatorKey.currentState?.pop(false),
-                        child: Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          globalState.navigatorKey.currentState?.pop(true);
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.error,
-                        ),
-                        child: Text(actionText),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed == true) {
-                  // 停止主机服务
-                  await ref.read(lanProvider.notifier).disposeManager();
-                  ref.showSuccess('已停止主机服务');
-                  if (mounted) {
-                    globalState.navigatorKey.currentState?.pop();
-                  }
-                }
-              }
-              // 单机模式退出提示
-              else {
-                final confirmed = await globalState.showCommonDialog(
-                  child: AlertDialog(
-                    title: Text('确认退出'),
-                    content: Text('确定要退出当前游戏吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () =>
-                            globalState.navigatorKey.currentState?.pop(false),
-                        child: Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          globalState.navigatorKey.currentState?.pop(true);
-                        },
-                        child: Text('确认退出'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed == true) {
-                  if (mounted) {
-                    globalState.navigatorKey.currentState?.pop();
-                  }
-                }
-              }
+              if (didPop) return;
+              await _handleExitRequest();
             },
             child: Stack(
               children: [
@@ -735,5 +609,188 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '临时计分退出时断开网络连接失败');
     }
+  }
+
+  /// 处理退出请求的主入口
+  Future<void> _handleExitRequest() async {
+    try {
+      final lanState = ref.read(lanProvider);
+
+      if (_isClientMode(lanState)) {
+        await _handleClientModeExit(lanState);
+      } else if (_isHostMode(lanState)) {
+        await _handleHostModeExit(lanState);
+      } else {
+        await _handleStandaloneModeExit();
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '退出计分失败');
+    }
+  }
+
+  /// 检查是否为客户端模式
+  bool _isClientMode(dynamic lanState) {
+    return lanState.isClientMode && !lanState.isHost;
+  }
+
+  /// 检查是否为主机模式
+  bool _isHostMode(dynamic lanState) {
+    return lanState.isHost;
+  }
+
+  /// 处理客户端模式退出
+  Future<void> _handleClientModeExit(dynamic lanState) async {
+    final exitInfo = _getClientModeExitInfo(lanState);
+
+    final confirmed = await _showExitConfirmDialog(
+      title: '确认退出',
+      content: exitInfo.content,
+      actionText: exitInfo.actionText,
+      isDestructive: true,
+    );
+
+    if (confirmed == true) {
+      await _executeClientModeExit();
+    }
+  }
+
+  /// 获取客户端模式退出信息
+  ({String content, String actionText}) _getClientModeExitInfo(dynamic lanState) {
+    if (lanState.isConnected) {
+      return (
+        content: '退出当前页面将会断开与主机的连接，确定要退出吗？',
+        actionText: '断开并退出'
+      );
+    } else if (lanState.isReconnecting) {
+      return (
+        content: '当前正在重连中，退出将停止重连并退出客户端模式，确定要退出吗？',
+        actionText: '停止重连并退出'
+      );
+    } else {
+      return (
+        content: '退出当前页面将退出客户端模式，确定要退出吗？',
+        actionText: '退出客户端模式'
+      );
+    }
+  }
+
+  /// 执行客户端模式退出
+  Future<void> _executeClientModeExit() async {
+    try {
+      // 使用exitClientMode来完全退出客户端模式
+      await ref.read(lanProvider.notifier).exitClientMode();
+      ref.invalidate(scoreProvider);
+
+      if (mounted && context.mounted) {
+        // 修复：客户端断开连接时返回到带有底部导航栏的主界面
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/main',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '客户端模式退出失败');
+    }
+  }
+
+  /// 处理主机模式退出
+  Future<void> _handleHostModeExit(dynamic lanState) async {
+    final exitInfo = _getHostModeExitInfo(lanState);
+
+    final confirmed = await _showExitConfirmDialog(
+      title: '确认离开',
+      content: exitInfo.content,
+      actionText: exitInfo.actionText,
+      isDestructive: true,
+    );
+
+    if (confirmed == true) {
+      await _executeHostModeExit();
+    }
+  }
+
+  /// 获取主机模式退出信息
+  ({String content, String actionText}) _getHostModeExitInfo(dynamic lanState) {
+    if (lanState.connectedClientIps.isNotEmpty) {
+      return (
+        content: '离开此页面将停止主机服务，所有连接的客户端（${lanState.connectedClientIps.length}个）将断开连接，确定要离开吗？',
+        actionText: '确认离开'
+      );
+    } else {
+      return (
+        content: '离开此页面将停止主机服务，确定要离开吗？',
+        actionText: '确认离开'
+      );
+    }
+  }
+
+  /// 执行主机模式退出
+  Future<void> _executeHostModeExit() async {
+    try {
+      // 停止主机服务
+      await ref.read(lanProvider.notifier).disposeManager();
+      ref.showSuccess('已停止主机服务');
+
+      if (mounted) {
+        globalState.navigatorKey.currentState?.pop();
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '主机模式退出失败');
+    }
+  }
+
+  /// 处理单机模式退出
+  Future<void> _handleStandaloneModeExit() async {
+    final confirmed = await _showExitConfirmDialog(
+      title: '确认退出',
+      content: '确定要退出当前游戏吗？',
+      actionText: '确认退出',
+      isDestructive: false,
+    );
+
+    if (confirmed == true) {
+      await _executeStandaloneModeExit();
+    }
+  }
+
+  /// 执行单机模式退出
+  Future<void> _executeStandaloneModeExit() async {
+    try {
+      if (mounted) {
+        globalState.navigatorKey.currentState?.pop();
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '单机模式退出失败');
+    }
+  }
+
+  /// 显示通用的退出确认对话框
+  Future<bool?> _showExitConfirmDialog({
+    required String title,
+    required String content,
+    required String actionText,
+    required bool isDestructive,
+  }) async {
+    return await globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(true),
+            style: isDestructive
+                ? TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  )
+                : null,
+            child: Text(actionText),
+          ),
+        ],
+      ),
+    );
   }
 }

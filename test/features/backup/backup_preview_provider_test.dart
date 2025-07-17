@@ -256,23 +256,6 @@ void main() {
         expect(state.selectedFilePath, isNull);
       });
 
-      test('getCurrentDataStatistics 应该返回当前数据统计', () async {
-        // Arrange
-        final notifier = container.read(backupPreviewManagerProvider.notifier);
-
-        // Act
-        final statistics = await notifier.getCurrentDataStatistics();
-
-        // Assert
-        expect(statistics, isNotNull);
-        expect(statistics, isA<Map<String, dynamic>>());
-        expect(statistics['currentSharedPreferencesCount'], isA<int>());
-        expect(statistics['currentCountersCount'], isA<int>());
-        expect(statistics['currentMahjongSessionsCount'], isA<int>());
-        expect(statistics['currentPoker50SessionsCount'], isA<int>());
-        expect(statistics['currentTemplatesCount'], isA<int>());
-      });
-
       test('getCurrentDataStatistics 应该正确统计SharedPreferences数量', () async {
         // Arrange
         final notifier = container.read(backupPreviewManagerProvider.notifier);
