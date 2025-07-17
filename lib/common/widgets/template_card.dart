@@ -3,7 +3,9 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/mahjong.dart';
+import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/util.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
@@ -16,6 +18,7 @@ import 'package:counters/features/template/template_provider.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 /// 可复用的模板卡片组件
 ///
@@ -177,6 +180,14 @@ class TemplateCard extends ConsumerWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              ListTile(
+                title: const Text('快速体验'),
+                leading: const Icon(Icons.flash_on),
+                onTap: () {
+                  globalState.navigatorKey.currentState?.pop();
+                  _handleQuickStart(context, ref);
+                },
+              ),
               ListTile(
                 title: const Text('另存新模板'),
                 leading: const Icon(Icons.edit),
@@ -342,6 +353,135 @@ class TemplateCard extends ConsumerWidget {
         ),
       );
     }
+  }
+
+  // 快速体验处理方法
+  void _handleQuickStart(BuildContext context, WidgetRef ref) {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: const Text('快速体验'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('即将使用以下设置开始计分：'),
+            const SizedBox(height: 12),
+            Text('• 模板：${template.templateName}'),
+            Text('• 玩家数量：${template.playerCount}'),
+            Text('• 目标分数：${template.targetScore}'),
+            Text('• 玩家名称：${_generatePlayerNames(template.playerCount).join('、')}'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withAlpha((0.1 * 255).toInt()),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.orange.withAlpha((0.3 * 255).toInt()),
+                ),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                      SizedBox(width: 4),
+                      Text('注意事项', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Text('• 此模式下的计分数据为临时数据，仅适用于快速体验', style: TextStyle(fontSize: 12)),
+                  Text('• 退出计分界面后，所有数据将自动丢失', style: TextStyle(fontSize: 12)),
+                  Text('• 如需正常计分，请使用"另存新模板"功能', style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              globalState.navigatorKey.currentState?.pop();
+              await _startQuickGame(context, ref);
+            },
+            child: const Text('开始计分'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 生成默认玩家名称
+  List<String> _generatePlayerNames(int playerCount) {
+    return List.generate(playerCount, (index) => '玩家${index + 1}');
+  }
+
+  // 开始快速游戏
+  Future<void> _startQuickGame(BuildContext context, WidgetRef ref) async {
+    try {
+      final scoreState = await ref.watch(scoreProvider.future);
+      if (!context.mounted) return;
+
+      if (scoreState.currentSession != null) {
+        globalState.showCommonDialog(
+          child: AlertDialog(
+            title: const Text('无法开始新计分'),
+            content: const Text('当前已有正在进行的计分，请先完成当前计分后再开始新的计分。'),
+            actions: [
+              TextButton(
+                child: const Text('确认'),
+                onPressed: () => globalState.navigatorKey.currentState?.pop(),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // 创建临时模板副本，使用默认玩家信息
+      final tempTemplate = _createTempTemplate();
+
+      // 将临时模板添加到模板提供者中（仅在内存中）
+      await ref.read(templatesProvider.notifier).addTempTemplate(tempTemplate);
+
+      // 开始临时计分会话
+      ref.read(scoreProvider.notifier).startTempGame(tempTemplate);
+
+      if (!context.mounted) return;
+      Navigator.of(context).push(
+        CustomPageTransitions.slideFromRight(
+          HomePage.buildSessionPage(tempTemplate, tempTemplate.tid),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        ),
+      );
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '快速体验失败');
+    }
+  }
+
+  // 创建临时模板
+  BaseTemplate _createTempTemplate() {
+    // 生成默认玩家信息
+    final defaultPlayers = List.generate(
+      template.playerCount,
+      (index) => PlayerInfo(
+        name: '玩家${index + 1}',
+        avatar: 'default_avatar.png',
+      ),
+    );
+
+    // 创建临时模板副本
+    return template.copyWith(
+      tid: 'temp_${const Uuid().v4()}',
+      players: defaultPlayers,
+      isSystemTemplate: false,
+    );
   }
 
   // 导航到配置页面的方法

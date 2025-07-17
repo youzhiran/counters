@@ -6,6 +6,7 @@ import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
@@ -204,7 +205,40 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
               children: [
                 Scaffold(
                   appBar: AppBar(
-                    title: Text(template.templateName),
+                    leading: scoreState.isTempMode
+                        ? IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => _handleTempModeExit(context),
+                          )
+                        : null,
+                    automaticallyImplyLeading: !scoreState.isTempMode,
+                    title: Row(
+                      children: [
+                        Expanded(child: Text(template.templateName)),
+                        if (scoreState.isTempMode)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color:
+                                  Colors.orange.withAlpha((0.2 * 255).toInt()),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.orange
+                                    .withAlpha((0.5 * 255).toInt()),
+                              ),
+                            ),
+                            child: const Text(
+                              '临时',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                     actions: [
                       // 显示LAN状态图标：主机模式、已连接的客户端、或处于客户端模式（包括重连状态）
                       LanStatusButton(),
@@ -303,8 +337,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                           ),
                           PopupMenuItem<String>(
                             value: 'lan_conn',
-                            enabled: !lanState.isConnected &&
-                                !lanState.isClientMode,
+                            enabled:
+                                !lanState.isConnected && !lanState.isClientMode,
                             child: Row(
                               children: [
                                 Icon(
@@ -327,8 +361,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                           ),
                           PopupMenuItem<String>(
                             value: 'lan_discovery',
-                            enabled:
-                                !lanState.isHost && !lanState.isClientMode,
+                            enabled: !lanState.isHost && !lanState.isClientMode,
                             child: Row(
                               children: [
                                 Icon(Icons.search,
@@ -407,7 +440,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           .then((_) {
         // 检查启动是否真正成功（通过检查状态）
         final currentLanState = ref.read(lanProvider);
-        if (currentLanState.isHost && !currentLanState.connectionStatus.contains('被占用') && !currentLanState.connectionStatus.contains('启动失败')) {
+        if (currentLanState.isHost &&
+            !currentLanState.connectionStatus.contains('被占用') &&
+            !currentLanState.connectionStatus.contains('启动失败')) {
           ref.showSuccess('主机已启动，等待客户端连接');
         }
         // 如果启动失败，错误消息已经在 lan_provider.dart 中显示了，这里不需要重复显示
@@ -645,33 +680,60 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     );
   }
 
-  /// 显示总分编辑弹窗（适用于Counter等累计分数的游戏）
-  ///
-  /// [player] 玩家信息
-  /// [currentScore] 当前总分
-  /// [title] 弹窗标题，默认为"修改总分数"
-  /// [inputLabel] 输入框标签，默认为"输入总分数"
-  void showTotalScoreEditDialog({
-    required PlayerInfo player,
-    required int currentScore,
-    String? title,
-    String? inputLabel,
-  }) {
-    final scoreNotifier = ref.read(scoreProvider.notifier);
+  /// 处理临时模式退出
+  void _handleTempModeExit(BuildContext context) {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: const Text('退出临时计分'),
+        content: const Text('退出后，当前的计分数据将会丢失，确定要退出吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              globalState.navigatorKey.currentState?.pop();
 
-    showScoreEditDialog(
-      player: player,
-      initialValue: currentScore,
-      title: title ?? '修改总分数',
-      inputLabel: inputLabel ?? '输入总分数',
-      supportDecimal: false,
-      onConfirm: (newValue) {
-        // 更新玩家的总分数
-        // 注意：这里需要根据 ScoreProvider 的实际API来调用
-        // 临时方案：模拟更新第一个回合的分数，以影响总分
-        scoreNotifier.updateScore(player.pid, 0, newValue);
-        ref.read(scoreProvider.notifier).updateHighlight();
-      },
+              // 检查并断开联机连接
+              await _handleNetworkDisconnection();
+
+              // 重置游戏状态（不保存历史）
+              ref.read(scoreProvider.notifier).resetGame(false);
+
+              // 返回到上一个页面（保持底部导航）
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('确定退出'),
+          ),
+        ],
+      ),
     );
+  }
+
+  /// 处理网络连接断开
+  Future<void> _handleNetworkDisconnection() async {
+    try {
+      final lanState = ref.read(lanProvider);
+
+      if (lanState.isHost) {
+        Log.i('临时计分退出：检测到主机模式，正在断开联机连接');
+        // 主机模式：停止服务并断开所有客户端
+        await ref.read(lanProvider.notifier).disposeManager();
+        Log.i('临时计分退出：主机连接已断开');
+      } else if (lanState.isConnected) {
+        Log.i('临时计分退出：检测到客户端模式，正在断开联机连接');
+        // 客户端模式：断开与主机的连接
+        await ref.read(lanProvider.notifier).disposeManager();
+        Log.i('临时计分退出：客户端连接已断开');
+      } else {
+        Log.i('临时计分退出：当前未处于联机状态，无需断开连接');
+      }
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '临时计分退出时断开网络连接失败');
+    }
   }
 }

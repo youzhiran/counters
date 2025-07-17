@@ -49,6 +49,7 @@ class ScoreState {
   final MapEntry<String, int>? currentHighlight;
   final bool showGameEndDialog;
   final List<PlayerInfo> players;
+  final bool isTempMode; // 是否为临时计分模式
 
   const ScoreState({
     this.currentSession,
@@ -57,6 +58,7 @@ class ScoreState {
     this.currentHighlight,
     this.showGameEndDialog = false,
     this.players = const [],
+    this.isTempMode = false,
   });
 
   ScoreState copyWith({
@@ -66,6 +68,7 @@ class ScoreState {
     MapEntry<String, int>? currentHighlight,
     bool? showGameEndDialog,
     List<PlayerInfo>? players,
+    bool? isTempMode,
   }) {
     return ScoreState(
       currentSession: currentSession ?? this.currentSession,
@@ -74,13 +77,14 @@ class ScoreState {
       currentHighlight: currentHighlight ?? this.currentHighlight,
       showGameEndDialog: showGameEndDialog ?? this.showGameEndDialog,
       players: players ?? this.players,
+      isTempMode: isTempMode ?? this.isTempMode,
     );
   }
 
   @override
   String toString() {
     return 'ScoreState{currentSession: $currentSession, currentRound: $currentRound, '
-        'isInitialized: $isInitialized, currentHighlight: $currentHighlight, showGameEndDialog: $showGameEndDialog, players: ${players.length} players}';
+        'isInitialized: $isInitialized, currentHighlight: $currentHighlight, showGameEndDialog: $showGameEndDialog, players: ${players.length} players, isTempMode: $isTempMode}';
   }
 }
 
@@ -160,11 +164,12 @@ class Score extends _$Score {
         currentRound: currentRound,
         isInitialized: true,
         players: initialPlayers, // initialPlayers 可能为空
+        isTempMode: false,
       );
     }
 
     Log.d('ScoreNotifier: 未找到活动会话。返回默认 ScoreState。');
-    return const ScoreState(isInitialized: true, players: []);
+    return const ScoreState(isInitialized: true, players: [], isTempMode: false);
   }
 
   Future<void> clearAllHistory() async {
@@ -176,6 +181,7 @@ class Score extends _$Score {
       currentHighlight: null,
       showGameEndDialog: false,
       players: [],
+      isTempMode: false,
     ));
     _broadcastResetGame();
   }
@@ -213,17 +219,25 @@ class Score extends _$Score {
       currentHighlight: null,
       showGameEndDialog: false,
       players: [], // 清空玩家信息
+      isTempMode: false,
     ));
   }
 
   Future<void> _saveSession() async {
+    final currentState = state.valueOrNull;
+
+    // 临时模式下不保存会话到本地数据库
+    if (currentState?.isTempMode == true) {
+      Log.i('临时计分模式：跳过会话保存，数据仅保存在内存中');
+      return;
+    }
+
     // 修复：客户端模式下不保存会话到本地数据库
     if (_isClientMode()) {
       Log.i('客户端模式：跳过会话保存，数据仅保存在内存中');
       return;
     }
 
-    final currentState = state.valueOrNull;
     if (currentState?.currentSession == null) return;
     final sessionToSave = currentState!.currentSession!;
     await _sessionDao.saveGameSession(sessionToSave);
@@ -260,7 +274,7 @@ class Score extends _$Score {
       _broadcastResetGame();
     } else {
       state = AsyncData(
-          currentState ?? const ScoreState(isInitialized: true, players: []));
+          currentState ?? const ScoreState(isInitialized: true, players: [], isTempMode: false));
     }
   }
 
@@ -279,7 +293,7 @@ class Score extends _$Score {
       _broadcastResetGame();
     } else {
       state = AsyncData(
-          currentState ?? const ScoreState(isInitialized: true, players: []));
+          currentState ?? const ScoreState(isInitialized: true, players: [], isTempMode: false));
     }
   }
 
@@ -309,6 +323,7 @@ class Score extends _$Score {
       currentRound: 0,
       isInitialized: true,
       players: validatedPlayers,
+      isTempMode: false,
     ));
 
     updateHighlight();
@@ -316,6 +331,46 @@ class Score extends _$Score {
     if (lanState.isHost) {
       _broadcastPlayerInfo(validatedPlayers);
       _broadcastSyncState(newSession);
+    }
+  }
+
+  /// 开始临时计分游戏（快速体验模式）
+  void startTempGame(BaseTemplate template) {
+    final validatedPlayers = template.players
+        .map((p) => p.pid.isEmpty ? p.copyWith(pid: const Uuid().v4()) : p)
+        .toList();
+
+    final newSession = GameSession.newSession(
+      templateId: template.tid,
+      scores: validatedPlayers
+          .map((p) => PlayerScore(
+                playerId: p.pid,
+                roundScores: [],
+              ))
+          .toList(),
+      startTime: DateTime.now(),
+    );
+
+    state = AsyncData(ScoreState(
+      currentSession: newSession,
+      currentRound: 0,
+      isInitialized: true,
+      players: validatedPlayers,
+      isTempMode: true, // 标记为临时模式
+    ));
+
+    updateHighlight();
+    // 临时模式下不进行网络广播
+    Log.i('临时计分模式：已开始，数据不会保存到本地存储');
+  }
+
+  /// 清理临时模板
+  Future<void> _cleanupTempTemplate(String templateId) async {
+    try {
+      await ref.read(templatesProvider.notifier).removeTempTemplate(templateId);
+      Log.i('临时模板已清理: $templateId');
+    } catch (e) {
+      Log.w('清理临时模板失败: $templateId, 错误: $e');
     }
   }
 
@@ -544,10 +599,15 @@ class Score extends _$Score {
 
     final currentState = state.valueOrNull;
 
+    // 临时模式下不保存历史记录
+    if (saveToHistory && currentState?.isTempMode == true) {
+      Log.i('临时计分模式：跳过游戏历史保存，数据仅在内存中');
+    }
     // 修复：客户端模式下不保存历史记录到本地数据库
-    if (saveToHistory &&
+    else if (saveToHistory &&
         currentState?.currentSession != null &&
-        !_isClientMode()) {
+        !_isClientMode() &&
+        currentState?.isTempMode != true) {
       final sessionToSave = currentState!.currentSession!;
       final completedSession = sessionToSave.copyWith(
         isCompleted: true,
@@ -559,6 +619,14 @@ class Score extends _$Score {
       Log.i('客户端模式：跳过游戏历史保存，数据仅在内存中');
     }
 
+    // 如果是临时模式，清理临时模板
+    if (currentState?.isTempMode == true && currentState?.currentSession != null) {
+      final templateId = currentState!.currentSession!.templateId;
+      if (templateId.startsWith('temp_')) {
+        await _cleanupTempTemplate(templateId);
+      }
+    }
+
     state = AsyncData(const ScoreState(
       currentSession: null,
       currentRound: 0,
@@ -566,6 +634,7 @@ class Score extends _$Score {
       currentHighlight: null,
       showGameEndDialog: false,
       players: [],
+      isTempMode: false,
     ));
 
     _broadcastResetGame();
@@ -595,6 +664,7 @@ class Score extends _$Score {
       currentHighlight: null,
       showGameEndDialog: false,
       players: sessionPlayers,
+      isTempMode: false,
     ));
     updateHighlight();
     final lanState = ref.read(lanProvider);
@@ -755,7 +825,7 @@ class Score extends _$Score {
       state = AsyncData(newState);
     } else {
       Log.w('ScoreNotifier applyPlayerInfo: 当前状态为空，将创建一个仅包含玩家信息的新状态');
-      state = AsyncData(ScoreState(players: players, isInitialized: true));
+      state = AsyncData(ScoreState(players: players, isInitialized: true, isTempMode: false));
     }
   }
 
@@ -790,6 +860,7 @@ class Score extends _$Score {
           // 明确设置玩家信息
           showGameEndDialog: false,
           currentHighlight: null,
+          isTempMode: false,
         );
 
     // 使用 AsyncData 包装新状态，确保不触发重建
@@ -937,6 +1008,7 @@ class Score extends _$Score {
       currentHighlight: null,
       showGameEndDialog: false,
       players: [], // 重置时清空玩家列表
+      isTempMode: false,
     ));
   }
 

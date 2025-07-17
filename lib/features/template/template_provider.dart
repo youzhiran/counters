@@ -200,6 +200,22 @@ class Templates extends _$Templates {
     }
   }
 
+  /// 添加临时模板（仅在内存中，不保存到数据库）
+  Future<void> addTempTemplate(BaseTemplate template) async {
+    final currentTemplates = state.valueOrNull ?? [];
+    final updatedTemplates = [...currentTemplates, template];
+    state = AsyncData(updatedTemplates);
+    Log.i('临时模板已添加到内存中: ${template.tid}');
+  }
+
+  /// 移除临时模板（仅从内存中移除）
+  Future<void> removeTempTemplate(String templateId) async {
+    final currentTemplates = state.valueOrNull ?? [];
+    final updatedTemplates = currentTemplates.where((t) => t.tid != templateId).toList();
+    state = AsyncData(updatedTemplates);
+    Log.i('临时模板已从内存中移除: $templateId');
+  }
+
   // 新增：强制刷新模板列表
   Future<void> refreshTemplates() async {
     // 修复：客户端模式下不要重新从数据库加载，避免覆盖内存中的临时模板
