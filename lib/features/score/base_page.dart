@@ -218,6 +218,10 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                               );
                               break;
                             case 'reset_game':
+                              if (scoreState.isTempMode) {
+                                ref.showWarning('临时计分模式下不可重置游戏');
+                                break;
+                              }
                               showResetConfirmation(context);
                               break;
                             case 'lan_debug':
@@ -313,6 +317,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                             ),
                             PopupMenuItem<String>(
                               value: 'reset_game',
+                              enabled: !scoreState.isTempMode,
                               child: Row(
                                 children: [
                                   Icon(Icons.restart_alt_rounded),
