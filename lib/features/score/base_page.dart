@@ -692,6 +692,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   /// 处理退出请求的主入口
   Future<void> _handleExitRequest() async {
     try {
+      // 临时计分模式优先级最高，优先处理
+      final scoreState = ref.read(scoreProvider);
+      if (scoreState.value?.isTempMode == true) {
+        _handleTempModeExit(context);
+        return;
+      }
+
       final lanState = ref.read(lanProvider);
 
       if (_isClientMode(lanState)) {

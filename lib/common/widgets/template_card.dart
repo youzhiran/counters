@@ -223,20 +223,7 @@ class TemplateCard extends ConsumerWidget {
                   if (!context.mounted) return;
 
                   if (scoreState.currentSession != null) {
-                    globalState.showCommonDialog(
-                      child: AlertDialog(
-                        title: const Text('无法开始新计分'),
-                        content: const Text('当前已有正在进行的计分，请先完成当前计分后再开始新的计分。'),
-                        actions: [
-                          TextButton(
-                            child: const Text('确认'),
-                            onPressed: () => globalState
-                                .navigatorKey.currentState
-                                ?.pop(context),
-                          ),
-                        ],
-                      ),
-                    );
+                    showAlreadyDialog();
                     return;
                   }
                   ref.read(scoreProvider.notifier).startNewGame(template);
@@ -369,7 +356,8 @@ class TemplateCard extends ConsumerWidget {
             Text('• 模板：${template.templateName}'),
             Text('• 玩家数量：${template.playerCount}'),
             Text('• 目标分数：${template.targetScore}'),
-            Text('• 玩家名称：${_generatePlayerNames(template.playerCount).join('、')}'),
+            Text(
+                '• 玩家名称：${_generatePlayerNames(template.playerCount).join('、')}'),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -387,11 +375,15 @@ class TemplateCard extends ConsumerWidget {
                     children: [
                       Icon(Icons.info_outline, color: Colors.orange, size: 16),
                       SizedBox(width: 4),
-                      Text('注意事项', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                      Text('注意事项',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange)),
                     ],
                   ),
                   SizedBox(height: 4),
-                  Text('• 此模式下的计分数据为临时数据，仅适用于快速体验', style: TextStyle(fontSize: 12)),
+                  Text('• 此模式下的计分数据为临时数据，仅适用于快速体验',
+                      style: TextStyle(fontSize: 12)),
                   Text('• 退出计分界面后，所有数据将自动丢失', style: TextStyle(fontSize: 12)),
                   Text('• 如需正常计分，请使用"另存新模板"功能', style: TextStyle(fontSize: 12)),
                 ],
@@ -428,18 +420,7 @@ class TemplateCard extends ConsumerWidget {
       if (!context.mounted) return;
 
       if (scoreState.currentSession != null) {
-        globalState.showCommonDialog(
-          child: AlertDialog(
-            title: const Text('无法开始新计分'),
-            content: const Text('当前已有正在进行的计分，请先完成当前计分后再开始新的计分。'),
-            actions: [
-              TextButton(
-                child: const Text('确认'),
-                onPressed: () => globalState.navigatorKey.currentState?.pop(),
-              ),
-            ],
-          ),
-        );
+        showAlreadyDialog();
         return;
       }
 
@@ -463,6 +444,21 @@ class TemplateCard extends ConsumerWidget {
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '快速体验失败');
     }
+  }
+
+  void showAlreadyDialog() {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: const Text('无法开始新计分'),
+        content: const Text('当前已有正在进行的计分，请前往主页完成当前计分后再开始新的计分。'),
+        actions: [
+          TextButton(
+            child: const Text('确认'),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
+          ),
+        ],
+      ),
+    );
   }
 
   // 创建临时模板
