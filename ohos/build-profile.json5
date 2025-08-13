@@ -1,0 +1,52 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "storeFile": "C:/MyFile/key/yooyi.p12",
+          "storePassword": "0000001A0FE9CF123BF62C3AF8239FA6DEDB3723CBE41BE5E790A6C7355200D20B482D4A0B52CD43A518",
+          "keyAlias": "yooyi",
+          "keyPassword": "0000001A752EFB496C358106AD04DEA9AFE3B0D417CDE4267722EB9BF1A0DF76BAAE15D27B6E377A914E",
+          "signAlg": "SHA256withECDSA",
+          "profile": "C:/MyFile/key/counters-yooyi-rRelease.p7b",
+          "certpath": "C:/MyFile/key/yooyi.cer"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS"
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "profile"
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

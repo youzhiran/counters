@@ -52,7 +52,7 @@ class LanStatusBottomSheet extends ConsumerWidget {
               color: Theme.of(context)
                   .colorScheme
                   .onSurfaceVariant
-                  .withValues(alpha: 0.4),
+                  .withOpacity(0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -136,10 +136,10 @@ class _StatusCard extends StatelessWidget {
         color: Theme.of(context)
             .colorScheme
             .surfaceContainerHighest
-            .withValues(alpha: 0.3),
+            .withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: statusColor.withValues(alpha: 0.3),
+          color: statusColor.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -148,7 +148,7 @@ class _StatusCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
+              color: statusColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(statusIcon, color: statusColor, size: 20),
@@ -237,7 +237,7 @@ class _NetworkInfoCard extends ConsumerWidget {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
         ),
       ),
       child: Column(
@@ -339,7 +339,7 @@ class _NetworkInfoCard extends ConsumerWidget {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
         ),
         borderRadius: BorderRadius.circular(6),
       ),
@@ -525,7 +525,7 @@ class _HostInfoCard extends ConsumerWidget {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
         ),
       ),
       child: Column(
@@ -579,7 +579,7 @@ class _HostInfoCard extends ConsumerWidget {
                 color: Theme.of(context)
                     .colorScheme
                     .surfaceContainerHighest
-                    .withValues(alpha: 0.3),
+                    .withOpacity(0.3),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Column(
@@ -614,7 +614,7 @@ class _HostInfoCard extends ConsumerWidget {
                 color: Theme.of(context)
                     .colorScheme
                     .outline
-                    .withValues(alpha: 0.2),
+                    .withOpacity(0.2),
               ),
               borderRadius: BorderRadius.circular(6),
             ),

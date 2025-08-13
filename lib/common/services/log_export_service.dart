@@ -7,7 +7,7 @@ import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/platform_utils.dart';
 import 'package:counters/common/widgets/export_config_dialog.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 

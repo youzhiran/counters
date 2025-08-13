@@ -223,7 +223,7 @@ class _PingWidgetState extends ConsumerState<PingWidget>
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: _shadowAnimation.value,
                         offset: const Offset(0, 2),
                       ),
@@ -315,17 +315,17 @@ class _PingWidgetState extends ConsumerState<PingWidget>
   Color _getPingBackgroundColor(PingStatus status) {
     switch (status) {
       case PingStatus.excellent:
-        return Colors.green.withValues(alpha: 0.9);
+        return Colors.green.withOpacity(0.9);
       case PingStatus.good:
-        return Colors.lightGreen.withValues(alpha: 0.9);
+        return Colors.lightGreen.withOpacity(0.9);
       case PingStatus.fair:
-        return Colors.orange.withValues(alpha: 0.9);
+        return Colors.orange.withOpacity(0.9);
       case PingStatus.poor:
-        return Colors.red.withValues(alpha: 0.9);
+        return Colors.red.withOpacity(0.9);
       case PingStatus.error:
-        return Colors.red.withValues(alpha: 0.9);
+        return Colors.red.withOpacity(0.9);
       case PingStatus.unknown:
-        return Colors.grey.withValues(alpha: 0.9);
+        return Colors.grey.withOpacity(0.9);
     }
   }
 
