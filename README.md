@@ -1,6 +1,6 @@
-# 计分板
+# 计分板 - 鸿蒙分支
 
-一个flutter计分板应用，支持多平台运行。推荐使用 Android 体验，其他平台尚未完整测试。
+flutter计分板应用，支持多平台运行。
 
 个人学习作品。本大量项目使用 ai 辅助编程，代码中注释可能由ai生成，仅供参考。
 
@@ -8,6 +8,17 @@
 _想要快速了解本项目？可查看 DeepWiki ：_
  
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/youzhiran/counters)
+
+
+
+## 鸿蒙分支注意事项
+
+### todo & 已知问题
+
+- 鸿蒙分支不能在其他平台运行
+- 联网功能删除
+
+
 
 ## 程序主要功能与截图
 

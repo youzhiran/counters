@@ -77,7 +77,7 @@ class ThemeNotifier extends Notifier<ThemeState> {
   // 设置主题颜色
   Future<void> setThemeColor(Color color) async {
     final prefs = await _ensurePrefs();
-    await prefs.setInt('themeColor', color.toARGB32());
+    await prefs.setInt('themeColor', color.value);
     state = state.copyWith(themeColor: color);
   }
 

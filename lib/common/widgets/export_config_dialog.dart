@@ -1,5 +1,6 @@
 import 'package:counters/app/state.dart';
-import 'package:file_picker/file_picker.dart';
+// import 'package:file_picker/file_picker.dart';
+import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:flutter/material.dart';
 
 /// 通用导出配置对话框
