@@ -205,7 +205,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 SettingSwitchListTile(
                   icon: Icons.desktop_windows,
                   title: '启用桌面模式适配',
-                  subtitle: '测试中功能，启用并重启后程序支持横屏界面',
+                  subtitle: '启用并重启后程序支持横屏界面',
                   value: _enableDesktopMode,
                   onChanged: _saveDesktopModeSetting,
                 ),
@@ -309,12 +309,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     AboutPage.showAsSideSheet(context);
                   },
                 ),
-                SettingListTile(
-                  icon: Icons.chat,
-                  title: '一起划水',
-                  subtitle: '朋友快来玩呀',
-                  onTap: _handleJoinChatTap,
-                ),
+                if (!PlatformUtils.isOhosPlatformSync())
+                  SettingListTile(
+                    icon: Icons.chat,
+                    title: '一起划水',
+                    subtitle: '朋友快来玩呀',
+                    onTap: _handleJoinChatTap,
+                  ),
                 SettingListTile(
                   icon: Icons.bug_report,
                   title: '问题反馈',
@@ -385,8 +386,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                '版本 $_versionName($_versionCode)\n'
-                'Tip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除应用数据/重置应用数据库/重装程序。',
+                '版本 $_versionName($_versionCode)',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey[600],

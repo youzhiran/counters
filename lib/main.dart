@@ -141,6 +141,10 @@ void main() async {
 
 /// 在应用启动时根据设置检查更新
 Future<void> _checkUpdateOnStartup(ProviderContainer container) async {
+  if (PlatformUtils.isOhosPlatformSync()) {
+    Log.d('鸿蒙平台不检查更新');
+    return;
+  }
   try {
     // 延迟一段时间，确保应用完全启动
     await Future.delayed(const Duration(seconds: 2));

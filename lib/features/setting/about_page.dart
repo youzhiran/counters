@@ -1,5 +1,7 @@
 import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
+import 'package:counters/common/utils/platform_utils.dart';
+import 'package:counters/features/setting/privacy_policy_page.dart';
 import 'package:counters/version.dart'; // 导入版本信息文件
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -156,18 +158,23 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
-              Text(
-                '版本 $_versionName($_versionCode)\n'
-                'Git版本号: $gitCommit\n'
-                '编译时间: $buildTime',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              Text('版本: $_versionName($_versionCode)'),
+              if (!PlatformUtils.isOhosPlatformSync())
+                Text(
+                  'Git版本号: $gitCommit\n'
+                  '编译时间: $buildTime',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               const SizedBox(height: 12),
               Text(
                 '本应用部分图标来自\n'
                 'www.freeicons.org\n\n'
                 '© 2025 counters.devyi.com',
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Text(
+                '\nTip：1.0版本前程序更新不考虑数据兼容性，若出现异常请清除应用数据/重置应用数据库/重装程序。',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),
@@ -178,10 +185,31 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
         _buildListTile(
           icon: Icons.privacy_tip_outlined,
           title: '隐私政策',
-          onTap: () => globalState.openUrl(
-            Config.urlPrivacyPolicy,
-            '点击前往查看隐私政策',
-          ),
+          onTap: () {
+            if (!PlatformUtils.isOhosPlatformSync()) {
+              globalState.openUrl(
+                Config.urlPrivacyPolicy,
+                '点击前往查看隐私政策',
+              );
+            } else if (globalState.isDesktopMode(context)) {
+              // 桌面模式：使用侧边栏显示
+              SideSheet.right(
+                context: context,
+                width: MediaQuery.of(context).size.width * 0.4,
+                body: const PrivacyPolicyPage(),
+                barrierDismissible: true,
+                sheetBorderRadius: 0,
+              );
+            } else {
+              // 移动模式：使用全屏导航
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PrivacyPolicyPage(),
+                ),
+              );
+            }
+          },
         ),
 
         // 开发者网站列表项

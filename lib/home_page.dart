@@ -235,7 +235,7 @@ class HomePage extends ConsumerWidget {
         return '客户端模式 (已断开)';
       }
     } else {
-      return '连接到局域网计分(Beta)';
+      return '连接到局域网计分';
     }
   }
 

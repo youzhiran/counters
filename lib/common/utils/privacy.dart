@@ -5,10 +5,13 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/providers/privacy_version_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/platform_utils.dart';
+import 'package:counters/features/setting/privacy_policy_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 // 友盟SDK相关导入已注释 - 友盟功能已禁用
 // import 'package:umeng_common_sdk/umeng_common_sdk.dart';
 
@@ -42,14 +45,15 @@ class PrivacyUtil {
       } else {
         Log.d('用户已同意最新版本隐私政策，跳过弹窗');
       }
-
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '隐私政策处理错误');
     }
   }
 
   /// 显示隐私政策弹窗
-  static Future<void> _showPrivacyDialog(BuildContext context, ProviderContainer container, {bool isUpdate = false}) async {
+  static Future<void> _showPrivacyDialog(
+      BuildContext context, ProviderContainer container,
+      {bool isUpdate = false}) async {
     final String title = isUpdate ? '隐私政策已更新' : '隐私政策';
     final String content = isUpdate
         ? '欢迎您使用 Counters ！本次我们更新了隐私政策。我们非常重视用户的隐私和个人信息保护。您在使用我们的产品与/或服务时，我们可能会收集和使用您的相关信息。我们希望通过本《隐私政策》向您清晰地介绍我们对您个人信息的处理方式，因此我们建议您完整地阅读本政策，以帮助您了解维护自己隐私权的方式。'
@@ -62,17 +66,25 @@ class PrivacyUtil {
         actions: <Widget>[
           TextButton(
             onPressed: () {
-              globalState.openUrl(
-                Config.urlPrivacyPolicy,
-                '查看隐私政策',
-              );
+              if (PlatformUtils.isOhosPlatformSync()) {
+                // 鸿蒙平台：打开应用内隐私政策页面
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const PrivacyPolicyPage(),
+                  ),
+                );
+              } else {
+                globalState.openUrl(
+                  Config.urlPrivacyPolicy,
+                  '查看隐私政策',
+                );
+              }
             },
             child: const Text('查看隐私政策'),
           ),
           TextButton(
-            onPressed: () =>
-                globalState.navigatorKey.currentState?.pop(false),
-            child: const Text('不同意'),
+            onPressed: () => globalState.navigatorKey.currentState?.pop(false),
+            child: const Text('拒绝'),
           ),
           TextButton(
             onPressed: () => globalState.navigatorKey.currentState?.pop(true),
@@ -99,10 +111,13 @@ class PrivacyUtil {
         await privacyNotifier.savePrivacyAgreement(currentTimestamp);
         Log.i('已保存【当前】时间戳作为隐私政策同意时间: $currentTimestamp');
       }
-
     } else if (result == false) {
-      Log.w('用户明确拒绝隐私政策，退出应用');
-      await _exitApplication();
+      if (PlatformUtils.isOhosPlatformSync()){
+        Log.w('鸿蒙版 - 用户明确拒绝隐私政策，继续运行');
+      } else {
+        Log.w('用户明确拒绝隐私政策，退出应用');
+        await _exitApplication();
+      }
     } else {
       // result == null，用户可能通过返回键或其他方式关闭了弹窗
       Log.w('用户未做选择或关闭了隐私政策弹窗，退出应用');
@@ -189,9 +204,9 @@ class PrivacyUtil {
     }
   }
 
-  // 友盟事件追踪方法已注释 - 友盟功能已禁用
-  // static onEvent(String event, Map<String, Object> properties) {
-  //   if (!_isMobile) return;
-  //   UmengCommonSdk.onEvent(event, properties);
-  // }
+// 友盟事件追踪方法已注释 - 友盟功能已禁用
+// static onEvent(String event, Map<String, Object> properties) {
+//   if (!_isMobile) return;
+//   UmengCommonSdk.onEvent(event, properties);
+// }
 }
