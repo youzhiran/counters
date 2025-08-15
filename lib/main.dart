@@ -48,7 +48,11 @@ void main() async {
   };
 
   // 按平台初始化
-  if (Platform.isAndroid) {
+  if (Platform.operatingSystem == 'ohos') {
+    // await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
+    sqfliteFfiInit();
+    Log.i('=====鸿蒙平台=====');
+  } else if (Platform.isAndroid) {
     await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     sqfliteFfiInit();
   } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -97,7 +101,8 @@ void main() async {
 
   // 输出匿名统计和Clarity初始化信息
   Log.i('匿名统计设置: ${enableAnalytics ? '启用' : '禁用'}');
-  Log.i('Clarity 初始化: 项目ID=r8m6tk8tfr, 调试模式=${enableClarityDebug ? '启用' : '禁用'}');
+  Log.i(
+      'Clarity 初始化: 项目ID=r8m6tk8tfr, 调试模式=${enableClarityDebug ? '启用' : '禁用'}');
 
   // 创建应用Widget
   Widget app = const MyApp();

@@ -1,5 +1,3 @@
-// common/utils/wakelock_helper.dart
-
 import 'package:counters/common/utils/log.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
