@@ -51,6 +51,7 @@ dist/
 .lingma/
 .trae/
 /android/build/
+ohos/
 
 # FVM Version Cache
 .fvm/
