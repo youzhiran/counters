@@ -5,6 +5,7 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/net.dart';
+import 'package:counters/common/utils/platform_utils.dart';
 import 'package:counters/common/utils/popup_menu_utils.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/setting_list_tile.dart';
@@ -44,6 +45,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   bool _enableDesktopMode = false;
   static const String _keyEnableDesktopMode = 'enable_desktop_mode';
 
+  // 测试鸿蒙平台设置
+  bool _testHarmonyPlatform = false;
+  static const String _keyTestHarmonyPlatform = 'test_harmony_platform';
+
   // 添加计数器和显示状态
   int _versionClickCount = 0;
   bool _showDevOptions = false;
@@ -71,6 +76,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     _loadDevOptions();
     _loadStorageSettings();
     _loadDesktopModeSetting();
+    _loadTestHarmonySetting();
   }
 
   @override
@@ -118,42 +124,45 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   onTap: _showColorPickerDialog,
                 ),
                 _buildSectionHeader('通用'),
-                SettingListTile(
-                  icon: Icons.rocket_launch,
-                  title: '检查更新',
-                  subtitle: '获取新版本或是测试版本',
-                  onTap: () => checkUpdate(),
-                ),
+                if (!PlatformUtils.isOhosPlatformSync())
+                  SettingListTile(
+                    icon: Icons.rocket_launch,
+                    title: '检查更新',
+                    subtitle: '获取新版本或是测试版本',
+                    onTap: () => checkUpdate(),
+                  ),
                 // 启动时检查更新设置
-                Consumer(
-                  builder: (context, ref, child) {
-                    final updateCheckState = ref.watch(updateCheckProvider);
-                    final updateCheckNotifier =
-                        ref.read(updateCheckProvider.notifier);
+                if (!PlatformUtils.isOhosPlatformSync())
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final updateCheckState = ref.watch(updateCheckProvider);
+                      final updateCheckNotifier =
+                          ref.read(updateCheckProvider.notifier);
 
-                    return SettingListTile(
-                      icon: Icons.update,
-                      title: '启动时检查更新',
-                      subtitle: '设置应用启动时的更新检查行为',
-                      trailing: updateCheckState.isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(
-                              updateCheckState.option.displayName,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontSize: 14,
+                      return SettingListTile(
+                        icon: Icons.update,
+                        title: '启动时检查更新',
+                        subtitle: '设置应用启动时的更新检查行为',
+                        trailing: updateCheckState.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(
+                                updateCheckState.option.displayName,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
-                      onTap: updateCheckState.isLoading
-                          ? null
-                          : () => _showUpdateCheckDialog(updateCheckNotifier),
-                    );
-                  },
-                ),
+                        onTap: updateCheckState.isLoading
+                            ? null
+                            : () => _showUpdateCheckDialog(updateCheckNotifier),
+                      );
+                    },
+                  ),
                 if (Platform.isWindows)
                   SettingListTile(
                     icon: Icons.folder,
@@ -201,24 +210,25 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   onChanged: _saveDesktopModeSetting,
                 ),
                 // 匿名统计设置
-                Consumer(
-                  builder: (context, ref, child) {
-                    final analyticsState = ref.watch(analyticsProvider);
-                    final analyticsNotifier =
-                        ref.read(analyticsProvider.notifier);
+                if (!PlatformUtils.isOhosPlatformSync())
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final analyticsState = ref.watch(analyticsProvider);
+                      final analyticsNotifier =
+                          ref.read(analyticsProvider.notifier);
 
-                    return SettingSwitchListTile(
-                      icon: Icons.analytics,
-                      title: '匿名统计',
-                      subtitle: '我们使用 Microsoft Clarity 帮助改进应用体验，不收集个人信息',
-                      value: analyticsState.isEnabled,
-                      onChanged: analyticsState.isLoading
-                          ? null
-                          : (value) =>
-                              _handleAnalyticsToggle(analyticsNotifier, value),
-                    );
-                  },
-                ),
+                      return SettingSwitchListTile(
+                        icon: Icons.analytics,
+                        title: '匿名统计',
+                        subtitle: '我们使用 Microsoft Clarity 帮助改进应用体验，不收集个人信息',
+                        value: analyticsState.isEnabled,
+                        onChanged: analyticsState.isLoading
+                            ? null
+                            : (value) => _handleAnalyticsToggle(
+                                analyticsNotifier, value),
+                      );
+                    },
+                  ),
                 _buildSectionHeader('高级'),
                 // 屏幕常亮设置
                 Consumer(
@@ -320,6 +330,13 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     title: '隐藏开发者选项',
                     subtitle: '多次点击下方版本信息可再次开启',
                     onTap: _hideDevOptions,
+                  ),
+                  SettingSwitchListTile(
+                    icon: Icons.developer_board,
+                    title: '测试鸿蒙平台',
+                    subtitle: '仅开发用途，强制按鸿蒙平台行为进行调试',
+                    value: _testHarmonyPlatform,
+                    onChanged: (value) => _saveTestHarmonySetting(value),
                   ),
                   SettingListTile(
                     icon: Icons.message,
@@ -714,6 +731,26 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       _enableDesktopMode = value;
     });
     GlobalMsgManager.showMessage('设置已保存，重启应用后生效');
+  }
+
+  // 加载测试鸿蒙平台设置
+  Future<void> _loadTestHarmonySetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _testHarmonyPlatform = prefs.getBool(_keyTestHarmonyPlatform) ?? false;
+    });
+  }
+
+  // 保存测试鸿蒙平台设置
+  Future<void> _saveTestHarmonySetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyTestHarmonyPlatform, value);
+    setState(() {
+      _testHarmonyPlatform = value;
+    });
+    // 同步更新内存缓存，提供同步判断能力
+    PlatformUtils.setTestHarmonyPlatform(value);
+    GlobalMsgManager.showMessage('已${value ? '启用' : '关闭'}测试鸿蒙平台');
   }
 
   void _resetDatabase() {

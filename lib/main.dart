@@ -10,6 +10,7 @@ import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
+import 'package:counters/common/utils/platform_utils.dart';
 import 'package:counters/common/utils/privacy.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/update_dialog.dart';
@@ -17,12 +18,12 @@ import 'package:counters/features/dev/message_debug_page.dart';
 import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
+import 'package:counters/features/setting/analytics_provider.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:counters/features/setting/log_settings_page.dart';
 import 'package:counters/features/setting/setting_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
-import 'package:counters/features/setting/analytics_provider.dart';
 import 'package:counters/features/template/template_page.dart';
 import 'package:counters/home_page.dart';
 import 'package:flutter/foundation.dart';
@@ -51,7 +52,7 @@ void main() async {
   if (Platform.operatingSystem == 'ohos') {
     // await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     sqfliteFfiInit();
-    Log.i('=====鸿蒙平台=====');
+    Log.i('=====初始化:鸿蒙平台=====');
   } else if (Platform.isAndroid) {
     await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     sqfliteFfiInit();
@@ -82,6 +83,9 @@ void main() async {
   // 初始化全局状态
   await globalState.init();
 
+  // 初始化平台工具缓存（用于同步判断是否按鸿蒙平台行为处理）
+  await PlatformUtils.init();
+
   // 获取Provider调试设置、Verbose日志设置、Clarity调试设置和匿名统计设置
   final prefs = await SharedPreferences.getInstance();
   final enableProviderLogger = prefs.getBool('enable_provider_logger') ?? false;
@@ -108,7 +112,9 @@ void main() async {
   Widget app = const MyApp();
 
   // 根据匿名统计设置决定是否包装ClarityWidget
-  if (enableAnalytics) {
+  if (Platform.operatingSystem == 'ohos') {
+    Log.i('Clarity已禁用（鸿蒙平台匿名统计关闭）');
+  } else if (enableAnalytics) {
     final clarityConfig = ClarityConfig(
       projectId: "r8m6tk8tfr",
       logLevel: enableClarityDebug ? LogLevel.Debug : LogLevel.None,

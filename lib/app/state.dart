@@ -3,7 +3,10 @@ import 'dart:ui';
 import 'package:animations/animations.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/platform_utils.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -391,18 +394,32 @@ class GlobalState {
 
   /// 打开外部链接
   Future<void> openUrl(String url, [String msg = '']) async {
+    final isOhos = PlatformUtils.isOhosPlatformSync();
     final res = await showMessage(
-      message: TextSpan(text: msg.isEmpty ? url : msg),
+      message: TextSpan(
+          text: isOhos ? '点击复制链接到剪贴板 $url' : (msg.isEmpty ? url : msg)),
       title: '外部链接',
-      confirmText: '前往',
+      confirmText: isOhos ? '复制' : '前往',
     );
     if (res != true) {
       return;
     }
-    try {
-      await launchUrl(Uri.parse(url));
-    } catch (e) {
-      ErrorHandler.handle(e, StackTrace.current, prefix: '打开链接失败');
+
+    if (isOhos) {
+      // 鸿蒙系统：复制链接到剪贴板
+      try {
+        await Clipboard.setData(ClipboardData(text: url));
+        GlobalMsgManager.showSuccess("复制成功");
+      } catch (e) {
+        GlobalMsgManager.showWarn("复制链接失败");
+      }
+    } else {
+      // 其他系统：打开链接
+      try {
+        await launchUrl(Uri.parse(url));
+      } catch (e) {
+        GlobalMsgManager.showWarn("打开链接失败");
+      }
     }
   }
 }
@@ -421,7 +438,8 @@ final desktopModeProvider = Provider.family<bool, BuildContext>((ref, context) {
 });
 
 // NavigationRail 扩展状态 Provider
-final navigationRailExtendedProvider = Provider.family<bool, BuildContext>((ref, context) {
+final navigationRailExtendedProvider =
+    Provider.family<bool, BuildContext>((ref, context) {
   return globalState.shouldExtendNavigationRail(context);
 });
 

@@ -2,6 +2,7 @@ import 'package:counters/app/config.dart';
 import 'package:counters/common/model/privacy_version_info.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/platform_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -88,13 +89,18 @@ class PrivacyVersionNotifier extends StateNotifier<PrivacyVersionState> {
 
   /// 获取远程隐私政策版本信息
   Future<PrivacyVersionInfo?> fetchRemoteVersion() async {
+    if (PlatformUtils.isOhosPlatformSync()) {
+      Log.i('鸿蒙平台：不获取远程隐私政策版本）');
+      return null;
+    }
     try {
       Log.d('开始获取远程隐私政策版本信息');
       final response = await http.get(Uri.parse(Config.jsonPrivacyVersion));
-      
+
       if (response.statusCode == 200) {
         final versionInfo = PrivacyVersionInfo.fromJsonString(response.body);
-        Log.i('成功获取远程隐私政策版本: ${versionInfo.version} (${versionInfo.timestamp})');
+        Log.i(
+            '成功获取远程隐私政策版本: ${versionInfo.version} (${versionInfo.timestamp})');
         return versionInfo;
       } else {
         Log.w('获取隐私政策版本失败，HTTP状态码: ${response.statusCode}');
@@ -142,10 +148,11 @@ class PrivacyVersionNotifier extends StateNotifier<PrivacyVersionState> {
       }
 
       // 比较版本：如果本地没有时间戳或远程时间戳更新，则需要更新
-      final hasUpdate = localTimestamp == null ||
-                       remoteVersion.timestamp > localTimestamp;
+      final hasUpdate =
+          localTimestamp == null || remoteVersion.timestamp > localTimestamp;
 
-      Log.i('隐私政策版本检查结果: 已同意=$hasAgreed, 本地时间戳=$localTimestamp, 远程时间戳=${remoteVersion.timestamp}, 需要更新=$hasUpdate');
+      Log.i(
+          '隐私政策版本检查结果: 已同意=$hasAgreed, 本地时间戳=$localTimestamp, 远程时间戳=${remoteVersion.timestamp}, 需要更新=$hasUpdate');
 
       state = state.copyWith(
         isLoading: false,
@@ -173,6 +180,7 @@ class PrivacyVersionNotifier extends StateNotifier<PrivacyVersionState> {
 }
 
 /// 隐私政策版本Provider
-final privacyVersionProvider = StateNotifierProvider<PrivacyVersionNotifier, PrivacyVersionState>(
+final privacyVersionProvider =
+    StateNotifierProvider<PrivacyVersionNotifier, PrivacyVersionState>(
   (ref) => PrivacyVersionNotifier(),
 );
