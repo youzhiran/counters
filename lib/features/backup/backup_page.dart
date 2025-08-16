@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:counters/app/state.dart';
 import 'package:counters/common/utils/error_handler.dart';
+import 'package:counters/common/widgets/export_config_dialog.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/backup/backup_models.dart';
@@ -173,7 +174,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               subtitle: const Text('SharedPreferences中的所有设置'),
               value: options.includeSharedPreferences,
               onChanged: (value) {
-                ref.read(exportOptionsManagerProvider.notifier)
+                ref
+                    .read(exportOptionsManagerProvider.notifier)
                     .toggleSharedPreferences();
               },
             ),
@@ -182,7 +184,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               subtitle: const Text('所有SQLite数据库文件'),
               value: options.includeDatabases,
               onChanged: (value) {
-                ref.read(exportOptionsManagerProvider.notifier)
+                ref
+                    .read(exportOptionsManagerProvider.notifier)
                     .toggleDatabases();
               },
             ),
@@ -236,7 +239,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               subtitle: const Text('覆盖当前的应用设置'),
               value: options.importSharedPreferences,
               onChanged: (value) {
-                ref.read(importOptionsManagerProvider.notifier)
+                ref
+                    .read(importOptionsManagerProvider.notifier)
                     .toggleSharedPreferences();
               },
             ),
@@ -245,7 +249,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               subtitle: const Text('覆盖当前的数据库文件'),
               value: options.importDatabases,
               onChanged: (value) {
-                ref.read(importOptionsManagerProvider.notifier)
+                ref
+                    .read(importOptionsManagerProvider.notifier)
                     .toggleDatabases();
               },
             ),
@@ -254,7 +259,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               subtitle: const Text('导入前自动备份现有数据，提供安全保障'),
               value: options.createBackup,
               onChanged: (value) {
-                ref.read(importOptionsManagerProvider.notifier)
+                ref
+                    .read(importOptionsManagerProvider.notifier)
                     .toggleCreateBackup();
               },
             ),
@@ -263,7 +269,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               subtitle: const Text('忽略版本兼容性警告'),
               value: options.forceImport,
               onChanged: (value) {
-                ref.read(importOptionsManagerProvider.notifier)
+                ref
+                    .read(importOptionsManagerProvider.notifier)
                     .toggleForceImport();
               },
             ),
@@ -313,8 +320,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             Text(
               '从已有的自动备份文件中还原数据，还原前不会自动备份当前数据',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 16),
 
@@ -368,8 +375,6 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     );
   }
 
-
-
   /// 显示使用说明对话框
   Future<void> _showUsageDialog() async {
     await globalState.showCommonDialog<void>(
@@ -402,17 +407,15 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   bool _canExport(ExportOptions options) {
     final backupState = ref.read(backupManagerProvider);
     return !backupState.isLoading &&
-           (options.includeSharedPreferences || options.includeDatabases);
+        (options.includeSharedPreferences || options.includeDatabases);
   }
 
   /// 检查是否可以导入
   bool _canImport(ImportOptions options) {
     final backupState = ref.read(backupManagerProvider);
     return !backupState.isLoading &&
-           (options.importSharedPreferences || options.importDatabases);
+        (options.importSharedPreferences || options.importDatabases);
   }
-
-
 
   /// 处理导出
   Future<void> _handleExport() async {
@@ -426,12 +429,19 @@ class _BackupPageState extends ConsumerState<BackupPage> {
 
       // 获取当前导出选项并设置自定义配置
       final currentOptions = ref.read(exportOptionsManagerProvider);
+
+      // 从选择的文件路径中提取目录和文件名
+      final selectedFilePath = exportConfig['directory']!;
+      final directory = path.dirname(selectedFilePath);
+      final fileName = path.basename(selectedFilePath);
+
       final exportOptions = currentOptions.copyWith(
-        customPath: exportConfig['directory'],
-        customFileName: exportConfig['fileName'],
+        customPath: directory,
+        customFileName: fileName,
       );
 
-      final result = await ref.read(backupManagerProvider.notifier)
+      final result = await ref
+          .read(backupManagerProvider.notifier)
           .exportData(options: exportOptions);
 
       if (result != null && mounted) {
@@ -446,8 +456,6 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       }
     }
   }
-
-
 
   /// 处理预览导入
   Future<void> _handlePreviewImport() async {
@@ -492,7 +500,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   Future<void> _executeImport(String filePath) async {
     try {
       final importOptions = ref.read(importOptionsManagerProvider);
-      final success = await ref.read(backupManagerProvider.notifier)
+      final success = await ref
+          .read(backupManagerProvider.notifier)
           .importDataFromFile(filePath, options: importOptions);
 
       if (success && mounted) {
@@ -540,7 +549,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         forceRestore: false,
       );
 
-      final success = await ref.read(backupManagerProvider.notifier)
+      final success = await ref
+          .read(backupManagerProvider.notifier)
           .restoreDataFromFile(filePath, options: restoreOptions);
 
       if (success && mounted) {
@@ -566,7 +576,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
           content: Text('确定要删除备份文件 "${backupFile.fileName}" 吗？\n此操作不可撤销！'),
           actions: [
             TextButton(
-              onPressed: () => globalState.navigatorKey.currentState?.pop(false),
+              onPressed: () =>
+                  globalState.navigatorKey.currentState?.pop(false),
               child: const Text('取消'),
             ),
             TextButton(
@@ -625,11 +636,13 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             content: Text('目标位置已存在文件 "${backupFile.fileName}"，是否覆盖？'),
             actions: [
               TextButton(
-                onPressed: () => globalState.navigatorKey.currentState?.pop(false),
+                onPressed: () =>
+                    globalState.navigatorKey.currentState?.pop(false),
                 child: const Text('取消'),
               ),
               TextButton(
-                onPressed: () => globalState.navigatorKey.currentState?.pop(true),
+                onPressed: () =>
+                    globalState.navigatorKey.currentState?.pop(true),
                 child: const Text('覆盖', style: TextStyle(color: Colors.orange)),
               ),
             ],
@@ -652,99 +665,14 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final defaultFileName = 'counters_backup_$timestamp.zip';
 
-    String? selectedDirectory;
-    String fileName = defaultFileName;
-
-    return globalState.showCommonDialog<Map<String, String>>(
-      child: StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('导出配置'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 保存位置选择
-              const Text('保存位置:', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      selectedDirectory ?? '请选择保存位置',
-                      style: TextStyle(
-                        color: selectedDirectory == null
-                            ? Theme.of(context).hintColor
-                            : null,
-                      ),
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () async {
-                      final directory = await FilePicker.platform.getDirectoryPath(
-                        dialogTitle: '选择备份文件保存位置',
-                      );
-                      if (directory != null) {
-                        setState(() {
-                          selectedDirectory = directory;
-                        });
-                      }
-                    },
-                    icon: const Icon(Icons.folder_open),
-                    label: const Text('选择'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // 文件名输入
-              const Text('文件名:', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: TextEditingController(text: fileName.replaceAll('.zip', '')),
-                decoration: const InputDecoration(
-                  hintText: '输入文件名',
-                  suffixText: '.zip',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) {
-                  final cleanValue = value.trim();
-                  if (cleanValue.isEmpty) {
-                    fileName = defaultFileName;
-                  } else {
-                    // 移除可能的.zip后缀，然后重新添加
-                    final nameWithoutExtension = cleanValue.replaceAll(RegExp(r'\.zip$', caseSensitive: false), '');
-                    fileName = '$nameWithoutExtension.zip';
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => globalState.navigatorKey.currentState?.pop(),
-              child: const Text('取消'),
-            ),
-            ElevatedButton(
-              onPressed: selectedDirectory == null
-                  ? null
-                  : () {
-                      globalState.navigatorKey.currentState?.pop({
-                        'directory': selectedDirectory!,
-                        'fileName': fileName,
-                      });
-                    },
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      ),
+    // 使用通用导出配置对话框
+    return GlobalExportConfigDialog.show(
+      title: '导出配置',
+      defaultFileName: defaultFileName,
+      allowedExtensions: ['zip'],
+      dialogTitle: '选择备份文件保存位置',
     );
   }
-
-
-
-
-
 
   /// 处理权限错误
   Future<void> _handlePermissionError(String errorMessage) async {
@@ -768,7 +696,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               const SizedBox(height: 12),
               const Text(
                 '方法一：授权"所有文件访问权限"（推荐）',
-                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
+                style:
+                    TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
               ),
               const SizedBox(height: 4),
               const Text('1. 点击"打开设置"按钮'),
@@ -778,7 +707,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               const SizedBox(height: 12),
               const Text(
                 '方法二：授权存储权限',
-                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blue),
+                style:
+                    TextStyle(fontWeight: FontWeight.w600, color: Colors.blue),
               ),
               const SizedBox(height: 4),
               const Text('1. 点击"打开设置"按钮'),
@@ -832,11 +762,11 @@ class _RestoreDialog extends StatelessWidget {
 
     // 响应式尺寸计算
     final dialogWidth = isDesktop
-        ? screenSize.width * 0.6  // 响应式布局：60% 宽度
+        ? screenSize.width * 0.6 // 响应式布局：60% 宽度
         : screenSize.width * 0.9; // 移动布局：90% 宽度
 
     final dialogHeight = isDesktop
-        ? screenSize.height * 0.7  // 响应式布局：70% 高度
+        ? screenSize.height * 0.7 // 响应式布局：70% 高度
         : screenSize.height * 0.8; // 移动布局：80% 高度
 
     final maxDialogWidth = isDesktop ? 600.0 : double.infinity;
@@ -866,8 +796,8 @@ class _RestoreDialog extends StatelessWidget {
                 child: Text(
                   '点击备份文件可预览并还原，使用下方按钮可删除或导出备份文件',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -883,11 +813,15 @@ class _RestoreDialog extends StatelessWidget {
                     itemCount: backupFiles.length,
                     separatorBuilder: (context, index) => Divider(
                       height: 1,
-                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withValues(alpha: 0.2),
                     ),
                     itemBuilder: (context, index) {
                       final backupFile = backupFiles[index];
-                      return _buildBackupFileItem(context, backupFile, isMobile);
+                      return _buildBackupFileItem(
+                          context, backupFile, isMobile);
                     },
                   ),
                 ),
@@ -904,7 +838,8 @@ class _RestoreDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildBackupFileItem(BuildContext context, BackupFileInfo backupFile, bool isMobile) {
+  Widget _buildBackupFileItem(
+      BuildContext context, BackupFileInfo backupFile, bool isMobile) {
     final fileSize = _formatFileSize(backupFile.fileSize);
     final createdTime = _formatDateTime(backupFile.createdTime);
 
@@ -954,8 +889,10 @@ class _RestoreDialog extends StatelessWidget {
                       child: Text(
                         '$fileSize • $createdTime',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                       ),
                     ),
                   ],
@@ -1055,6 +992,6 @@ class _RestoreDialog extends StatelessWidget {
 
   String _formatDateTime(DateTime dateTime) {
     return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-           '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

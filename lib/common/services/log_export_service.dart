@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:counters/app/state.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/export_config_dialog.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -66,12 +68,38 @@ class LogExportService {
       Log.w('日志导出正在进行中，请稍后再试');
       return null;
     }
+    final context = GlobalState().navigatorKey.currentContext;
+    if (context != null) {
+      // 使用导出配置对话框
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final defaultFileName = 'app_logs_$timestamp.zip';
+
+      final exportConfig = await ExportConfigDialog.show(
+        title: '导出日志',
+        defaultFileName: defaultFileName,
+        allowedExtensions: ['zip'],
+        dialogTitle: '选择日志文件保存位置',
+      );
+
+      if (exportConfig == null) {
+        // 用户取消
+        return null;
+      }
+
+      // 从选择的文件路径中提取目录和文件名
+      final selectedFilePath = exportConfig['directory']!;
+      final directory = path.dirname(selectedFilePath);
+      final fileName = path.basename(selectedFilePath);
+
+      return await _exportLogs(customPath: directory, customFileName: fileName);
+    }
 
     return await _exportLogs();
   }
 
   /// 执行日志导出
-  Future<String?> _exportLogs() async {
+  Future<String?> _exportLogs(
+      {String? customPath, String? customFileName}) async {
     if (_logBuffer.isEmpty) {
       GlobalMsgManager.showWarn('没有日志可导出');
       return null;
@@ -80,19 +108,26 @@ class LogExportService {
     _isExporting = true;
 
     try {
-      // 获取应用文档目录
-      final appDocDir = await getApplicationDocumentsDirectory();
-      final logsDir = Directory(path.join(appDocDir.path, 'logs'));
+      // 确定保存目录
+      late final String saveDir;
+      if (customPath != null) {
+        saveDir = customPath;
+      } else {
+        // 默认使用应用文档目录
+        final appDocDir = await getApplicationDocumentsDirectory();
+        saveDir = path.join(appDocDir.path, 'logs');
 
-      // 创建日志目录
-      if (!await logsDir.exists()) {
-        await logsDir.create(recursive: true);
+        // 创建日志目录
+        final logsDir = Directory(saveDir);
+        if (!await logsDir.exists()) {
+          await logsDir.create(recursive: true);
+        }
       }
 
       // 生成日志文件名
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final logFileName = 'app_logs_$timestamp.txt';
-      final logFilePath = path.join(logsDir.path, logFileName);
+      final logFilePath = path.join(saveDir, logFileName);
 
       // 写入日志文件
       final logFile = File(logFilePath);
@@ -100,8 +135,8 @@ class LogExportService {
       await logFile.writeAsString(logContent, encoding: utf8);
 
       // 创建压缩包
-      final zipFileName = 'app_logs_$timestamp.zip';
-      final zipFilePath = path.join(logsDir.path, zipFileName);
+      final zipFileName = customFileName ?? 'app_logs_$timestamp.zip';
+      final zipFilePath = path.join(saveDir, zipFileName);
 
       await _createZipArchive(logFilePath, zipFilePath);
 
