@@ -4,7 +4,10 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/platform_utils.dart';
+import 'package:counters/common/widgets/export_config_dialog.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -37,7 +40,7 @@ class LogExportService {
     // 设置定时导出（每小时导出一次）
     _exportTimer = Timer.periodic(const Duration(hours: 1), (timer) {
       if (_isExporting) return;
-      _exportLogs();
+      _exportLogs(); // 自动导出时不带UI交互
     });
   }
 
@@ -60,63 +63,129 @@ class LogExportService {
     }
   }
 
-  /// 手动导出日志
+  /// 手动导出日志 (UI调用此方法)
   Future<String?> exportLogs() async {
     if (_isExporting) {
       Log.w('日志导出正在进行中，请稍后再试');
       return null;
     }
-
-    return await _exportLogs();
+    // 调用内部方法，并传入 true 表示这是一个需要UI交互的手动导出
+    return await _exportLogs(isManualExport: true);
   }
 
-  /// 执行日志导出
-  Future<String?> _exportLogs() async {
+  /// 执行日志导出 (内部实现，包含平台逻辑)
+  Future<String?> _exportLogs({bool isManualExport = false}) async {
     if (_logBuffer.isEmpty) {
-      GlobalMsgManager.showWarn('没有日志可导出');
+      // 只有手动导出时才提示用户
+      if (isManualExport) {
+        GlobalMsgManager.showWarn('没有日志可导出');
+      }
       return null;
     }
 
     _isExporting = true;
+    File? tempZipFile; // 用于鸿蒙平台的临时文件
+    File? tempLogFile; // 用于所有平台的临时日志文件
 
     try {
-      // 获取应用文档目录
-      final appDocDir = await getApplicationDocumentsDirectory();
-      final logsDir = Directory(path.join(appDocDir.path, 'logs'));
-
-      // 创建日志目录
-      if (!await logsDir.exists()) {
-        await logsDir.create(recursive: true);
-      }
-
-      // 生成日志文件名
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final logFileName = 'app_logs_$timestamp.txt';
-      final logFilePath = path.join(logsDir.path, logFileName);
-
-      // 写入日志文件
-      final logFile = File(logFilePath);
+      // 步骤 1: 准备日志内容和ZIP数据 (所有平台通用)
       final logContent = _formatLogsForExport();
-      await logFile.writeAsString(logContent, encoding: utf8);
+      final tempDir = await getApplicationDocumentsDirectory();
 
-      // 创建压缩包
-      final zipFileName = 'app_logs_$timestamp.zip';
-      final zipFilePath = path.join(logsDir.path, zipFileName);
+      // a. 创建一个临时的 txt 日志文件
+      final tempLogFilePath = path.join(tempDir.path,
+          'temp_log_${DateTime.now().millisecondsSinceEpoch}.txt');
+      tempLogFile = File(tempLogFilePath);
+      await tempLogFile.writeAsString(logContent, encoding: utf8);
 
-      await _createZipArchive(logFilePath, zipFilePath);
+      // b. 将 txt 文件压缩成 ZIP 数据
+      final sourceBytes = await tempLogFile.readAsBytes();
+      final archive = Archive();
+      archive.addFile(
+          ArchiveFile('app_logs.txt', sourceBytes.length, sourceBytes));
+      final zipData = ZipEncoder().encode(archive);
 
-      // 删除临时文本文件
-      await logFile.delete();
+      // 生成默认文件名
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final defaultFileName = 'app_logs_$timestamp.zip';
 
-      GlobalMsgManager.showSuccess('日志导出完成: $zipFilePath');
-      _isExporting = false;
+      // 步骤 2: 根据平台执行不同的保存策略
+      if (PlatformUtils.isOhosPlatformSync()) {
+        // --- 鸿蒙平台专属逻辑 ---
+        // a. 将 ZIP 数据写入内部临时文件
+        final tempZipFilePath = path.join(tempDir.path, defaultFileName);
+        tempZipFile = File(tempZipFilePath);
+        await tempZipFile.writeAsBytes(zipData, flush: true);
 
-      return zipFilePath;
+        // b. 调用 file picker 将临时文件“导出”
+        final String? resultPath = await FilePicker.platform.saveFile(
+          dialogTitle: '选择保存位置',
+          fileName: defaultFileName,
+          initialDirectory: tempZipFilePath,
+          type: FileType.custom,
+          allowedExtensions: ['zip'],
+        );
+
+        if (resultPath != null) {
+          GlobalMsgManager.showSuccess('日志导出完成: $resultPath');
+          return resultPath;
+        } else {
+          return null; // 用户取消
+        }
+      } else {
+        // --- 其他平台逻辑 ---
+        String? saveDir, fileName;
+
+        if (isManualExport) {
+          // a. 如果是手动导出，弹窗让用户选择保存位置
+          final exportConfig = await GlobalExportConfigDialog.show(
+            title: '导出日志',
+            defaultFileName: defaultFileName,
+            allowedExtensions: ['zip'],
+            dialogTitle: '选择日志文件保存位置',
+          );
+
+          if (exportConfig == null) return null; // 用户取消
+          saveDir = exportConfig['directory'];
+          fileName = exportConfig['fileName'];
+        } else {
+          // b. 如果是自动导出，保存到应用内部的默认位置
+          saveDir = path.join(tempDir.path, 'logs');
+          fileName = defaultFileName;
+          await Directory(saveDir).create(recursive: true);
+        }
+
+        // c. 写入用户选择或默认的文件路径
+        final finalFileName =
+            fileName!.endsWith('.zip') ? fileName : '$fileName.zip';
+        final zipFilePath = path.join(saveDir!, finalFileName);
+        final zipFile = File(zipFilePath);
+        await zipFile.writeAsBytes(zipData);
+
+        if (isManualExport) {
+          GlobalMsgManager.showSuccess('日志导出完成: $zipFilePath');
+        }
+        return zipFilePath;
+      }
     } catch (e, stackTrace) {
       Log.e('日志导出失败: $e，stackTrace：$stackTrace');
-      GlobalMsgManager.showSuccess('日志导出失败: $e');
-      _isExporting = false;
+      if (isManualExport) {
+        GlobalMsgManager.showError('日志导出失败: $e');
+      }
       return null;
+    } finally {
+      _isExporting = false;
+      // 清理所有临时文件
+      try {
+        if (await tempZipFile?.exists() ?? false) {
+          await tempZipFile?.delete();
+        }
+        if (await tempLogFile?.exists() ?? false) {
+          await tempLogFile?.delete();
+        }
+      } catch (e) {
+        Log.w('删除临时日志文件失败: $e');
+      }
     }
   }
 
@@ -138,26 +207,6 @@ class LogExportService {
     }
 
     return buffer.toString();
-  }
-
-  /// 创建ZIP压缩包
-  Future<void> _createZipArchive(
-      String sourceFilePath, String zipFilePath) async {
-    final sourceFile = File(sourceFilePath);
-    final sourceBytes = await sourceFile.readAsBytes();
-
-    final archive = Archive();
-    final archiveFile = ArchiveFile(
-      path.basename(sourceFilePath),
-      sourceBytes.length,
-      sourceBytes,
-    );
-
-    archive.addFile(archiveFile);
-
-    final zipData = ZipEncoder().encode(archive);
-    final zipFile = File(zipFilePath);
-    await zipFile.writeAsBytes(zipData);
   }
 
   /// 获取日志统计信息

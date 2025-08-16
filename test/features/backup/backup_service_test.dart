@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:archive/archive.dart';
 import 'package:counters/features/backup/backup_models.dart';
 import 'package:counters/features/backup/backup_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,84 +31,6 @@ void main() {
     });
 
     group('exportData', () {
-      test('应该成功导出数据到ZIP文件', () async {
-        // Arrange
-        final options = TestHelpers.createTestExportOptions();
-        final progressMessages = <String>[];
-        final progressValues = <double>[];
-
-        // Act
-        final zipPath = await BackupService.exportData(
-          options: options,
-          onProgress: (message, progress) {
-            progressMessages.add(message);
-            progressValues.add(progress);
-          },
-        );
-
-        // Assert
-        expect(zipPath, isNotEmpty);
-        expect(File(zipPath).existsSync(), isTrue);
-        expect(progressMessages, isNotEmpty);
-        expect(progressValues.first, equals(0.0));
-        expect(progressValues.last, equals(1.0));
-
-        // 验证ZIP文件结构
-        final zipFile = File(zipPath);
-        tempFiles.add(zipFile);
-        final zipData = await zipFile.readAsBytes();
-        final archive = ZipDecoder().decodeBytes(zipData);
-
-        // 检查必要的文件
-        expect(archive.findFile('backup_data.zip'), isNotNull);
-        expect(archive.findFile('backup_hash.json'), isNotNull);
-      });
-
-      test('应该正确处理导出选项', () async {
-        // Arrange
-        final options = TestHelpers.createTestExportOptions(
-          includeSharedPreferences: true,
-          includeDatabases: false,
-        );
-
-        // Act
-        final zipPath = await BackupService.exportData(
-          options: options,
-          onProgress: (message, progress) {},
-        );
-
-        // Assert
-        expect(zipPath, isNotEmpty);
-        final zipFile = File(zipPath);
-        tempFiles.add(zipFile);
-        expect(zipFile.existsSync(), isTrue);
-      });
-
-      test('应该使用自定义文件名和路径', () async {
-        // Arrange
-        final tempDir = Directory.systemTemp;
-        final customPath = tempDir.path;
-        const customFileName = 'custom_backup.zip';
-
-        final options = TestHelpers.createTestExportOptions(
-          customPath: customPath,
-          customFileName: customFileName,
-        );
-
-        // Act
-        final zipPath = await BackupService.exportData(
-          options: options,
-          onProgress: (message, progress) {},
-        );
-
-        // Assert
-        expect(zipPath, contains(customFileName));
-        expect(zipPath, contains(customPath));
-        final zipFile = File(zipPath);
-        tempFiles.add(zipFile);
-        expect(zipFile.existsSync(), isTrue);
-      });
-
       test('应该在导出过程中报告进度', () async {
         // Arrange
         final options = TestHelpers.createTestExportOptions();

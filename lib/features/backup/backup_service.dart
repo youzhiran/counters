@@ -5,12 +5,15 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/platform_utils.dart';
+import 'package:counters/common/widgets/export_config_dialog.dart'; // 需要它来为非鸿蒙平台弹窗
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/backup/backup_models.dart';
 import 'package:counters/features/backup/import_transaction.dart';
 import 'package:counters/features/backup/services/hash_service.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:crypto/crypto.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -25,14 +28,17 @@ class BackupService {
   static const String _dataFileName = 'backup_data.zip';
 
   /// 导出数据到ZIP文件
-  static Future<String> exportData({
+  /// (最终修复版本：此方法现在包含平台特定的导出逻辑)
+  static Future<String?> exportData({
     required ExportOptions options,
     required Function(String message, double progress) onProgress,
   }) async {
+    File? tempFile; // 用于鸿蒙平台的临时文件引用
+
     try {
       onProgress('开始导出...', 0.0);
 
-      // 1. 收集备份数据
+      // 步骤 1: 收集所有需要备份的数据 (所有平台通用)
       final collectedData = await _collectBackupData(
         options: options,
         onProgress: onProgress,
@@ -41,22 +47,92 @@ class BackupService {
       final databaseData =
           collectedData['databaseData'] as Map<String, Uint8List>;
 
-      // 2. 创建ZIP文件
-      onProgress('生成ZIP文件...', 0.8);
-      final zipPath = await _createZipFile(
+      // 步骤 2: 将收集的数据打包成 ZIP 文件的二进制内容 (所有平台通用)
+      onProgress('生成备份数据...', 0.8);
+      final finalZipData = _createStandardZipData(
         backupData: backupData,
         databaseData: databaseData,
         options: options,
       );
 
-      onProgress('导出完成', 1.0);
-      Log.i('数据导出成功: $zipPath');
-      return zipPath;
+      // 为两个平台准备一个默认文件名
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final defaultFileName =
+          options.customFileName ?? 'counters_backup_$timestamp.zip';
+
+      // 步骤 3: 根据不同平台执行不同的保存策略
+      if (PlatformUtils.isOhosPlatformSync()) {
+        // --- 鸿蒙平台专属逻辑：先生成内部文件，再调用saveFile进行复制 ---
+        onProgress('准备导出文件...', 0.9);
+
+        // a. 将 ZIP 数据写入应用内部的临时文件
+        final tempDir = await getApplicationDocumentsDirectory();
+        final tempFilePath = path.join(tempDir.path, defaultFileName);
+        tempFile = File(tempFilePath);
+        await tempFile.writeAsBytes(Uint8List.fromList(finalZipData),
+            flush: true);
+
+        // b. 调用 file picker 将已存在的临时文件“导出”
+        final String? resultPath = await FilePicker.platform.saveFile(
+          dialogTitle: '选择保存位置',
+          fileName: defaultFileName,
+          // 关键：将内部已存在的、包含真实内容的文件路径作为源
+          initialDirectory: tempFilePath,
+          type: FileType.custom,
+          allowedExtensions: ['zip'],
+        );
+
+        if (resultPath != null) {
+          onProgress('导出完成', 1.0);
+          Log.i('数据导出成功: $resultPath');
+          return resultPath;
+        } else {
+          return null; // 用户取消
+        }
+      } else {
+        // --- 其他平台（Windows, Android, iOS等）的逻辑 ---
+        // a. 弹窗让用户选择保存位置
+        final exportConfig = await GlobalExportConfigDialog.show(
+          title: '导出数据',
+          defaultFileName: defaultFileName,
+          allowedExtensions: ['zip'],
+          dialogTitle: '选择备份文件保存位置',
+        );
+        if (exportConfig == null) return null; // 用户取消
+
+        // b. 从返回结果中获取路径和文件名
+        final saveDir = exportConfig['directory']!;
+        final fileName = exportConfig['fileName']!;
+        final finalFileName =
+            fileName.endsWith('.zip') ? fileName : '$fileName.zip';
+        final fullPath = path.join(saveDir, finalFileName);
+
+        // c. 确保目标目录存在
+        await Directory(saveDir).create(recursive: true);
+
+        // d. 直接将 ZIP 数据写入最终目标文件
+        final file = File(fullPath);
+        await file.writeAsBytes(Uint8List.fromList(finalZipData));
+
+        onProgress('导出完成', 1.0);
+        Log.i('数据导出成功: $fullPath');
+        return fullPath;
+      }
     } catch (e, stackTrace) {
       Log.e('导出数据失败: $e');
       Log.e('StackTrace: $stackTrace');
       ErrorHandler.handle(e, stackTrace, prefix: '导出数据失败');
       rethrow;
+    } finally {
+      // 步骤 4: 清理鸿蒙平台产生的临时文件
+      try {
+        if (await tempFile?.exists() ?? false) {
+          await tempFile?.delete();
+          Log.i('已清理临时备份文件');
+        }
+      } catch (e) {
+        Log.w('删除临时备份文件失败: $e');
+      }
     }
   }
 
@@ -411,60 +487,6 @@ class BackupService {
     }
 
     return finalZipData;
-  }
-
-  /// 创建ZIP文件
-  static Future<String> _createZipFile({
-    required BackupData backupData,
-    required Map<String, Uint8List> databaseData,
-    required ExportOptions options,
-  }) async {
-    // 使用公共方法创建ZIP数据
-    final finalZipData = _createStandardZipData(
-      backupData: backupData,
-      databaseData: databaseData,
-      options: options,
-      logPrefix: 'BackupService',
-    );
-
-    // 确定保存路径
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = options.customFileName ?? 'counters_backup_$timestamp.zip';
-    final savePath = options.customPath ?? await _getDefaultExportPath();
-    final fullPath = path.join(savePath, fileName);
-
-    // 确保目录存在
-    await Directory(savePath).create(recursive: true);
-
-    // 写入文件
-    final file = File(fullPath);
-    await file.writeAsBytes(finalZipData);
-
-    return fullPath;
-  }
-
-  /// 获取默认导出路径
-  static Future<String> _getDefaultExportPath() async {
-    if (Platform.isWindows) {
-      final documentsDir = await DataManager.getDefaultBaseDir();
-      return path.join(documentsDir, 'counters_backups');
-    } else if (Platform.isAndroid) {
-      // Android平台使用外部存储的Downloads目录
-      try {
-        final externalDir = await getExternalStorageDirectory();
-        if (externalDir != null) {
-          return path.join(externalDir.path, 'Download', 'counters_backups');
-        }
-      } catch (e) {
-        Log.w('无法获取外部存储目录: $e');
-      }
-      // 如果外部存储不可用，使用应用文档目录
-      final documentsDir = await DataManager.getDefaultBaseDir();
-      return path.join(documentsDir, 'counters_backups');
-    } else {
-      final documentsDir = await DataManager.getDefaultBaseDir();
-      return path.join(documentsDir, 'counters_backups');
-    }
   }
 
   /// 验证ZIP文件
