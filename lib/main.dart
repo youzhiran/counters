@@ -7,6 +7,7 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/providers/log_provider.dart';
+import 'package:counters/common/providers/log_export_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
@@ -218,6 +219,9 @@ class _MyAppState extends ConsumerState<MyApp> {
 
           // 初始化verbose日志Provider（这会加载设置并应用日志级别）
           container.read(verboseLogProvider);
+
+          // 初始化日志导出Provider（这会检查设置并自动启动监听器）
+          container.read(logExportProvider);
 
           // 初始化更新检查设置Provider
           await container.read(updateCheckProvider.notifier).initialize();
