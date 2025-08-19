@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/platform_utils.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -105,8 +107,14 @@ class DatabaseHelper {
     }
     String path = await getDbPath();
 
+    // 如果是鸿蒙系统，清空数据库数据而不是删除文件
+    if (PlatformUtils.isOhosPlatformSync()) {
+      await _clearDatabaseDataForOhos();
+      return;
+    }
+
+    Log.i('尝试删除数据库：$path');
     if (await databaseExists(path)) {
-      Log.i('尝试删除数据库：$path');
       try {
         await deleteDatabase(path);
         // 检查删除是否成功
@@ -117,6 +125,8 @@ class DatabaseHelper {
       } catch (e) {
         throw Exception('删除数据库文件时出错: $e');
       }
+    } else {
+      await _printDefaultBaseDirFiles();
     }
 
     // 重新初始化数据库
@@ -125,6 +135,8 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    GlobalMsgManager.showMessage("_onCreate db:${db.path}");
+    Log.i("_onCreate db:${db.path}");
     // 创建玩家表
     await db.execute('''
       CREATE TABLE players (
@@ -257,5 +269,72 @@ class DatabaseHelper {
       WHERE type='index' AND name=?
     ''', [indexName]);
     return result.isNotEmpty;
+  }
+
+  /// 打印默认基础目录下的所有文件信息，用于调试
+  Future<void> _printDefaultBaseDirFiles() async {
+    try {
+      final defaultBaseDir = await DataManager.getDefaultBaseDir();
+      Log.i('开始打印默认基础目录文件信息：$defaultBaseDir');
+
+      final directory = Directory(defaultBaseDir);
+      if (!await directory.exists()) {
+        Log.w('默认基础目录不存在：$defaultBaseDir');
+        return;
+      }
+
+      // 递归列出所有文件和目录
+      await for (final entity in directory.list(recursive: true)) {
+        try {
+          if (entity is File) {
+            final stat = await entity.stat();
+            final size = stat.size;
+            final modified = stat.modified;
+            Log.i('文件: ${entity.path} (大小: ${size}字节, 修改时间: $modified)');
+          } else if (entity is Directory) {
+            Log.i('目录: ${entity.path}');
+          } else {
+            Log.i('其他: ${entity.path} (类型: ${entity.runtimeType})');
+          }
+        } catch (e) {
+          Log.w('无法获取文件信息: ${entity.path}, 错误: $e');
+        }
+      }
+
+      Log.i('默认基础目录文件信息打印完成');
+    } catch (e) {
+      Log.e('打印默认基础目录文件信息失败: $e');
+    }
+  }
+
+  /// 鸿蒙系统专用：清空数据库数据而不删除文件
+  Future<void> _clearDatabaseDataForOhos() async {
+    try {
+      Log.i('鸿蒙系统：开始清空数据库数据');
+
+      // 确保数据库已初始化
+      final db = await database;
+
+      // 直接清空所有表
+      await db.transaction((txn) async {
+        await txn.delete('player_scores');
+        await txn.delete('game_sessions');
+        await txn.delete('template_players');
+        await txn.delete('players');
+        await txn.delete('templates');
+
+        Log.i('鸿蒙系统：所有表已清空');
+      });
+
+      // 重新初始化数据库（会重新创建系统模板）
+      await _database!.close();
+      _database = null;
+      _database = await _initDatabase();
+
+      Log.i('鸿蒙系统：数据库重新初始化完成');
+    } catch (e) {
+      Log.e('鸿蒙系统：清空数据库数据失败: $e');
+      throw Exception('清空数据库数据失败: $e');
+    }
   }
 }

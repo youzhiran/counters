@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/utils/platform_utils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +25,10 @@ class DataManager {
 
   /// 获取默认数据存储目录的父目录
   static Future<String> getDefaultBaseDir() async {
+    // 鸿蒙平台
+    if(PlatformUtils.isOhosPlatformSync()){
+      return (await getApplicationSupportDirectory()).path;
+    }
     return (await getApplicationDocumentsDirectory()).path;
   }
 
