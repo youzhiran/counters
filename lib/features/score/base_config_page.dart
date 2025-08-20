@@ -39,6 +39,9 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   late int playerCount = widget.oriTemplate.playerCount;
   late int targetScore = widget.oriTemplate.targetScore;
 
+  // 胜利规则设置
+  late bool _reverseWinRule;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +55,9 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
         .map((p) => TextEditingController(text: p.name))
         .toList();
     players = List.from(widget.oriTemplate.players);
+
+    // 初始化胜利规则设置
+    _reverseWinRule = widget.oriTemplate.getOtherSet<bool>('reverseWinRule', defaultValue: false) ?? false;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkHistoryTemp();
@@ -355,7 +361,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
           children: [
             Expanded(
               child: SizedBox(
-                height: 80,
+                height: 70,
                 child: TextField(
                   controller: playerCountController,
                   keyboardType: TextInputType.number,
@@ -379,7 +385,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
             SizedBox(width: 16),
             Expanded(
               child: SizedBox(
-                height: 80,
+                height: 70,
                 child: TextField(
                   controller: targetScoreController,
                   keyboardType: TextInputType.number,
@@ -398,6 +404,24 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
               ),
             ),
           ],
+        ),
+        // 胜利规则设置
+        SizedBox(
+          child: SwitchListTile(
+            title: const Text('反转胜利规则'),
+            subtitle: Text(
+              _reverseWinRule
+                ? '先达到目标分数的玩家获胜'
+                : '先达到目标分数的玩家失败（默认）'
+            ),
+            value: _reverseWinRule,
+            onChanged: widget.isReadOnly ? null : (value) {
+              setState(() {
+                _reverseWinRule = value;
+              });
+            },
+            // contentPadding: EdgeInsets.zero,
+          ),
         ),
       ],
     );
@@ -489,6 +513,29 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     } else {
       setState(() => _templateNameError = null);
     }
+  }
+
+  /// 获取当前的胜利规则设置，供子类在保存模板时使用
+  Map<String, dynamic> getWinRuleSettings() {
+    return {
+      'reverseWinRule': _reverseWinRule,
+    };
+  }
+
+  /// 将胜利规则设置应用到模板，供子类调用
+  void applyWinRuleSettings(BaseTemplate template) {
+    final winRuleSettings = getWinRuleSettings();
+    winRuleSettings.forEach((key, value) {
+      template.setOtherSet(key, value);
+    });
+  }
+
+  /// 将胜利规则设置合并到 otherSet 中，供 copyWith 使用
+  Map<String, dynamic> mergeWinRuleSettings(Map<String, dynamic>? existingOtherSet) {
+    return {
+      ...existingOtherSet ?? {},
+      ...getWinRuleSettings(),
+    };
   }
 
   void _handleTargetScoreChange(String value) {

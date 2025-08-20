@@ -3,7 +3,6 @@ import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/features/score/base_config_page.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class MahjongConfigPage extends BaseConfigPage {
@@ -70,9 +69,6 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
       playerCount: int.parse(playerCountController.text),
       targetScore: int.parse(targetScoreController.text),
       players: players,
-      otherSet: {
-        'baseScore': int.parse(_baseScoreController.text),
-      },
     );
 
     // 在异步操作前获取需要的对象
@@ -106,14 +102,17 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
       baseScore: int.parse(_baseScoreController.text),
     );
 
+    // 应用胜利规则设置
+    applyWinRuleSettings(newTemplate);
+
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
     globalState.navigatorKey.currentState?.pop();
   }
 
-  @override
-  Widget buildOtherSettings() {
-    return _buildOtherList();
-  }
+  // @override
+  // Widget buildOtherSettings() {
+  //   return _buildOtherList();
+  // }
 
   // 底分验证方法
   void _handleBaseScoreChange(String value) {
@@ -131,42 +130,5 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
         setState(() => _baseScoreError = null);
       }
     }
-  }
-
-  Widget _buildOtherList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8, top: 16),
-          child: Text('其他设置', style: Theme.of(context).textTheme.titleLarge),
-        ),
-        ListView(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            // 底分设置
-            ListTile(
-              title: TextField(
-                controller: _baseScoreController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(4),
-                ],
-                decoration: InputDecoration(
-                  labelText: '底分',
-                  border: OutlineInputBorder(),
-                  errorText: _baseScoreError,
-                  hintText: '输入1-1000',
-                  suffixText: '分',
-                ),
-                onChanged: _handleBaseScoreChange,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 }

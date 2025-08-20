@@ -91,6 +91,7 @@ class _LandlordsConfigPageState
       players: players,
       checkMultiplier: _checkMultiplier,
       bombMultiplyMode: _bombMultiplyMode,
+      otherSet: mergeWinRuleSettings(template.otherSet),
     );
 
     // 在异步操作前获取需要的对象
@@ -124,6 +125,9 @@ class _LandlordsConfigPageState
       checkMultiplier: _checkMultiplier,
       bombMultiplyMode: _bombMultiplyMode,
     );
+
+    // 应用胜利规则设置
+    applyWinRuleSettings(newTemplate);
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
     globalState.navigatorKey.currentState?.pop();

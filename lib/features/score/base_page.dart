@@ -424,16 +424,15 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       return;
     }
 
-    final targetScore = ref
+    final template = ref
         .read(templatesProvider.notifier)
-        .getTemplate(widget.templateId)
-        ?.targetScore;
+        .getTemplate(widget.templateId);
 
-    if (targetScore == null) {
+    if (template == null) {
       globalState.showCommonDialog(
         child: AlertDialog(
           title: Text('数据错误'),
-          content: Text('未能获取目标分数配置，请检查模板设置'),
+          content: Text('未能获取模板配置，请检查模板设置'),
           actions: [
             TextButton(
                 onPressed: () => globalState.navigatorKey.currentState?.pop(),
@@ -445,7 +444,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     }
 
     final result =
-        ref.read(scoreProvider.notifier).calculateGameResult(targetScore);
+        ref.read(scoreProvider.notifier).calculateGameResult(template);
+
+    final reverseWinRule = template.getOtherSet<bool>('reverseWinRule', defaultValue: false) ?? false;
 
     globalState.showCommonDialog(
         child: PopScope(
@@ -460,16 +461,24 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (result.losers.isNotEmpty) ...[
-                Text('${result.hasFailures ? '😓 失败' : '⚠️ 最多计分'}：',
-                    style: TextStyle(
-                        color:
-                            result.hasFailures ? Colors.red : Colors.orange)),
+                Text(
+                  result.hasFailures
+                    ? (reverseWinRule ? '😓 失败' : '😓 失败')
+                    : (reverseWinRule ? '⚠️ 最少计分' : '⚠️ 最多计分'),
+                  style: TextStyle(
+                    color: result.hasFailures ? Colors.red : Colors.orange
+                  )
+                ),
                 ...result.losers.map((s) =>
                     Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
                 SizedBox(height: 16),
               ],
-              Text('${result.hasFailures ? '🏆 胜利' : '🎉 最少计分'}：',
-                  style: TextStyle(color: Colors.green)),
+              Text(
+                result.hasFailures
+                  ? '🏆 胜利'
+                  : (reverseWinRule ? '🎉 最多计分' : '🎉 最少计分'),
+                style: TextStyle(color: Colors.green)
+              ),
               ...result.winners.map((s) =>
                   Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
               if (result.hasFailures) ...[

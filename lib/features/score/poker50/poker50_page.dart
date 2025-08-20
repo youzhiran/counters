@@ -45,6 +45,7 @@ class _ScoreColumn extends ConsumerWidget {
   final List<int?> scores;
   final int currentRound;
   final Map<String, GlobalKey> cellKeys;
+  final bool hasFailures;
 
   const _ScoreColumn({
     required this.templateId,
@@ -52,6 +53,7 @@ class _ScoreColumn extends ConsumerWidget {
     required this.scores,
     required this.currentRound,
     required this.cellKeys,
+    required this.hasFailures,
   });
 
   @override
@@ -101,6 +103,7 @@ class _ScoreColumn extends ConsumerWidget {
                     total: scores
                         .take(index + 1)
                         .fold(0, (sum, item) => sum + (item ?? 0)),
+                    hasFailures: hasFailures,
                   ),
                 ),
               ),
@@ -169,6 +172,10 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
 
   @override
   Widget build(BuildContext context) {
+    final result =
+        ref.read(scoreProvider.notifier).calculateGameResult(widget.template);
+    final hasFailures = result.hasFailures;
+
     final currentRound = ref.watch(scoreProvider).when(
           loading: () => 0,
           error: (err, stack) => 0,
@@ -216,7 +223,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
                       constraints: BoxConstraints(
                         minWidth: constraints.maxWidth, // 最小宽度填满父容器
                       ),
-                      child: _buildContentRow(currentRound),
+                      child: _buildContentRow(currentRound, hasFailures),
                     ),
                   ),
                 ),
@@ -251,7 +258,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
     );
   }
 
-  Widget _buildContentRow(int currentRound) {
+  Widget _buildContentRow(int currentRound, bool hasFailures) {
     return IntrinsicHeight(
       child: Row(
         mainAxisSize: MainAxisSize.max, // 扩展 Row 至最大可用宽度
@@ -282,6 +289,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
               scores: score.roundScores,
               currentRound: currentRound + 1,
               cellKeys: _cellKeys,
+              hasFailures: hasFailures,
             );
           }),
         ],
@@ -299,15 +307,18 @@ class _ScoreCell extends ConsumerWidget {
   final int? score;
   final int total;
   final bool isHighlighted;
+  final bool hasFailures;
 
   const _ScoreCell({
     this.score,
     required this.total,
     required this.isHighlighted,
+    required this.hasFailures,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final bool showTrophy = !hasFailures && score == 0;
     return Container(
       decoration: BoxDecoration(
         // 新增装饰
@@ -325,7 +336,7 @@ class _ScoreCell extends ConsumerWidget {
         alignment: Alignment.center,
         children: [
           Text(
-            score == null ? '--' : (score == 0 ? '🏆' : '$total'),
+            score == null ? '--' : (showTrophy ? '🏆' : '$total'),
             style: TextStyle(
               fontSize: 18,
             ),

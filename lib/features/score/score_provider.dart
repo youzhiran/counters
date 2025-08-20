@@ -512,7 +512,7 @@ class Score extends _$Score {
             ?.firstWhereOrNull((t) => t.tid == sessionAfterUpdate.templateId);
 
         if (template != null && template.targetScore > 0) {
-          final gameResult = calculateGameResult(template.targetScore);
+          final gameResult = calculateGameResult(template);
           if (gameResult.hasFailures) {
             state = AsyncData(currentScoreState.copyWith(
               showGameEndDialog: true,
@@ -674,12 +674,15 @@ class Score extends _$Score {
     }
   }
 
-  GameResult calculateGameResult(int targetScore) {
+  GameResult calculateGameResult(BaseTemplate template) {
     final scores = state.valueOrNull?.currentSession?.scores ?? [];
     if (scores.isEmpty ||
         scores.every((s) => s.roundScores.every((score) => score == null))) {
       return const GameResult(winners: [], losers: [], hasFailures: false);
     }
+
+    final targetScore = template.targetScore;
+    final reverseWinRule = template.getOtherSet<bool>('reverseWinRule', defaultValue: false) ?? false;
 
     final failScores =
         scores.where((s) => s.totalScore >= targetScore).toList();
@@ -689,18 +692,28 @@ class Score extends _$Score {
     final List<PlayerScore> losers;
 
     if (hasFailures) {
-      final potentialWins =
-          scores.where((s) => s.totalScore < targetScore).toList();
-      if (potentialWins.isEmpty) {
-        winners = [];
-        losers = scores.sorted((a, b) => b.totalScore.compareTo(a.totalScore));
-      } else {
-        potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
-        final minWinScore = potentialWins.first.totalScore;
-        winners =
-            potentialWins.where((s) => s.totalScore == minWinScore).toList();
-        losers = scores.where((s) => s.totalScore >= targetScore).toList();
+      if (reverseWinRule) {
+        // 反转规则：先达到目标分数的获胜
+        failScores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
+        final minFailScore = failScores.first.totalScore;
+        winners = failScores.where((s) => s.totalScore == minFailScore).toList();
+        losers = scores.where((s) => s.totalScore < targetScore).toList();
         losers.sort((a, b) => b.totalScore.compareTo(a.totalScore));
+      } else {
+        // 默认规则：先达到目标分数的失败
+        final potentialWins =
+            scores.where((s) => s.totalScore < targetScore).toList();
+        if (potentialWins.isEmpty) {
+          winners = [];
+          losers = scores.sorted((a, b) => b.totalScore.compareTo(a.totalScore));
+        } else {
+          potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
+          final minWinScore = potentialWins.first.totalScore;
+          winners =
+              potentialWins.where((s) => s.totalScore == minWinScore).toList();
+          losers = scores.where((s) => s.totalScore >= targetScore).toList();
+          losers.sort((a, b) => b.totalScore.compareTo(a.totalScore));
+        }
       }
     } else {
       final sortedScores = List<PlayerScore>.from(scores);

@@ -61,6 +61,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
       targetScore: int.parse(targetScoreController.text),
       isAllowNegative: _allowNegative,
       players: players,
+      otherSet: mergeWinRuleSettings(template.otherSet),
     );
 
     // 在异步操作前获取需要的对象
@@ -92,6 +93,9 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
       isAllowNegative: _allowNegative,
       baseTemplateId: rootId,
     );
+
+    // 应用胜利规则设置
+    applyWinRuleSettings(newTemplate);
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
     globalState.navigatorKey.currentState?.pop();
