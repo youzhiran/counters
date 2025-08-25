@@ -512,12 +512,15 @@ class Score extends _$Score {
             ?.firstWhereOrNull((t) => t.tid == sessionAfterUpdate.templateId);
 
         if (template != null && template.targetScore > 0) {
-          final gameResult = calculateGameResult(template);
-          if (gameResult.hasFailures) {
-            state = AsyncData(currentScoreState.copyWith(
-              showGameEndDialog: true,
-              currentHighlight: null,
-            ));
+          final disableVictoryScoreCheck = template.getOtherSet<bool>('disableVictoryScoreCheck', defaultValue: false) ?? false;
+          if (!disableVictoryScoreCheck) {
+            final gameResult = calculateGameResult(template);
+            if (gameResult.hasFailures) {
+              state = AsyncData(currentScoreState.copyWith(
+                showGameEndDialog: true,
+                currentHighlight: null,
+              ));
+            }
           }
         }
       }
@@ -678,6 +681,13 @@ class Score extends _$Score {
     final scores = state.valueOrNull?.currentSession?.scores ?? [];
     if (scores.isEmpty ||
         scores.every((s) => s.roundScores.every((score) => score == null))) {
+      return const GameResult(winners: [], losers: [], hasFailures: false);
+    }
+
+    final disableVictoryScoreCheck = template.getOtherSet<bool>('disableVictoryScoreCheck', defaultValue: false) ?? false;
+    
+    // 如果不检查胜利分数，直接返回空结果（不判断胜负）
+    if (disableVictoryScoreCheck) {
       return const GameResult(winners: [], losers: [], hasFailures: false);
     }
 

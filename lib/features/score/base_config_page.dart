@@ -41,6 +41,9 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
 
   // 胜利规则设置
   late bool _reverseWinRule;
+  
+  // 不检查胜利分数选项
+  late bool _disableVictoryScoreCheck;
 
   @override
   void initState() {
@@ -58,6 +61,9 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
 
     // 初始化胜利规则设置
     _reverseWinRule = widget.oriTemplate.getOtherSet<bool>('reverseWinRule', defaultValue: false) ?? false;
+    
+    // 初始化不检查胜利分数选项
+    _disableVictoryScoreCheck = widget.oriTemplate.getOtherSet<bool>('disableVictoryScoreCheck', defaultValue: false) ?? false;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkHistoryTemp();
@@ -141,20 +147,22 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   bool validateBasicInputs() {
     // 直接调用校验显示函数
     _handlePlayerCountChange(playerCountController.text);
-    _handleTargetScoreChange(targetScoreController.text);
+    if (!_disableVictoryScoreCheck) {
+      _handleTargetScoreChange(targetScoreController.text);
+    }
     _handleTemplateNameChange(templateNameController.text);
 
     // 检查输入值是否有效并更新
     final newPlayerCount = int.tryParse(playerCountController.text);
-    final newTargetScore = int.tryParse(targetScoreController.text);
+    final newTargetScore = _disableVictoryScoreCheck ? 0 : int.tryParse(targetScoreController.text);
 
-    if (newPlayerCount == null || newTargetScore == null) {
-      ref.showWarning('玩家数量和目标分数必须为有效数字');
+    if (newPlayerCount == null || (!_disableVictoryScoreCheck && newTargetScore == null)) {
+      ref.showWarning('玩家数量${_disableVictoryScoreCheck ? '' : '和目标分数'}必须为有效数字');
       return false;
     }
 
     playerCount = newPlayerCount;
-    targetScore = newTargetScore;
+    targetScore = _disableVictoryScoreCheck ? 0 : newTargetScore!;
 
     // 检查玩家数量是否匹配
     if (players.length != playerCount) {
@@ -163,7 +171,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     }
 
     if (_playerCountError != null ||
-        _targetScoreError != null ||
+        (!_disableVictoryScoreCheck && _targetScoreError != null) ||
         _templateNameError != null) {
       ref.showWarning('请修正输入错误');
       return false;
@@ -389,6 +397,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                 child: TextField(
                   controller: targetScoreController,
                   keyboardType: TextInputType.number,
+                  enabled: !_disableVictoryScoreCheck && !widget.isReadOnly,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(8)
@@ -396,33 +405,47 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                   decoration: InputDecoration(
                     labelText: '目标分数',
                     border: OutlineInputBorder(),
-                    errorText: _targetScoreError,
-                    hintText: '输入正整数',
+                    errorText: _disableVictoryScoreCheck ? null : _targetScoreError,
+                    hintText: _disableVictoryScoreCheck ? '不检查胜利分数' : '输入正整数',
                   ),
-                  onChanged: _handleTargetScoreChange,
+                  onChanged: _disableVictoryScoreCheck ? null : _handleTargetScoreChange,
                 ),
               ),
             ),
           ],
         ),
-        // 胜利规则设置
+        // 不检查胜利分数选项
         SizedBox(
           child: SwitchListTile(
-            title: const Text('反转胜利规则'),
-            subtitle: Text(
-              _reverseWinRule
-                ? '先达到目标分数的玩家获胜'
-                : '先达到目标分数的玩家失败（默认）'
-            ),
-            value: _reverseWinRule,
+            title: const Text('不检查胜利分数'),
+            subtitle: const Text('开启后不计分胜利条件，仅记录分数'),
+            value: _disableVictoryScoreCheck,
             onChanged: widget.isReadOnly ? null : (value) {
               setState(() {
-                _reverseWinRule = value;
+                _disableVictoryScoreCheck = value;
               });
             },
-            // contentPadding: EdgeInsets.zero,
           ),
         ),
+        // 胜利规则设置（仅在检查胜利分数时显示）
+        if (!_disableVictoryScoreCheck)
+          SizedBox(
+            child: SwitchListTile(
+              title: const Text('反转胜利规则'),
+              subtitle: Text(
+                _reverseWinRule
+                  ? '先达到目标分数的玩家获胜'
+                  : '先达到目标分数的玩家失败（默认）'
+              ),
+              value: _reverseWinRule,
+              onChanged: widget.isReadOnly ? null : (value) {
+                setState(() {
+                  _reverseWinRule = value;
+                });
+              },
+              // contentPadding: EdgeInsets.zero,
+            ),
+          ),
       ],
     );
   }
@@ -519,6 +542,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   Map<String, dynamic> getWinRuleSettings() {
     return {
       'reverseWinRule': _reverseWinRule,
+      'disableVictoryScoreCheck': _disableVictoryScoreCheck,
     };
   }
 

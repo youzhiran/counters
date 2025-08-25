@@ -134,8 +134,8 @@ class _ExportConfigDialogState extends State<ExportConfigDialog> {
   Future<void> _selectSaveLocation() async {
     String? initialDirectory;
     try {
-      final Directory? directory = await getApplicationDocumentsDirectory();
-      initialDirectory = directory?.path;
+      final Directory directory = await getApplicationDocumentsDirectory();
+      initialDirectory = directory.path;
     } catch (e) {
       GlobalMsgManager.showWarn("无法获取应用文档目录: $e");
     }

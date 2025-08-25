@@ -443,6 +443,25 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       return;
     }
 
+    final disableVictoryScoreCheck = template.getOtherSet<bool>('disableVictoryScoreCheck', defaultValue: false) ?? false;
+    
+    // 如果不检查胜利分数，显示特殊提示
+    if (disableVictoryScoreCheck) {
+      globalState.showCommonDialog(
+        child: AlertDialog(
+          title: Text('计分模式'),
+          content: Text('当前为不检查胜利条件模式，仅记录分数，不判断胜负。'),
+          actions: [
+            TextButton(
+              onPressed: () => globalState.navigatorKey.currentState?.pop(),
+              child: Text('确定'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final result =
         ref.read(scoreProvider.notifier).calculateGameResult(template);
 

@@ -290,7 +290,7 @@ class DatabaseHelper {
             final stat = await entity.stat();
             final size = stat.size;
             final modified = stat.modified;
-            Log.i('文件: ${entity.path} (大小: ${size}字节, 修改时间: $modified)');
+            Log.i('文件: ${entity.path} (大小: $size字节, 修改时间: $modified)');
           } else if (entity is Directory) {
             Log.i('目录: ${entity.path}');
           } else {
