@@ -191,7 +191,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                       IconButton(
                         icon: const Icon(Icons.apps),
                         tooltip: '更多操作',
-                        onPressed: () => _showMoreActionsGrid(context, template),
+                        onPressed: () =>
+                            _showMoreActionsGrid(context, template),
                       ),
                     ],
                   ),
@@ -264,9 +265,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       return;
     }
 
-    final template = ref
-        .read(templatesProvider.notifier)
-        .getTemplate(widget.templateId);
+    final template =
+        ref.read(templatesProvider.notifier).getTemplate(widget.templateId);
 
     if (template == null) {
       globalState.showCommonDialog(
@@ -283,8 +283,11 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       return;
     }
 
-    final disableVictoryScoreCheck = template.getOtherSet<bool>('disableVictoryScoreCheck', defaultValue: false) ?? false;
-    
+    final disableVictoryScoreCheck = template.getOtherSet<bool>(
+            'disableVictoryScoreCheck',
+            defaultValue: false) ??
+        false;
+
     // 如果不检查胜利分数，显示特殊提示
     if (disableVictoryScoreCheck) {
       globalState.showCommonDialog(
@@ -305,7 +308,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     final result =
         ref.read(scoreProvider.notifier).calculateGameResult(template);
 
-    final reverseWinRule = template.getOtherSet<bool>('reverseWinRule', defaultValue: false) ?? false;
+    final reverseWinRule =
+        template.getOtherSet<bool>('reverseWinRule', defaultValue: false) ??
+            false;
 
     globalState.showCommonDialog(
         child: PopScope(
@@ -321,23 +326,21 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             children: [
               if (result.losers.isNotEmpty) ...[
                 Text(
-                  result.hasFailures
-                    ? (reverseWinRule ? '😓 失败' : '😓 失败')
-                    : (reverseWinRule ? '⚠️ 最少计分' : '⚠️ 最多计分'),
-                  style: TextStyle(
-                    color: result.hasFailures ? Colors.red : Colors.orange
-                  )
-                ),
+                    result.hasFailures
+                        ? (reverseWinRule ? '😓 失败' : '😓 失败')
+                        : (reverseWinRule ? '⚠️ 最少计分' : '⚠️ 最多计分'),
+                    style: TextStyle(
+                        color:
+                            result.hasFailures ? Colors.red : Colors.orange)),
                 ...result.losers.map((s) =>
                     Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
                 SizedBox(height: 16),
               ],
               Text(
-                result.hasFailures
-                  ? '🏆 胜利'
-                  : (reverseWinRule ? '🎉 最多计分' : '🎉 最少计分'),
-                style: TextStyle(color: Colors.green)
-              ),
+                  result.hasFailures
+                      ? '🏆 胜利'
+                      : (reverseWinRule ? '🎉 最多计分' : '🎉 最少计分'),
+                  style: TextStyle(color: Colors.green)),
               ...result.winners.map((s) =>
                   Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
               if (result.hasFailures) ...[
@@ -474,7 +477,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
 
       if (canAddNewRound) {
         scoreNotifier.addNewRound();
-      } else {
+      } else if (roundIndex >= currentRound) {
         GlobalMsgManager.showMessage('请填写所有玩家的【第$currentRound轮】后再添加新回合！');
         return;
       }
