@@ -660,9 +660,15 @@ class Score extends _$Score {
       }
     }
 
+    // 从历史记录加载会话时，将其标记为未完成并清除结束时间。
+    final updatedSession = session.copyWith(
+      isCompleted: false,
+      endTime: null,
+    );
+
     state = AsyncData(ScoreState(
-      currentSession: session,
-      currentRound: _calculateCurrentRound(session),
+      currentSession: updatedSession,
+      currentRound: _calculateCurrentRound(updatedSession),
       isInitialized: true,
       currentHighlight: null,
       showGameEndDialog: false,
@@ -673,7 +679,7 @@ class Score extends _$Score {
     final lanState = ref.read(lanProvider);
     if (lanState.isHost) {
       _broadcastPlayerInfo(sessionPlayers);
-      _broadcastSyncState(session);
+      _broadcastSyncState(updatedSession);
     }
   }
 

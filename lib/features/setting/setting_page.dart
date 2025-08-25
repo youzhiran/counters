@@ -177,18 +177,19 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     ),
                     onTap: _showStoragePathDialog,
                   ),
-                SettingListTile(
-                  icon: Icons.backup,
-                  title: '数据备份与恢复',
-                  subtitle: '导出或导入应用配置和数据',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const BackupPage(),
-                      ),
-                    );
-                  },
-                ),
+                if (!PlatformUtils.isOhosPlatformSync())
+                  SettingListTile(
+                    icon: Icons.backup,
+                    title: '数据备份与恢复',
+                    subtitle: '导出或导入应用配置和数据',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const BackupPage(),
+                        ),
+                      );
+                    },
+                  ),
                 SettingListTile(
                   icon: Icons.settings_backup_restore,
                   title: '重置设置',
