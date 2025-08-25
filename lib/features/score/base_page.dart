@@ -9,6 +9,7 @@ import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/wakelock_helper.dart';
+import 'package:counters/common/widgets/dice_roller_dialog.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
@@ -97,7 +98,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       }
     });
 
-    final lanState = ref.watch(lanProvider);
+    ref.watch(lanProvider);
 
     final scoreAsync = ref.watch(scoreProvider);
 
@@ -363,8 +364,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('重置游戏'),
-        content: Text('确定要重置当前游戏吗？\n'
-            '当前进度将会自动保存并标记为已完成，并启动一个新的计分。'),
+        content: Text('确定要重置当前游戏吗？\n' '当前进度将会自动保存并标记为已完成，并启动一个新的计分。'),
         actions: [
           TextButton(
             onPressed: () => globalState.navigatorKey.currentState?.pop(),
@@ -771,7 +771,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     final wakelockState = ref.read(screenWakelockSettingProvider);
 
     void handleSelection(String value) {
-      Navigator.of(context).pop(); // Close the bottom sheet
+      Navigator.of(context).pop(); // Close the bottom sheet first
       switch (value) {
         case 'Template_set':
           Widget configPage;
@@ -824,6 +824,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         case 'screen_wakelock':
           _toggleScreenWakelock();
           break;
+        case 'dice_roller':
+          globalState.showCommonDialog(child: const DiceRollerDialog());
+          break;
         default:
           Log.warn('未知选项: $value');
           break;
@@ -872,48 +875,71 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       context: context,
       builder: (BuildContext modalContext) {
         return SafeArea(
-          child: Container(
+          child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                buildGridItem(
-                  value: 'lan_test',
-                  icon: Icons.article_outlined,
-                  label: '程序日志',
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    buildGridItem(
+                      value: 'lan_test',
+                      icon: Icons.article_outlined,
+                      label: '程序日志',
+                    ),
+                    buildGridItem(
+                      value: 'lan_conn',
+                      icon: lanState.isHost ? Icons.wifi_off : Icons.wifi,
+                      label: lanState.isHost ? '停止主机' : '开启局域网联机',
+                      enabled: !lanState.isConnected && !lanState.isClientMode,
+                    ),
+                    buildGridItem(
+                      value: 'lan_discovery',
+                      icon: Icons.search,
+                      label: '发现局域网游戏',
+                      enabled: !lanState.isHost && !lanState.isClientMode,
+                    ),
+                    buildGridItem(
+                      value: 'reset_game',
+                      icon: Icons.restart_alt_rounded,
+                      label: '重置游戏',
+                      enabled: !scoreState.isTempMode,
+                    ),
+                    buildGridItem(
+                      value: 'Template_set',
+                      icon: Icons.info_outline,
+                      label: '查看模板设置',
+                    ),
+                    buildGridItem(
+                      value: 'screen_wakelock',
+                      icon: wakelockState.isEnabled
+                          ? Icons.flashlight_on_outlined
+                          : Icons.flashlight_off_outlined,
+                      label: '切换屏幕常亮',
+                    ),
+                  ],
                 ),
-                buildGridItem(
-                  value: 'lan_conn',
-                  icon: lanState.isHost ? Icons.wifi_off : Icons.wifi,
-                  label: lanState.isHost ? '停止主机' : '开启局域网联机',
-                  enabled: !lanState.isConnected && !lanState.isClientMode,
+                const Divider(height: 32),
+                Text(
+                  '游戏工具',
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
-                buildGridItem(
-                  value: 'lan_discovery',
-                  icon: Icons.search,
-                  label: '发现局域网游戏',
-                  enabled: !lanState.isHost && !lanState.isClientMode,
-                ),
-                buildGridItem(
-                  value: 'reset_game',
-                  icon: Icons.restart_alt_rounded,
-                  label: '重置游戏',
-                  enabled: !scoreState.isTempMode,
-                ),
-                buildGridItem(
-                  value: 'Template_set',
-                  icon: Icons.info_outline,
-                  label: '查看模板设置',
-                ),
-                buildGridItem(
-                  value: 'screen_wakelock',
-                  icon: wakelockState.isEnabled
-                      ? Icons.flashlight_on_outlined
-                      : Icons.flashlight_off_outlined,
-                  label: '切换屏幕常亮',
-                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    buildGridItem(
+                      value: 'dice_roller',
+                      icon: Icons.casino_outlined,
+                      label: '掷骰子',
+                    ),
+                  ],
+                )
               ],
             ),
           ),
