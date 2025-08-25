@@ -720,7 +720,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   Future<void> _loadDesktopModeSetting() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _enableDesktopMode = prefs.getBool(_keyEnableDesktopMode) ?? false;
+      _enableDesktopMode = prefs.getBool(_keyEnableDesktopMode) ?? true;
     });
   }
 

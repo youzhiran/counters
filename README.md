@@ -104,5 +104,5 @@ _图片供参考，最新 UI 及特性请下载安装包体验_
 
 ## 致谢
 
-DeepSeek、Gemini、GPT、Claude、Trae、Cursor、Augment 等 AI 模型和工具的大力支持。
+DeepSeek、Gemini、GPT、Claude、Trae、Cursor、Augment、Gemini CLI 等 AI 模型和工具的大力支持。
 

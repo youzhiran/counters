@@ -414,21 +414,27 @@ class _MessagePositionedState extends State<_MessagePositioned>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Use a breakpoint to determine if it's a wide screen (desktop-like)
+    final bool isWideScreen = screenWidth > 600;
+
     return AnimatedBuilder(
       animation: _positionAnimation,
       builder: (context, child) {
         return Positioned(
           top: _positionAnimation.value,
-          left: 16,
+          left: isWideScreen ? null : 16,
           right: 16,
-          child: _MessageCard(
-            key: widget.messageCardKey,
-            messageKey: widget.messageKey,
-            message: widget.message,
-            onDismiss: widget.onDismiss,
-          ),
+          width: isWideScreen ? 400 : null, // Set a max width for wide screens
+          child: child!,
         );
       },
+      child: _MessageCard(
+        key: widget.messageCardKey,
+        messageKey: widget.messageKey,
+        message: widget.message,
+        onDismiss: widget.onDismiss,
+      ),
     );
   }
 }

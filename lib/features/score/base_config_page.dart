@@ -271,27 +271,6 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   Widget build(BuildContext context) {
     final isSystem = widget.oriTemplate.isSystemTemplate;
 
-    // 定义页面核心内容列
-    final pageContentColumn = Column(
-      children: [
-        buildTemplateInfo(),
-        buildBasicSettings(getMinPlayerCount(), getMaxPlayerCount()),
-        buildOtherSettings(),
-        buildPlayerList(),
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: Text(
-            '原模板名：${widget.oriTemplate.templateName}\nID：${widget.oriTemplate.tid}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
-            ),
-          ),
-        )
-      ],
-    );
-
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -325,15 +304,79 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                 ),
               ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16), // 内边距移到 SingleChildScrollView
-        child: Opacity(
-          opacity: widget.isReadOnly ? 0.6 : 1.0,
-          child: AbsorbPointer(
-            absorbing: widget.isReadOnly,
-            child: pageContentColumn, // 将核心内容列放在这里
-          ),
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Use a breakpoint to switch between layouts
+          final bool isWide = constraints.maxWidth > 600;
+
+          // Group settings widgets
+          final settingsContent = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              buildTemplateInfo(),
+              buildBasicSettings(getMinPlayerCount(), getMaxPlayerCount()),
+              buildOtherSettings(),
+            ],
+          );
+
+          // Group player list and footer widgets
+          final playerContent = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              buildPlayerList(),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  '原模板名：${widget.oriTemplate.templateName}\nID：${widget.oriTemplate.tid}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+              )
+            ],
+          );
+
+          final Widget pageLayout;
+          if (isWide) {
+            // Wide layout: Two columns side-by-side
+            pageLayout = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: settingsContent,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 1,
+                  child: playerContent,
+                ),
+              ],
+            );
+          } else {
+            // Narrow layout: Single column
+            pageLayout = Column(
+              children: [
+                settingsContent,
+                const SizedBox(height: 16),
+                playerContent,
+              ],
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16), // 内边距移到 SingleChildScrollView
+            child: Opacity(
+              opacity: widget.isReadOnly ? 0.6 : 1.0,
+              child: AbsorbPointer(
+                absorbing: widget.isReadOnly,
+                child: pageLayout, // 将核心内容列放在这里
+              ),
+            ),
+          );
+        },
       ),
     );
   }
