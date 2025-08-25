@@ -187,171 +187,10 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                           );
                         },
                       ),
-                      PopupMenuButton<String>(
-                        icon: Icon(Icons.more_vert),
+                      IconButton(
+                        icon: const Icon(Icons.apps),
                         tooltip: '更多操作',
-                        onSelected: (String value) {
-                          switch (value) {
-                            case 'Template_set':
-                              Widget configPage;
-                              if (template is LandlordsTemplate) {
-                                configPage = LandlordsConfigPage(
-                                    oriTemplate: template, isReadOnly: true);
-                              } else if (template is Poker50Template) {
-                                configPage = Poker50ConfigPage(
-                                    oriTemplate: template, isReadOnly: true);
-                              } else if (template is MahjongTemplate) {
-                                configPage = MahjongConfigPage(
-                                    oriTemplate: template, isReadOnly: true);
-                              } else if (template is CounterTemplate) {
-                                configPage = CounterConfigPage(
-                                    oriTemplate: template, isReadOnly: true);
-                              } else {
-                                ref.showWarning(
-                                    '该模板类型暂不支持查看设置: ${template.runtimeType}');
-                                return;
-                              }
-                              Navigator.of(context).pushWithSlide(
-                                configPage,
-                                direction: SlideDirection.fromRight,
-                                duration: const Duration(milliseconds: 300),
-                              );
-                              break;
-                            case 'reset_game':
-                              if (scoreState.isTempMode) {
-                                ref.showWarning('临时计分模式下不可重置游戏');
-                                break;
-                              }
-                              showResetConfirmation(context);
-                              break;
-                            case 'lan_debug':
-                              Navigator.of(context).pushWithSlide(
-                                const LogTestPage(),
-                                direction: SlideDirection.fromRight,
-                                duration: const Duration(milliseconds: 300),
-                              );
-                              break;
-                            case 'lan_conn':
-                              _toggleLanConnection(context, template);
-                              break;
-                            case 'lan_discovery':
-                              Navigator.of(context).pushWithSlide(
-                                const LanDiscoveryPage(),
-                                direction: SlideDirection.fromRight,
-                                duration: const Duration(milliseconds: 300),
-                              );
-                              break;
-                            case 'lan_test':
-                              Navigator.of(context).pushWithSlide(
-                                const LogTestPage(),
-                                direction: SlideDirection.fromRight,
-                                duration: const Duration(milliseconds: 300),
-                              );
-                              break;
-                            case 'screen_wakelock':
-                              _toggleScreenWakelock();
-                              break;
-                            default:
-                              Log.warn('未知选项: $value');
-                              break;
-                          }
-                        },
-                        itemBuilder: (BuildContext context) {
-                          final wakelockState =
-                              ref.watch(screenWakelockSettingProvider);
-                          return <PopupMenuEntry<String>>[
-                            PopupMenuItem<String>(
-                              value: 'lan_test',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.article),
-                                  SizedBox(width: 8),
-                                  Text('程序日志'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem<String>(
-                              value: 'lan_conn',
-                              enabled: !lanState.isConnected &&
-                                  !lanState.isClientMode,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                      lanState.isHost
-                                          ? Icons.wifi_off
-                                          : Icons.wifi,
-                                      color: (!lanState.isConnected &&
-                                              !lanState.isClientMode)
-                                          ? null
-                                          : Colors.grey),
-                                  SizedBox(width: 8),
-                                  Text(lanState.isHost ? '停止主机' : '开启局域网联机',
-                                      style: TextStyle(
-                                          color: (!lanState.isConnected &&
-                                                  !lanState.isClientMode)
-                                              ? null
-                                              : Colors.grey)),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem<String>(
-                              value: 'lan_discovery',
-                              enabled:
-                                  !lanState.isHost && !lanState.isClientMode,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.search,
-                                      color: (!lanState.isHost &&
-                                              !lanState.isClientMode)
-                                          ? null
-                                          : Colors.grey),
-                                  SizedBox(width: 8),
-                                  Text('发现局域网游戏',
-                                      style: TextStyle(
-                                          color: (!lanState.isHost &&
-                                                  !lanState.isClientMode)
-                                              ? null
-                                              : Colors.grey)),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem<String>(
-                              value: 'reset_game',
-                              enabled: !scoreState.isTempMode,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.restart_alt_rounded),
-                                  SizedBox(width: 8),
-                                  Text('重置游戏'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem<String>(
-                              value: 'Template_set',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.info_outline),
-                                  SizedBox(width: 8),
-                                  Text('查看模板设置'),
-                                ],
-                              ),
-                            ),
-                            // 屏幕常亮开关（支持所有平台）
-                            PopupMenuDivider(),
-                            PopupMenuItem<String>(
-                              value: 'screen_wakelock',
-                              child: Row(
-                                children: [
-                                  Icon(wakelockState.isEnabled
-                                      ? Icons.flashlight_on_outlined
-                                      : Icons.flashlight_off_outlined),
-                                  SizedBox(width: 8),
-                                  Expanded(child: Text('切换屏幕常亮')),
-                                ],
-                              ),
-                            ),
-                          ];
-                        },
+                        onPressed: () => _showMoreActionsGrid(context, template),
                       ),
                     ],
                   ),
@@ -922,5 +761,164 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       ErrorHandler.handle(e, StackTrace.current, prefix: '切换屏幕常亮设置失败');
       ref.showError('设置屏幕常亮失败');
     }
+  }
+
+  void _showMoreActionsGrid(BuildContext context, BaseTemplate template) {
+    final scoreState = ref.read(scoreProvider).value;
+    if (scoreState == null) return;
+
+    final lanState = ref.read(lanProvider);
+    final wakelockState = ref.read(screenWakelockSettingProvider);
+
+    void handleSelection(String value) {
+      Navigator.of(context).pop(); // Close the bottom sheet
+      switch (value) {
+        case 'Template_set':
+          Widget configPage;
+          if (template is LandlordsTemplate) {
+            configPage =
+                LandlordsConfigPage(oriTemplate: template, isReadOnly: true);
+          } else if (template is Poker50Template) {
+            configPage =
+                Poker50ConfigPage(oriTemplate: template, isReadOnly: true);
+          } else if (template is MahjongTemplate) {
+            configPage =
+                MahjongConfigPage(oriTemplate: template, isReadOnly: true);
+          } else if (template is CounterTemplate) {
+            configPage =
+                CounterConfigPage(oriTemplate: template, isReadOnly: true);
+          } else {
+            ref.showWarning('该模板类型暂不支持查看设置: ${template.runtimeType}');
+            return;
+          }
+          Navigator.of(context).pushWithSlide(
+            configPage,
+            direction: SlideDirection.fromRight,
+            duration: const Duration(milliseconds: 300),
+          );
+          break;
+        case 'reset_game':
+          if (scoreState.isTempMode) {
+            ref.showWarning('临时计分模式下不可重置游戏');
+            break;
+          }
+          showResetConfirmation(context);
+          break;
+        case 'lan_conn':
+          _toggleLanConnection(context, template);
+          break;
+        case 'lan_discovery':
+          Navigator.of(context).pushWithSlide(
+            const LanDiscoveryPage(),
+            direction: SlideDirection.fromRight,
+            duration: const Duration(milliseconds: 300),
+          );
+          break;
+        case 'lan_test':
+          Navigator.of(context).pushWithSlide(
+            const LogTestPage(),
+            direction: SlideDirection.fromRight,
+            duration: const Duration(milliseconds: 300),
+          );
+          break;
+        case 'screen_wakelock':
+          _toggleScreenWakelock();
+          break;
+        default:
+          Log.warn('未知选项: $value');
+          break;
+      }
+    }
+
+    Widget buildGridItem({
+      required String value,
+      required IconData icon,
+      required String label,
+      bool enabled = true,
+    }) {
+      final color = enabled
+          ? Theme.of(context).textTheme.bodyLarge?.color
+          : Theme.of(context).disabledColor;
+      return InkWell(
+        onTap: enabled ? () => handleSelection(value) : null,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 90,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 30),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext modalContext) {
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                buildGridItem(
+                  value: 'lan_test',
+                  icon: Icons.article_outlined,
+                  label: '程序日志',
+                ),
+                buildGridItem(
+                  value: 'lan_conn',
+                  icon: lanState.isHost ? Icons.wifi_off : Icons.wifi,
+                  label: lanState.isHost ? '停止主机' : '开启局域网联机',
+                  enabled: !lanState.isConnected && !lanState.isClientMode,
+                ),
+                buildGridItem(
+                  value: 'lan_discovery',
+                  icon: Icons.search,
+                  label: '发现局域网游戏',
+                  enabled: !lanState.isHost && !lanState.isClientMode,
+                ),
+                buildGridItem(
+                  value: 'reset_game',
+                  icon: Icons.restart_alt_rounded,
+                  label: '重置游戏',
+                  enabled: !scoreState.isTempMode,
+                ),
+                buildGridItem(
+                  value: 'Template_set',
+                  icon: Icons.info_outline,
+                  label: '查看模板设置',
+                ),
+                buildGridItem(
+                  value: 'screen_wakelock',
+                  icon: wakelockState.isEnabled
+                      ? Icons.flashlight_on_outlined
+                      : Icons.flashlight_off_outlined,
+                  label: '切换屏幕常亮',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
