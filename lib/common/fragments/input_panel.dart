@@ -1,5 +1,7 @@
 import 'package:counters/common/model/player_score.dart';
+import 'package:counters/common/model/poker50.dart';
 import 'package:counters/features/score/score_provider.dart';
+import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,10 +19,10 @@ class QuickInputPanel extends ConsumerStatefulWidget {
 class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _tabs = ['快捷输入'];
+  final List<String> _tabs = ['加分', '减分'];
 
   // 不同标签页的数字配置
-  final List<int> _commonNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  // final List<int> _commonNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
   // 面板状态控制
   final bool _isPanelExpanded = true;
@@ -31,6 +33,7 @@ class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
   // 常量定义，避免魔法数字
   static const double _defaultPanelHeight = 140.0;
   static const double _tabHeight = 30.0;
+  static const double _buttonWidth = 80.0;
 
   @override
   void initState() {
@@ -55,6 +58,31 @@ class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
 
   @override
   Widget build(BuildContext context) {
+    final session = ref.watch(scoreProvider).value?.currentSession;
+    final templatesAsyncValue = ref.watch(templatesProvider);
+
+    dynamic template;
+    if (session != null) {
+      template = templatesAsyncValue.when(
+        data: (templateList) {
+          try {
+            return templateList.firstWhere((t) => t.tid == session.templateId);
+          } catch (e) {
+            return null; // Not found in list
+          }
+        },
+        loading: () => null, // Template not loaded yet
+        error: (err, stack) => null, // Error loading templates
+      );
+    }
+
+    bool subtractionDisabled = false;
+    if (template is Poker50Template) {
+      if (!template.isAllowNegative) {
+        subtractionDisabled = true;
+      }
+    }
+
     return Center(
       child: Card(
         margin: EdgeInsets.zero,
@@ -71,7 +99,7 @@ class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildTabBar(context),
-            _buildContentArea(),
+            _buildContentArea(subtractionDisabled),
           ],
         ),
       ),
@@ -98,7 +126,7 @@ class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
   }
 
   // 构建内容区域
-  Widget _buildContentArea() {
+  Widget _buildContentArea(bool subtractionDisabled) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -109,48 +137,56 @@ class _QuickInputPanelState extends ConsumerState<QuickInputPanel>
             ? const AlwaysScrollableScrollPhysics()
             : const NeverScrollableScrollPhysics(),
         children: [
-          _buildCommonNumbersTab(),
+          _buildNumberGrid(isAddition: true),
+          subtractionDisabled
+              ? const Center(child: Text('当前计分规则不允许输入负数'))
+              : _buildNumberGrid(isAddition: false),
         ],
       ),
     );
   }
 
-  // 常用数字标签页
-  Widget _buildCommonNumbersTab() {
-    return _buildNumberGrid(_commonNumbers);
-  }
-
   // 构建数字网格
-  Widget _buildNumberGrid(List<int> numbers) {
+  Widget _buildNumberGrid({required bool isAddition}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final availableWidth = screenWidth - 16; // Padding of 8 on each side
+    final int buttonsPerRow = (availableWidth / _buttonWidth).floor();
+    final int totalButtons = buttonsPerRow * 3; // 3 rows
+
+    final List<int> adaptiveNumbers =
+        List.generate(totalButtons, (index) => index);
+
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Wrap(
         spacing: 0,
         runSpacing: 0,
         alignment: WrapAlignment.center,
-        children: numbers.map((number) => _buildNumberButton(number)).toList(),
+        children: adaptiveNumbers
+            .map((number) => _buildNumberButton(number, isAddition: isAddition))
+            .toList(),
       ),
     );
   }
 
   // 构建数字按钮
-  Widget _buildNumberButton(int number) {
+  Widget _buildNumberButton(int number, {required bool isAddition}) {
     return SizedBox(
-      width: 80, // 固定按钮宽度
+      width: _buttonWidth, // 固定按钮宽度
       child: ActionChip(
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.zero, // 直角
           side: BorderSide.none, // 移除边框
         ),
         label: Container(
           width: double.infinity, // 标签填满宽度
           alignment: Alignment.center,
-          child: Text(number >= 0 ? '+$number' : '$number'),
+          child: Text(isAddition ? '+$number' : '-$number'),
         ),
         labelPadding: EdgeInsets.zero,
         // 移除标签内边距
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        onPressed: () => _handleNumberPressed(number),
+        onPressed: () => _handleNumberPressed(isAddition ? number : -number),
       ),
     );
   }

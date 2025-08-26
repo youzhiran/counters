@@ -406,8 +406,6 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
             body: Center(child: Text('模板加载失败: $e')),
           ),
           data: (templates) {
-            Log.d('所有模板ID: ${templates.map((t) => t.tid).join(",")}');
-            Log.d('buildSessionPage 需要的 templateId: ${widget.templateId}');
             final template =
                 templates.firstWhereOrNull((t) => t.tid == widget.templateId);
             if (template == null) {
