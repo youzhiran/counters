@@ -1,3 +1,4 @@
+import 'package:counters/app/config.dart';
 import 'package:flutter/material.dart';
 
 /// 隐私政策页面
@@ -17,7 +18,7 @@ class PrivacyPolicyPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Counters (HarmonyOS版) 隐私政策',
+              '${Config.appName} (HarmonyOS版) 隐私政策',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -35,7 +36,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             
             _buildSection(
               '1. 信息收集',
-              'Counters (HarmonyOS版) 是一款单机局域网计分应用，本应用：\n\n'
+              '${Config.appName} (HarmonyOS版) 是一款单机局域网计分应用，本应用：\n\n'
               '• 不收集任何个人身份信息\n'
               '• 不收集设备标识符\n'
               '• 不收集位置信息\n'
@@ -54,7 +55,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             
             _buildSection(
               '3. 网络使用',
-              'Counters 仅在以下情况下使用本地网络：\n\n'
+              '${Config.appName} 仅在以下情况下使用本地网络：\n\n'
               '• 局域网多人游戏功能（可选）\n\n'
               '网络功能不会收集或传输任何个人信息。',
             ),
@@ -77,7 +78,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             
             _buildSection(
               '6. 儿童隐私',
-              'Counters 适合所有年龄段的用户：\n\n'
+              '${Config.appName} 适合所有年龄段的用户：\n\n'
               '• 不收集任何年龄相关信息\n'
               '• 不针对儿童进行个性化'
             ),
@@ -99,7 +100,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             
             const SizedBox(height: 32),
             const Text(
-              '感谢您选择 Counters！我们致力于为您提供简单有趣的计分体验。',
+              '感谢您选择 ${Config.appName}！我们致力于为您提供简单有趣的计分体验。',
               style: TextStyle(
                 color: Colors.grey,
               ),

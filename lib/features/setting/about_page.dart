@@ -142,7 +142,7 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
         // 应用名称和版本信息 (可选，可以在图标下方显示)
         Center(
           child: Text(
-            'Counters v$_versionName',
+            '${Config.appName} v$_versionName',
             style: Theme.of(context).textTheme.titleLarge,
           ),
         ),
@@ -227,7 +227,7 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
           title: '软件官网',
           onTap: () => globalState.openUrl(
             Config.urlApp,
-            '点击前往访问 Counters 官方网站',
+            '点击前往访问 ${Config.appName} 官方网站',
           ),
         ),
 
@@ -248,7 +248,7 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
           onTap: () {
             showLicensePage(
               context: context,
-              applicationName: 'Counters',
+              applicationName: '${Config.appName}',
               applicationVersion: '$_versionName($_versionCode)',
               applicationLegalese: '© 2025 counters.devyi.com',
             );

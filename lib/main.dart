@@ -63,7 +63,7 @@ void main() async {
     // 初始化窗口管理器
     await windowManager.ensureInitialized();
     await windowManager.setMinimumSize(const Size(396, 594));
-    await windowManager.setTitle('桌游计分器');
+    await windowManager.setTitle('得益计分');
   }
 
   try {
@@ -246,7 +246,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     return MaterialApp(
       navigatorKey: globalState.navigatorKey,
       scaffoldMessengerKey: globalState.scaffoldMessengerKey,
-      title: '桌游计分器',
+      title: '得益计分',
       theme: _buildTheme(themeState.themeColor, Brightness.light, ref),
       darkTheme: _buildTheme(themeState.themeColor, Brightness.dark, ref),
       themeMode: themeState.themeMode,
