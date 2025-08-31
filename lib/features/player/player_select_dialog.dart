@@ -25,7 +25,7 @@ class _PlayerSelectDialogState extends ConsumerState<PlayerSelectDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(playerProvider);
+    final playerAsync = ref.watch(playerProvider);
 
     return AlertDialog(
       title: const Text('选择玩家'),
@@ -46,8 +46,6 @@ class _PlayerSelectDialogState extends ConsumerState<PlayerSelectDialog> {
                         builder: (context) => const AddPlayersPage(),
                       ),
                     );
-                    // 强制刷新状态以显示新添加的玩家
-                    setState(() {});
                   },
                   icon: const Icon(Icons.person_add, size: 20),
                   label: const Text('添加新玩家'),
@@ -55,34 +53,41 @@ class _PlayerSelectDialogState extends ConsumerState<PlayerSelectDialog> {
               ],
             ),
             Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: state.players?.length ?? 0,
-                itemBuilder: (context, index) {
-                  final player = state.players![index];
-                  final isAvailable =
-                      !widget.selectedPlayers.any((sp) => sp.pid == player.pid);
-                  final isSelected =
-                      _selectedPlayers.any((p) => p.pid == player.pid);
+              child: playerAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Center(child: Text('加载玩家失败: $err')),
+                data: (playerState) {
+                  final players = playerState.players;
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: players.length,
+                    itemBuilder: (context, index) {
+                      final player = players[index];
+                      final isAvailable = !widget.selectedPlayers
+                          .any((sp) => sp.pid == player.pid);
+                      final isSelected =
+                          _selectedPlayers.any((p) => p.pid == player.pid);
 
-                  if (!isAvailable) return const SizedBox.shrink();
+                      if (!isAvailable) return const SizedBox.shrink();
 
-                  return CheckboxListTile(
-                    title: Text(player.name),
-                    value: isSelected,
-                    onChanged: _selectedPlayers.length >= widget.maxCount &&
-                            !isSelected
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              if (value == true) {
-                                _selectedPlayers.add(player);
-                              } else {
-                                _selectedPlayers
-                                    .removeWhere((p) => p.pid == player.pid);
-                              }
-                            });
-                          },
+                      return CheckboxListTile(
+                        title: Text(player.name),
+                        value: isSelected,
+                        onChanged: _selectedPlayers.length >= widget.maxCount &&
+                                !isSelected
+                            ? null
+                            : (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    _selectedPlayers.add(player);
+                                  } else {
+                                    _selectedPlayers.removeWhere(
+                                        (p) => p.pid == player.pid);
+                                  }
+                                });
+                              },
+                      );
+                    },
                   );
                 },
               ),

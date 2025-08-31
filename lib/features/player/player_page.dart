@@ -38,16 +38,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(playerProvider.notifier).loadPlayers();
-      }
-    });
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -55,6 +45,8 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final playerAsync = ref.watch(playerProvider);
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -90,98 +82,74 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
       ),
       body: Stack(
         children: [
-          Column(
-            children: [
-              Expanded(
-                child: Consumer(
-                  builder: (context, watchRef, _) {
-                    final providerState = watchRef.watch(playerProvider);
-                    final players = providerState.filteredPlayers;
-
-                    if (players == null) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (players.isEmpty) {
-                      return const Center(child: Text('未找到玩家'));
-                    }
-
-                    return RefreshIndicator(
-                      onRefresh: () async {
-                        await ref.read(playerProvider.notifier).loadPlayers();
-                      },
-                      child: GridView.builder(
-                        key: const PageStorageKey('player_list'),
-                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 78),
-                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: max(
-                            250.0,
-                            MediaQuery.of(context).size.width /
-                                (MediaQuery.of(context).size.width ~/ 300),
-                          ),
-                          mainAxisExtent: 80,
-                          crossAxisSpacing: 0,
-                          mainAxisSpacing: 0,
+          playerAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) => Center(child: Text('加载玩家失败: $err')),
+            data: (playerState) {
+              final players = playerState.filteredPlayers;
+              if (players.isEmpty) {
+                return const Center(child: Text('未找到玩家'));
+              }
+              return RefreshIndicator(
+                onRefresh: () => ref.refresh(playerProvider.future),
+                child: GridView.builder(
+                  key: const PageStorageKey('player_list'),
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 78),
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: max(
+                      250.0,
+                      MediaQuery.of(context).size.width /
+                          (MediaQuery.of(context).size.width ~/ 300),
+                    ),
+                    mainAxisExtent: 80,
+                    crossAxisSpacing: 0,
+                    mainAxisSpacing: 0,
+                  ),
+                  itemCount: players.length,
+                  itemBuilder: (gridItemContext, index) {
+                    final player = players[index];
+                    final playCount =
+                        playerState.playCountCache[player.pid] ?? 0;
+                    return Card(
+                      elevation: 0,
+                      shape: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: Theme.of(gridItemContext)
+                              .colorScheme
+                              .outline
+                              .withAlpha((0.2 * 255).toInt()),
                         ),
-                        itemCount: players.length,
-                        itemBuilder: (gridItemContext, index) {
-                          final player = players[index];
-                          return Card(
-                            elevation: 0,
-                            shape: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                              borderSide: BorderSide(
-                                color: Theme.of(gridItemContext)
-                                    .colorScheme
-                                    .outline
-                                    .withAlpha((0.2 * 255).toInt()),
-                              ),
+                      ),
+                      key: ValueKey(player.pid),
+                      child: Center(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: (details) {
+                            _showPlayerActionsMenu(
+                                context,
+                                details.globalPosition,
+                                player,
+                                ref.read(playerProvider.notifier));
+                          },
+                          child: ListTile(
+                            leading:
+                                PlayerAvatar.build(gridItemContext, player),
+                            title: Text(
+                              player.name,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
-                            key: ValueKey(player.pid),
-                            child: Center(
-                              // 使用 GestureDetector 包裹 ListTile 来获取 onTapDown
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque, //确保整个区域都能响应点击
-                                onTapDown: (details) {
-                                  _showPlayerActionsMenu(
-                                      context,
-                                      // 使用父级 context (Page's context) 来显示菜单
-                                      details.globalPosition, // 全局点击位置
-                                      player,
-                                      ref.read(playerProvider.notifier));
-                                },
-                                child: ListTile(
-                                  leading: PlayerAvatar.build(
-                                      gridItemContext, player),
-                                  title: Text(
-                                    player.name,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                  subtitle: Consumer(
-                                    builder: (context, ref, child) {
-                                      final playerState =
-                                          ref.watch(playerProvider);
-                                      final count = playerState
-                                              .playCountCache[player.pid] ??
-                                          0;
-                                      return Text('游玩次数：$count');
-                                    },
-                                  ),
-                                  // 如果希望点击整个 ListTile 触发，trailing 可以是 null
-                                  // 或者你也可以放一个非交互的图标，或者一个有不同功能的 IconButton
-                                  trailing: const Icon(Icons.more_vert),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                            subtitle: Text('游玩次数：$playCount'),
+                            trailing: const Icon(Icons.more_vert),
+                          ),
+                        ),
                       ),
                     );
                   },
                 ),
-              ),
-            ],
+              );
+            },
           ),
           Positioned(
             right: 16,
@@ -266,7 +234,8 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
     if (!mounted) return;
     if (result == true) {
       try {
-        final deletedCount = await ref.read(playerProvider.notifier).cleanUnusedPlayers();
+        final deletedCount =
+            await ref.read(playerProvider.notifier).cleanUnusedPlayers();
         if (!mounted) return;
 
         if (deletedCount > 0) {
@@ -286,7 +255,7 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
   Future<void> _showEditDialog(
       PlayerInfo player, dynamic playerNotifier) async {
     final playerListItemKey = GlobalKey<PlayerListItemState>();
-    final result = await globalState.showCommonDialog(
+    globalState.showCommonDialog(
       child: Dialog(
         child: Builder(
           builder: (dialogContext) {
@@ -338,10 +307,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
         ),
       ),
     );
-    if (!mounted) return;
-    if (result == true) {
-      ref.read(playerProvider.notifier).loadPlayers();
-    }
   }
 
   Future<void> _showDeleteDialog(

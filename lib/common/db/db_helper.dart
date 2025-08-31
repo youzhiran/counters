@@ -72,8 +72,9 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
         onOpen: _onOpen,
       ),
     );
@@ -137,68 +138,137 @@ class DatabaseHelper {
   Future<void> _onCreate(Database db, int version) async {
     GlobalMsgManager.showMessage("_onCreate db:${db.path}");
     Log.i("_onCreate db:${db.path}");
+
+    final batch = db.batch();
+
     // 创建玩家表
-    await db.execute('''
+    batch.execute('''
+      -- 玩家信息表
       CREATE TABLE players (
-        pid TEXT PRIMARY KEY,
-        name TEXT NOT NULL DEFAULT '未知玩家',
-        avatar TEXT NOT NULL DEFAULT 'default_avatar.png'
+        pid TEXT PRIMARY KEY, -- 玩家唯一ID
+        name TEXT NOT NULL DEFAULT '未知玩家', -- 玩家名称
+        avatar TEXT NOT NULL DEFAULT 'default_avatar.png' -- 玩家头像
       );
     ''');
 
     // 创建模板基础表
-    await db.execute('''
+    batch.execute('''
+      -- 计分器模板表
       CREATE TABLE templates (
-        tid TEXT PRIMARY KEY,
-        template_name TEXT NOT NULL,
-        player_count INTEGER NOT NULL,
-        target_score INTEGER NOT NULL,
-        is_system_template INTEGER NOT NULL DEFAULT 0,
-        base_template_id TEXT,
-        template_type TEXT NOT NULL,
-        other_set TEXT
+        tid TEXT PRIMARY KEY, -- 模板唯一ID
+        template_name TEXT NOT NULL, -- 模板名称
+        player_count INTEGER NOT NULL, -- 玩家人数
+        target_score INTEGER NOT NULL, -- 目标分数
+        is_system_template INTEGER NOT NULL DEFAULT 0, -- 是否为系统模板 (1:是, 0:否)
+        base_template_id TEXT, -- 自定义模板所基于的系统模板ID
+        template_type TEXT NOT NULL, -- 模板类型 (如: poker50, mahjong)
+        other_set TEXT -- 其他设置 (JSON格式字符串)
       );
       ''');
 
     // 插入初始系统模板
     for (var template in _initialSystemTemplates) {
-      await db.insert('templates', template);
+      batch.insert('templates', template);
     }
 
     // 创建模板-玩家关联表
-    await db.execute('''
+    batch.execute('''
+      -- 模板与玩家常用关联表
       CREATE TABLE template_players (
-        template_id TEXT NOT NULL,
-        player_id TEXT NOT NULL,
+        template_id TEXT NOT NULL, -- 模板ID
+        player_id TEXT NOT NULL, -- 玩家ID
         PRIMARY KEY (template_id, player_id)
       );
     ''');
 
     // 创建游戏会话表
-    await db.execute('''
+    batch.execute('''
+      -- 游戏会话历史表
       CREATE TABLE game_sessions (
-        sid TEXT PRIMARY KEY,
-        template_id TEXT NOT NULL,
-        start_time INTEGER NOT NULL,
-        end_time INTEGER,
-        is_completed INTEGER NOT NULL DEFAULT 0
+        sid TEXT PRIMARY KEY, -- 会话唯一ID
+        template_id TEXT NOT NULL, -- 使用的模板ID
+        start_time INTEGER NOT NULL, -- 开始时间 (Unix时间戳)
+        end_time INTEGER, -- 结束时间 (Unix时间戳)
+        is_completed INTEGER NOT NULL DEFAULT 0, -- 是否已完成 (1:是, 0:否)
+        league_match_id TEXT -- 关联的联赛比赛ID (V2新增)
       )
     ''');
 
     // 创建玩家得分表
-    await db.execute('''
+    batch.execute('''
+      -- 玩家具体得分历史表
       CREATE TABLE player_scores (
-        session_id TEXT NOT NULL,
-        player_id TEXT NOT NULL,
-        round_number INTEGER NOT NULL,
-        score INTEGER,
-        extended_field TEXT,
+        session_id TEXT NOT NULL, -- 会话ID
+        player_id TEXT NOT NULL, -- 玩家ID
+        round_number INTEGER NOT NULL, -- 回合数
+        score INTEGER, -- 本回合得分
+        extended_field TEXT, -- 扩展字段 (用于特殊游戏类型, JSON格式)
         PRIMARY KEY (session_id, player_id, round_number)
       )
     ''');
 
+    // 创建V2相关的表
+    _createV2Tables(batch);
+
+    await batch.commit(noResult: true);
+
     // 创建性能优化索引
     await _createPerformanceIndexes(db);
+  }
+
+  void _createV2Tables(Batch batch) {
+    // 创建联赛表
+    batch.execute('''
+      -- 联赛信息表 (V2新增)
+      CREATE TABLE leagues (
+        lid TEXT PRIMARY KEY, -- 联赛唯一ID
+        name TEXT NOT NULL, -- 联赛名称
+        type TEXT NOT NULL, -- 联赛类型 (如: roundRobin, knockout)
+        player_ids TEXT NOT NULL, -- 参赛者ID列表 (JSON格式)
+        default_template_id TEXT NOT NULL, -- 默认计分器模板ID
+        points_for_win INTEGER NOT NULL, -- 胜场积分
+        points_for_draw INTEGER NOT NULL, -- 平局积分
+        points_for_loss INTEGER NOT NULL, -- 负场积分
+        current_round INTEGER -- 当前进行的轮次 (用于淘汰赛)
+      )
+    ''');
+
+    // 创建比赛表
+    batch.execute('''
+      -- 联赛中的比赛记录表 (V2新增)
+      CREATE TABLE matches (
+        mid TEXT PRIMARY KEY, -- 比赛唯一ID
+        league_id TEXT NOT NULL, -- 所属联赛ID
+        round INTEGER NOT NULL, -- 比赛轮次
+        player1_id TEXT NOT NULL, -- 选手1的ID
+        player2_id TEXT, -- 选手2的ID (轮空时可为空)
+        status TEXT NOT NULL, -- 比赛状态 (如: pending, in_progress, completed)
+        player1_score INTEGER, -- 选手1的得分
+        player2_score INTEGER, -- 选手2的得分
+        winner_id TEXT, -- 胜利者ID
+        template_id TEXT, -- 该场比赛使用的计分器模板ID
+        start_time INTEGER, -- 开始时间 (Unix时间戳)
+        end_time INTEGER, -- 结束时间 (Unix时间戳)
+        FOREIGN KEY (league_id) REFERENCES leagues (lid) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    Log.i("Upgrading database from version $oldVersion to $newVersion");
+    if (oldVersion < 2) {
+      Log.i("Applying version 2 schema changes...");
+      final batch = db.batch();
+      // 创建V2相关的表
+      _createV2Tables(batch);
+
+      // 为 game_sessions 表添加列
+      batch.execute('''
+        ALTER TABLE game_sessions ADD COLUMN league_match_id TEXT
+      ''');
+      await batch.commit(noResult: true);
+      Log.i("Version 2 schema changes applied.");
+    }
   }
 
   Future<void> _onOpen(Database db) async {
@@ -242,6 +312,12 @@ class DatabaseHelper {
     await db.execute('''
       CREATE INDEX IF NOT EXISTS idx_template_players_player_id
       ON template_players(player_id)
+    ''');
+
+    // 为 matches 表创建索引，优化联赛查询
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_matches_league_id
+      ON matches(league_id)
     ''');
 
     Log.i('性能优化索引创建完成');

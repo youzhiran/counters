@@ -13,9 +13,9 @@ enum MessageType {
 
 /// 消息状态枚举
 enum MessageStatus {
-  active,    // 活跃显示中
-  exiting,   // 正在退出（播放退出动画）
-  removed,   // 已移除
+  active, // 活跃显示中
+  exiting, // 正在退出（播放退出动画）
+  removed, // 已移除
 }
 
 /// 消息数据类
@@ -98,11 +98,13 @@ class MessageManager extends _$MessageManager {
   }
 
   /// 显示消息
-  void showMessage(String content, {MessageType type = MessageType.info, Duration? duration}) {
+  void showMessage(String content,
+      {MessageType type = MessageType.info, Duration? duration}) {
     Log.v('MessageManager: 准备显示消息 - $content (类型: $type)');
 
     final message = AppMessage(
-      id: '${DateTime.now().millisecondsSinceEpoch}_${content.hashCode}', // 生成唯一ID
+      id: '${DateTime.now().millisecondsSinceEpoch}_${content.hashCode}',
+      // 生成唯一ID
       content: content,
       type: type,
       timestamp: DateTime.now(),
@@ -130,7 +132,8 @@ class MessageManager extends _$MessageManager {
       activeMessages: newActiveMessages,
     );
 
-    Log.v('MessageManager: 添加消息到活跃列表 - ${message.content} (活跃消息数: ${newActiveMessages.length})');
+    Log.v(
+        'MessageManager: 添加消息到活跃列表 - ${message.content} (活跃消息数: ${newActiveMessages.length})');
 
     // 安排自动清除
     _scheduleMessageClear(message);
@@ -146,11 +149,13 @@ class MessageManager extends _$MessageManager {
 
   /// 标记消息为正在退出状态
   void _markMessageExiting(String messageId) {
-    final messageIndex = state.activeMessages.indexWhere((msg) => msg.id == messageId);
+    final messageIndex =
+        state.activeMessages.indexWhere((msg) => msg.id == messageId);
     if (messageIndex == -1) return;
 
     final updatedMessages = [...state.activeMessages];
-    updatedMessages[messageIndex] = updatedMessages[messageIndex].copyWith(status: MessageStatus.exiting);
+    updatedMessages[messageIndex] =
+        updatedMessages[messageIndex].copyWith(status: MessageStatus.exiting);
 
     state = state.copyWith(activeMessages: updatedMessages);
     // Log.v('MessageManager: 标记消息为退出状态 - ID: $messageId');
@@ -163,7 +168,8 @@ class MessageManager extends _$MessageManager {
 
   /// 移除指定消息
   void removeMessage(String messageId) {
-    final newActiveMessages = state.activeMessages.where((msg) => msg.id != messageId).toList();
+    final newActiveMessages =
+        state.activeMessages.where((msg) => msg.id != messageId).toList();
 
     if (newActiveMessages.length != state.activeMessages.length) {
       state = state.copyWith(activeMessages: newActiveMessages);
@@ -188,7 +194,9 @@ class MessageManager extends _$MessageManager {
 
   /// 显示错误消息
   void showError(String content, {Duration? duration}) {
-    showMessage(content, type: MessageType.error, duration: duration ?? _getDefaultDuration(MessageType.error));
+    showMessage(content,
+        type: MessageType.error,
+        duration: duration ?? _getDefaultDuration(MessageType.error));
   }
 
   /// 清除所有活跃消息

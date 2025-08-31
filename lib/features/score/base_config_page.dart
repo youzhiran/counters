@@ -360,7 +360,6 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
             pageLayout = Column(
               children: [
                 settingsContent,
-                const SizedBox(height: 16),
                 playerContent,
               ],
             );

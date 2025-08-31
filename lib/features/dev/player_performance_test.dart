@@ -170,24 +170,30 @@ class PlayerPerformanceTest {
   static void analyzeCacheState(WidgetRef ref) {
     if (!kDebugMode) return;
 
-    final playerState = ref.read(playerProvider);
-    final cacheSize = playerState.playCountCache.length;
-    final playerCount = playerState.players?.length ?? 0;
+    final playerAsync = ref.read(playerProvider);
+    playerAsync.when(
+      loading: () => Log.i('玩家数据加载中，无法分析缓存'),
+      error: (err, stack) => Log.e('玩家数据加载失败，无法分析缓存: $err'),
+      data: (playerState) {
+        final cacheSize = playerState.playCountCache.length;
+        final playerCount = playerState.players.length;
 
-    Log.i('=== 玩家缓存状态分析 ===');
-    Log.i('缓存大小: $cacheSize');
-    Log.i('玩家总数: $playerCount');
-    Log.i(
-        '缓存覆盖率: ${cacheSize > 0 ? (cacheSize / playerCount * 100).toStringAsFixed(1) : 0}%');
+        Log.i('=== 玩家缓存状态分析 ===');
+        Log.i('缓存大小: $cacheSize');
+        Log.i('玩家总数: $playerCount');
+        Log.i(
+            '缓存覆盖率: ${cacheSize > 0 ? (cacheSize / playerCount * 100).toStringAsFixed(1) : 0}%');
 
-    if (cacheSize > 0) {
-      final cacheValues = playerState.playCountCache.values.toList();
-      final totalPlayCount = cacheValues.fold(0, (sum, count) => sum + count);
-      final avgPlayCount = totalPlayCount / cacheSize;
+        if (cacheSize > 0) {
+          final cacheValues = playerState.playCountCache.values.toList();
+          final totalPlayCount = cacheValues.fold(0, (sum, count) => sum + count);
+          final avgPlayCount = totalPlayCount / cacheSize;
 
-      Log.i('平均游玩次数: ${avgPlayCount.toStringAsFixed(1)}');
-      Log.i('最大游玩次数: ${cacheValues.reduce((a, b) => a > b ? a : b)}');
-      Log.i('最小游玩次数: ${cacheValues.reduce((a, b) => a < b ? a : b)}');
-    }
+          Log.i('平均游玩次数: ${avgPlayCount.toStringAsFixed(1)}');
+          Log.i('最大游玩次数: ${cacheValues.reduce((a, b) => a > b ? a : b)}');
+          Log.i('最小游玩次数: ${cacheValues.reduce((a, b) => a < b ? a : b)}');
+        }
+      },
+    );
   }
 }

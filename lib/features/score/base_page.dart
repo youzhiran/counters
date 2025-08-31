@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/counter.dart';
@@ -25,7 +26,6 @@ import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:counters/features/score/widgets/score_chart_bottom_sheet.dart';
 import 'package:counters/features/setting/screen_wakelock_provider.dart';
-import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -89,9 +89,6 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     // 因为 OS 可能随时释放 wakelock，需要持续检查和启用
     _ensureScreenWakelockState();
 
-    final template =
-        ref.watch(templatesProvider.notifier).getTemplate(widget.templateId);
-
     ref.listen(scoreProvider, (previous, next) {
       if (next.value?.showGameEndDialog == true) {
         showGameResult(context);
@@ -113,6 +110,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       ),
       data: (scoreState) {
         final session = scoreState.currentSession;
+        // 模板现在直接从 ScoreState 获取，这是唯一的数据源
+        final template = scoreState.template;
 
         if (session == null || template == null) {
           return Scaffold(
@@ -250,14 +249,11 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       BuildContext context, BaseTemplate template, GameSession session);
 
   String _getPlayerName(String playerId) {
-    return ref
-            .read(templatesProvider.notifier)
-            .getTemplate(widget.templateId)
-            ?.players
-            .firstWhere((p) => p.pid == playerId,
-                orElse: () => PlayerInfo(name: '未知玩家', avatar: 'default'))
-            .name ??
-        '未知玩家';
+    final scoreState = ref.read(scoreProvider).value;
+    // 优先从 scoreState 中的 template 获取玩家信息，因为这可能是为比赛定制的临时模板
+    final player = scoreState?.template?.players
+        .firstWhereOrNull((p) => p.pid == playerId);
+    return player?.name ?? '未知玩家';
   }
 
   void showGameResult(BuildContext context) {
@@ -265,8 +261,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       return;
     }
 
-    final template =
-        ref.read(templatesProvider.notifier).getTemplate(widget.templateId);
+    final scoreState = ref.read(scoreProvider).value;
+    final template = scoreState?.template;
 
     if (template == null) {
       globalState.showCommonDialog(
@@ -356,8 +352,22 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         actions: [
           TextButton(
             onPressed: Navigator.of(context).pop,
-            child: Text('确定'),
+            child: const Text('确定'),
           ),
+          // 如果是联赛对局且游戏已结束，额外显示“确认胜负”按钮
+          if (scoreState?.currentSession?.leagueMatchId != null &&
+              result.hasFailures)
+            TextButton(
+              onPressed: () {
+                // 先关闭对话框
+                Navigator.of(context).pop();
+                // 调用 provider 方法确认结果
+                ref.read(scoreProvider.notifier).confirmLeagueMatchResult();
+                // 再退出计分页面，返回到联赛详情
+                Navigator.of(context).pop();
+              },
+              child: const Text('确认胜负'),
+            ),
         ],
       ),
     ));
@@ -376,9 +386,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           TextButton(
             onPressed: () async {
               globalState.navigatorKey.currentState?.pop();
-              final template = ref
-                  .read(templatesProvider.notifier)
-                  .getTemplate(widget.templateId);
+              final template = ref.read(scoreProvider).value?.template;
               await ref.read(scoreProvider.notifier).resetGame(true);
               if (template != null) {
                 ref.read(scoreProvider.notifier).startNewGame(template);
@@ -394,14 +402,10 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   String getPlayerName(String playerId) {
-    return ref
-            .read(templatesProvider.notifier)
-            .getTemplate(widget.templateId)
-            ?.players
-            .firstWhere((p) => p.pid == playerId,
-                orElse: () => PlayerInfo(name: '未知玩家', avatar: 'default'))
-            .name ??
-        '未知玩家';
+    final scoreState = ref.read(scoreProvider).value;
+    final player = scoreState?.template?.players
+        .firstWhereOrNull((p) => p.pid == playerId);
+    return player?.name ?? '未知玩家';
   }
 
   /// 显示通用的分数编辑弹窗

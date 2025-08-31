@@ -6,12 +6,12 @@ part of 'template_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$templatesHash() => r'7e1677e864ee5b0baed6acc09baaaab4359c140a';
+String _$templatesHash() => r'f87837c3d94b4437acb96dd9ef3bbabbdc72c9ff';
 
 /// See also [Templates].
 @ProviderFor(Templates)
 final templatesProvider =
-    AutoDisposeAsyncNotifierProvider<Templates, List<BaseTemplate>>.internal(
+    AsyncNotifierProvider<Templates, List<BaseTemplate>>.internal(
   Templates.new,
   name: r'templatesProvider',
   debugGetCreateSourceHash:
@@ -20,6 +20,6 @@ final templatesProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$Templates = AutoDisposeAsyncNotifier<List<BaseTemplate>>;
+typedef _$Templates = AsyncNotifier<List<BaseTemplate>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

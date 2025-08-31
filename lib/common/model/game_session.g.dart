@@ -17,6 +17,7 @@ _GameSession _$GameSessionFromJson(Map<String, dynamic> json) => _GameSession(
       scores: (json['scores'] as List<dynamic>)
           .map((e) => PlayerScore.fromJson(e as Map<String, dynamic>))
           .toList(),
+      leagueMatchId: json['leagueMatchId'] as String?,
     );
 
 Map<String, dynamic> _$GameSessionToJson(_GameSession instance) =>
@@ -27,4 +28,5 @@ Map<String, dynamic> _$GameSessionToJson(_GameSession instance) =>
       'endTime': instance.endTime?.toIso8601String(),
       'isCompleted': instance.isCompleted,
       'scores': instance.scores,
+      'leagueMatchId': instance.leagueMatchId,
     };

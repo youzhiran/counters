@@ -1,0 +1,247 @@
+import 'package:counters/app/state.dart';
+import 'package:counters/common/model/base_template.dart';
+import 'package:counters/common/model/league_enums.dart';
+import 'package:counters/common/model/player_info.dart';
+import 'package:counters/common/providers/league_provider.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/features/player/player_select_dialog.dart';
+import 'package:counters/features/template/template_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CreateLeaguePage extends ConsumerStatefulWidget {
+  const CreateLeaguePage({super.key});
+
+  @override
+  ConsumerState<CreateLeaguePage> createState() => _CreateLeaguePageState();
+}
+
+class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  LeagueType _selectedType = LeagueType.roundRobin;
+  final List<PlayerInfo> _selectedPlayers = [];
+  BaseTemplate? _selectedTemplate;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      if (_selectedPlayers.length < 2) {
+        ref.showWarning('请至少选择2名玩家');
+        return;
+      }
+      if (_selectedTemplate == null) {
+        ref.showWarning('请选择一个计分模板');
+        return;
+      }
+
+      try {
+        await ref.read(leagueNotifierProvider.notifier).addLeague(
+              name: _nameController.text,
+              type: _selectedType,
+              playerIds: _selectedPlayers.map((p) => p.pid).toList(),
+              defaultTemplateId: _selectedTemplate!.tid,
+            );
+
+        // 检查组件是否仍然挂载
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        ref.showSuccess('联赛创建成功');
+      } catch (e) {
+        ref.showError(e.toString());
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final templatesAsync = ref.watch(templatesProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('创建新联赛'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _submitForm,
+            tooltip: '保存联赛',
+          )
+        ],
+      ),
+      body: templatesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('加载模板失败: $err')),
+        data: (templates) {
+          // 联赛功能当前仅支持2人对战，但模板选择放开
+          final suitableUserTemplates =
+              templates.where((t) => !t.isSystemTemplate).toList();
+
+          return Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: '联赛名称',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return '请输入联赛名称';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  initialValue: '2',
+                  enabled: false, // 当前禁用，为未来保留
+                  decoration: const InputDecoration(
+                    labelText: '联赛玩家数量',
+                    border: OutlineInputBorder(),
+                    helperText: '此功能暂未开放',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<LeagueType>(
+                  value: _selectedType,
+                  decoration: const InputDecoration(
+                    labelText: '联赛类型',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: LeagueType.roundRobin,
+                      child: Text('循环赛'),
+                    ),
+                    DropdownMenuItem(
+                      value: LeagueType.knockout,
+                      child: Text('淘汰赛'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedType = value;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildPlayerSelector(context),
+                const SizedBox(height: 16),
+                // 模板选择部分
+                DropdownButtonFormField<BaseTemplate>(
+                  value: _selectedTemplate,
+                  decoration: const InputDecoration(
+                    labelText: '默认计分模板',
+                    border: OutlineInputBorder(),
+                    helperText: '注意：联赛将固定为2人对战模式。',
+                    // 提示信息
+                    helperMaxLines: 2,
+                  ),
+                  hint: const Text('选择一个模板'),
+                  items: suitableUserTemplates.map((template) {
+                    return DropdownMenuItem(
+                      value: template,
+                      child: Text(
+                          '${template.templateName} (${template.playerCount}人)'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedTemplate = value;
+                      });
+                    }
+                  },
+                  validator: (value) => value == null ? '请选择一个模板' : null,
+                ),
+                // 如果没有合适的模板，显示提示和新建按钮
+                if (suitableUserTemplates.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '没有可用的用户模板',
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.error),
+                        ),
+                        TextButton(
+                          child: const Text('去新建一个'),
+                          onPressed: () {
+                            // 跳转到模板管理页面
+                            Navigator.of(context).pushNamed('/templates');
+                          },
+                        )
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: _submitForm,
+                  icon: const Icon(Icons.save),
+                  label: const Text('创建联赛'),
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48)),
+                )
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPlayerSelector(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () async {
+            final result = await globalState.showCommonDialog<List<PlayerInfo>>(
+              child: PlayerSelectDialog(
+                selectedPlayers: [], // In create mode, none are pre-selected
+                maxCount: 20, // Allow up to 20 players
+              ),
+            );
+            if (result != null) {
+              setState(() {
+                _selectedPlayers.clear();
+                _selectedPlayers.addAll(result);
+              });
+            }
+          },
+          icon: const Icon(Icons.group_add),
+          label: Text('选择参赛玩家 (${_selectedPlayers.length})'),
+          style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48)),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8.0,
+          runSpacing: 4.0,
+          children: _selectedPlayers.map((player) {
+            return Chip(
+              label: Text(player.name),
+              onDeleted: () {
+                setState(() {
+                  _selectedPlayers.removeWhere((p) => p.pid == player.pid);
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}

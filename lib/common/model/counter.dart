@@ -2,7 +2,7 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 
 class CounterTemplate extends BaseTemplate {
-  static const String templateType = 'counter';
+  static const String staticTemplateType = 'counter';
 
   CounterTemplate({
     super.tid,
@@ -13,7 +13,7 @@ class CounterTemplate extends BaseTemplate {
     super.isSystemTemplate,
     super.baseTemplateId,
     bool isAllowNegative = false,
-  }) {
+  }) : super(templateType: staticTemplateType) {
     setOtherSet('isAllowNegative', isAllowNegative);
   }
 
@@ -44,7 +44,6 @@ class CounterTemplate extends BaseTemplate {
       targetScore: map['target_score'],
       isSystemTemplate: map['is_system_template'] == 1,
       baseTemplateId: map['base_template_id'],
-      isAllowNegative: map['is_allow_negative'] == 1,
       players: players,
     );
     template.otherSetFromJson(map['other_set']);
@@ -54,6 +53,7 @@ class CounterTemplate extends BaseTemplate {
   @override
   CounterTemplate copyWith({
     String? tid,
+    String? templateType,
     String? templateName,
     int? playerCount,
     int? targetScore,

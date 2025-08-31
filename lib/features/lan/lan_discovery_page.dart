@@ -167,7 +167,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         CustomPageTransitions.slideFromRight(
-          HomePage.buildSessionPage(null, host.baseTid),
+          HomePage.buildSessionPageFromId(host.baseTid),
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         ),

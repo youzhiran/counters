@@ -248,7 +248,7 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
           onTap: () {
             showLicensePage(
               context: context,
-              applicationName: '${Config.appName}',
+              applicationName: Config.appName,
               applicationVersion: '$_versionName($_versionCode)',
               applicationLegalese: '© 2025 counters.devyi.com',
             );

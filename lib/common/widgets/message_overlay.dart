@@ -859,6 +859,7 @@ class GlobalMsgManager {
             break;
         }
       } else {
+        Log.w('GlobalMsgManager: 无法显示$typeName消息 - $content');
         Log.w('GlobalMsgManager: 容器未设置，无法显示消息');
       }
     } catch (e, stackTrace) {

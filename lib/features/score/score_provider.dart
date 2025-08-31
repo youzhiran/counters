@@ -10,9 +10,11 @@ import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/player_score.dart';
 import 'package:counters/common/model/sync_messages.dart';
+import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+
 // 引入 LAN Provider 和 消息 Payload 类
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/player/player_provider.dart';
@@ -23,7 +25,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:uuid/uuid.dart'; // 确保导入 PlayerInfo 用于 applySyncState
+import 'package:uuid/uuid.dart';
 
 part 'score_provider.g.dart';
 
@@ -44,6 +46,7 @@ class GameResult {
 @immutable
 class ScoreState {
   final GameSession? currentSession;
+  final BaseTemplate? template; // 当前会话使用的模板
   final int currentRound;
   final bool isInitialized;
   final MapEntry<String, int>? currentHighlight;
@@ -53,6 +56,7 @@ class ScoreState {
 
   const ScoreState({
     this.currentSession,
+    this.template,
     this.currentRound = 0,
     this.isInitialized = false,
     this.currentHighlight,
@@ -63,6 +67,7 @@ class ScoreState {
 
   ScoreState copyWith({
     GameSession? currentSession,
+    BaseTemplate? template,
     int? currentRound,
     bool? isInitialized,
     MapEntry<String, int>? currentHighlight,
@@ -72,6 +77,7 @@ class ScoreState {
   }) {
     return ScoreState(
       currentSession: currentSession ?? this.currentSession,
+      template: template ?? this.template,
       currentRound: currentRound ?? this.currentRound,
       isInitialized: isInitialized ?? this.isInitialized,
       currentHighlight: currentHighlight ?? this.currentHighlight,
@@ -83,7 +89,7 @@ class ScoreState {
 
   @override
   String toString() {
-    return 'ScoreState{currentSession: $currentSession, currentRound: $currentRound, '
+    return 'ScoreState{currentSession: $currentSession, template: ${template?.templateName}, currentRound: $currentRound, '
         'isInitialized: $isInitialized, currentHighlight: $currentHighlight, showGameEndDialog: $showGameEndDialog, players: ${players.length} players, isTempMode: $isTempMode}';
   }
 }
@@ -96,15 +102,11 @@ class Score extends _$Score {
   Future<ScoreState> build() async {
     Log.d('ScoreNotifier: build() called.');
 
-    // 设置玩家游玩次数更新回调
-    _sessionDao.onPlayerPlayCountUpdate = (playerIds) {
-      try {
-        final playerNotifier = ref.read(playerProvider.notifier);
-        playerNotifier.updatePlayerPlayCounts(playerIds);
-      } catch (e) {
-        Log.e('更新玩家游玩次数缓存失败: $e');
-      }
-    };
+    // 依赖的其他Provider，等待它们加载完成
+    // 修复：使用 ref.read 替代 ref.watch，避免不必要的重建
+    final initialTemplates = await ref.read(templatesProvider.future);
+    final allLeagues = (await ref.read(leagueNotifierProvider.future)).leagues;
+    final allPlayers = (await ref.read(playerProvider.future)).players;
 
     // 当 provider 被销毁时清理回调
     ref.onDispose(() {
@@ -122,60 +124,82 @@ class Score extends _$Score {
       return currentState;
     }
 
-    // 优化：并行加载模板和会话数据，避免阻塞
-    final futures = await Future.wait([
-      _loadTemplatesWithCache(),
-      _sessionDao.getLastIncompleteGameSession(),
-    ]);
-
-    final initialTemplates = futures[0] as List<BaseTemplate>?;
-    final session = futures[1] as GameSession?;
+    final session = await _sessionDao.getLastIncompleteGameSession();
 
     Log.d(
         'ScoreNotifier: Session from DAO: ${session?.sid}, templateId: ${session?.templateId}');
+    BaseTemplate? initialTemplate;
     List<PlayerInfo> initialPlayers = [];
 
     if (session != null) {
-      final currentRound = _calculateCurrentRound(session);
-      if (session.templateId.isNotEmpty) {
-        final List<BaseTemplate>? templatesList =
-            initialTemplates; // 使用已经 await 过的结果
+      // 检查是否为联赛对局
+      if (session.leagueMatchId != null) {
+        Log.d('ScoreNotifier: 为联赛重建状态...');
+        // 1. 找到基础系统模板
+        final baseTemplate = initialTemplates
+            .firstWhereOrNull((t) => t.tid == session.templateId);
 
-        if (templatesList != null) {
-          Log.d(
-              'ScoreNotifier：等待的将来的可用模板 ID：${templatesList.map((t) => t.tid).join(", ")}');
-          final template = templatesList
-              .firstWhereOrNull((t) => t.tid == session.templateId);
-          if (template != null) {
-            initialPlayers = template.players;
-            Log.i(
-                'ScoreNotifier build: 从模板 "${template.templateName}" (TID: ${template.tid}) 加载了 ${initialPlayers.length} 个玩家信息');
-          } else {
-            Log.w(
-                'ScoreNotifier build: 未找到模板 ID: ${session.templateId} (模板已加载，但在列表中找不到 ID).');
-          }
+        // 2. 找到联赛和比赛信息
+        final league = allLeagues.firstWhereOrNull(
+            (l) => l.matches.any((m) => m.mid == session.leagueMatchId));
+        final match = league?.matches
+            .firstWhereOrNull((m) => m.mid == session.leagueMatchId);
+
+        // 3. 找到比赛玩家
+        final player1 =
+            allPlayers.firstWhereOrNull((p) => p.pid == match?.player1Id);
+        final player2 =
+            allPlayers.firstWhereOrNull((p) => p.pid == match?.player2Id);
+
+        if (baseTemplate != null &&
+            league != null &&
+            match != null &&
+            player1 != null &&
+            player2 != null) {
+          // 4. 重新创建临时比赛模板
+          initialTemplate = baseTemplate.copyWith(
+            tid: 'temp_league_${match.mid}',
+            // 临时的、唯一的ID
+            templateName: '${league.name}: ${player1.name} vs ${player2.name}',
+            playerCount: 2,
+            players: [player1, player2],
+            isSystemTemplate: false,
+          );
+          initialPlayers = initialTemplate.players;
+          Log.i('[联赛]重建的临时模板: ${initialTemplate.templateName}');
         } else {
-          Log.w(
-              'ScoreNotifier build: templatesList 为 null（initialTemplates 在 await 后为 null）。找不到模板 ID：${session.templateId}.');
+          Log.e('[联赛]无法重建状态：缺少一些信息。');
+        }
+      } else {
+        // 普通对局的状态重建
+        initialTemplate = initialTemplates
+            .firstWhereOrNull((t) => t.tid == session.templateId);
+        if (initialTemplate != null) {
+          initialPlayers = initialTemplate.players;
         }
       }
+
+      final currentRound = _calculateCurrentRound(session);
       return ScoreState(
         currentSession: session,
+        template: initialTemplate,
         currentRound: currentRound,
         isInitialized: true,
-        players: initialPlayers, // initialPlayers 可能为空
+        players: initialPlayers,
         isTempMode: false,
       );
     }
 
     Log.d('ScoreNotifier: 未找到活动会话。返回默认 ScoreState。');
-    return const ScoreState(isInitialized: true, players: [], isTempMode: false);
+    return const ScoreState(
+        isInitialized: true, players: [], isTempMode: false);
   }
 
   Future<void> clearAllHistory() async {
     await _sessionDao.deleteAllGameSessions();
     state = AsyncData(const ScoreState(
       currentSession: null,
+      template: null,
       currentRound: 0,
       isInitialized: true,
       currentHighlight: null,
@@ -218,7 +242,8 @@ class Score extends _$Score {
       isInitialized: true,
       currentHighlight: null,
       showGameEndDialog: false,
-      players: [], // 清空玩家信息
+      players: [],
+      // 清空玩家信息
       isTempMode: false,
     ));
   }
@@ -266,6 +291,7 @@ class Score extends _$Score {
         currentState.currentSession?.templateId == templateId) {
       state = AsyncData(currentState.copyWith(
         currentSession: null,
+        template: null,
         currentRound: 0,
         currentHighlight: null,
         showGameEndDialog: false,
@@ -273,8 +299,9 @@ class Score extends _$Score {
       ));
       _broadcastResetGame();
     } else {
-      state = AsyncData(
-          currentState ?? const ScoreState(isInitialized: true, players: [], isTempMode: false));
+      state = AsyncData(currentState ??
+          const ScoreState(
+              isInitialized: true, players: [], isTempMode: false));
     }
   }
 
@@ -285,6 +312,7 @@ class Score extends _$Score {
     if (currentState != null && currentState.currentSession?.sid == sessionId) {
       state = AsyncData(currentState.copyWith(
         currentSession: null,
+        template: null,
         currentRound: 0,
         currentHighlight: null,
         showGameEndDialog: false,
@@ -292,8 +320,9 @@ class Score extends _$Score {
       ));
       _broadcastResetGame();
     } else {
-      state = AsyncData(
-          currentState ?? const ScoreState(isInitialized: true, players: [], isTempMode: false));
+      state = AsyncData(currentState ??
+          const ScoreState(
+              isInitialized: true, players: [], isTempMode: false));
     }
   }
 
@@ -302,13 +331,55 @@ class Score extends _$Score {
     return session.scores.map((s) => s.roundScores.length).fold(0, math.max);
   }
 
-  void startNewGame(BaseTemplate template) {
+  Future<void> startNewGame(
+    BaseTemplate template, {
+    String? leagueMatchId,
+    String? persistentTemplateId, // 用于持久化的模板ID
+  }) async {
+    Log.d(
+        '[ScoreProvider] startNewGame called with template: ${template.templateName} (ID: ${template.tid}, Type: ${template.runtimeType}) and leagueMatchId: $leagueMatchId');
+
+    // 修复联赛计分：检查是否已有该比赛的会话
+    if (leagueMatchId != null) {
+      final existingSession =
+          await _sessionDao.getIncompleteSessionByLeagueMatchId(leagueMatchId);
+      if (existingSession != null) {
+        Log.i(
+            '[联赛] 发现已存在的未完成会话: ${existingSession.sid} for match: $leagueMatchId. 正在恢复...');
+        // 如果找到，直接加载这个会话状态
+        final validatedPlayers = template.players
+            .map((p) => p.pid.isEmpty ? p.copyWith(pid: const Uuid().v4()) : p)
+            .toList();
+
+        final scoreState = ScoreState(
+          currentSession: existingSession,
+          template: template,
+          // 使用新的临时模板，因为它包含正确的玩家信息
+          currentRound: _calculateCurrentRound(existingSession),
+          isInitialized: true,
+          players: validatedPlayers,
+          isTempMode: false,
+        );
+        state = AsyncData(scoreState);
+        updateHighlight();
+        // 可选：广播状态
+        final lanState = ref.read(lanProvider);
+        if (lanState.isHost) {
+          broadcastTemplateInfo(template);
+          _broadcastPlayerInfo(validatedPlayers);
+          _broadcastSyncState(existingSession);
+        }
+        return; // 结束方法，不再创建新会话
+      }
+    }
+
     final validatedPlayers = template.players
         .map((p) => p.pid.isEmpty ? p.copyWith(pid: const Uuid().v4()) : p)
         .toList();
 
     final newSession = GameSession.newSession(
-      templateId: template.tid,
+      // Session中保存的ID应该是持久化的ID，而不是临时ID
+      templateId: persistentTemplateId ?? template.tid,
       scores: validatedPlayers
           .map((p) => PlayerScore(
                 playerId: p.pid,
@@ -316,19 +387,28 @@ class Score extends _$Score {
               ))
           .toList(),
       startTime: DateTime.now(),
+      leagueMatchId: leagueMatchId, // Pass the league match ID
     );
+    Log.d(
+        '[ScoreProvider] Created new GameSession: ${newSession.sid} for template: ${newSession.templateId}');
 
-    state = AsyncData(ScoreState(
+    final newScoreState = ScoreState(
       currentSession: newSession,
+      template: template,
+      // 状态中持有的是临时的、包含具体玩家的模板
       currentRound: 0,
       isInitialized: true,
       players: validatedPlayers,
       isTempMode: false,
-    ));
+    );
+    Log.d('[ScoreProvider] Setting new ScoreState: $newScoreState');
+    state = AsyncData(newScoreState);
 
     updateHighlight();
     final lanState = ref.read(lanProvider);
     if (lanState.isHost) {
+      Log.d('[ScoreProvider] Broadcasting state for host.');
+      broadcastTemplateInfo(template); // 广播模板信息
       _broadcastPlayerInfo(validatedPlayers);
       _broadcastSyncState(newSession);
     }
@@ -353,6 +433,7 @@ class Score extends _$Score {
 
     state = AsyncData(ScoreState(
       currentSession: newSession,
+      template: template,
       currentRound: 0,
       isInitialized: true,
       players: validatedPlayers,
@@ -512,7 +593,10 @@ class Score extends _$Score {
             ?.firstWhereOrNull((t) => t.tid == sessionAfterUpdate.templateId);
 
         if (template != null && template.targetScore > 0) {
-          final disableVictoryScoreCheck = template.getOtherSet<bool>('disableVictoryScoreCheck', defaultValue: false) ?? false;
+          final disableVictoryScoreCheck = template.getOtherSet<bool>(
+                  'disableVictoryScoreCheck',
+                  defaultValue: false) ??
+              false;
           if (!disableVictoryScoreCheck) {
             final gameResult = calculateGameResult(template);
             if (gameResult.hasFailures) {
@@ -535,6 +619,16 @@ class Score extends _$Score {
 
     // 根据模式决定是否保存会话到本地数据库
     await _saveSession();
+
+    // 如果是联赛对局，实时更新联赛提供者中的比分
+    final session = state.value?.currentSession;
+    if (session != null && session.leagueMatchId != null) {
+      final scores = Map.fromEntries(
+          session.scores.map((s) => MapEntry(s.playerId, s.totalScore)));
+      ref
+          .read(leagueNotifierProvider.notifier)
+          .updateMatchScore(session.leagueMatchId!, scores);
+    }
   }
 
   void resetGameEndDialog() {
@@ -618,12 +712,37 @@ class Score extends _$Score {
       );
       await _sessionDao.saveGameSession(completedSession);
       Log.d('主机模式：游戏历史已保存到本地数据库');
+
+      // 检查是否为联赛对局，并更新联赛提供者
+      if (completedSession.leagueMatchId != null) {
+        final template = ref
+            .read(templatesProvider)
+            .valueOrNull
+            ?.firstWhereOrNull((t) => t.tid == completedSession.templateId);
+        if (template != null) {
+          final gameResult = calculateGameResult(template);
+          final winnerId = gameResult.winners.isNotEmpty
+              ? gameResult.winners.first.playerId
+              : null;
+          final scores = Map.fromEntries(completedSession.scores
+              .map((s) => MapEntry(s.playerId, s.totalScore)));
+
+          await ref.read(leagueNotifierProvider.notifier).updateMatchResult(
+                leagueMatchId: completedSession.leagueMatchId!,
+                winnerId: winnerId,
+                scores: scores,
+              );
+          Log.i(
+              'League match result updated for match ID: ${completedSession.leagueMatchId}');
+        }
+      }
     } else if (saveToHistory && _isClientMode()) {
       Log.i('客户端模式：跳过游戏历史保存，数据仅在内存中');
     }
 
     // 如果是临时模式，清理临时模板
-    if (currentState?.isTempMode == true && currentState?.currentSession != null) {
+    if (currentState?.isTempMode == true &&
+        currentState?.currentSession != null) {
       final templateId = currentState!.currentSession!.templateId;
       if (templateId.startsWith('temp_')) {
         await _cleanupTempTemplate(templateId);
@@ -632,6 +751,61 @@ class Score extends _$Score {
 
     state = AsyncData(const ScoreState(
       currentSession: null,
+      template: null,
+      currentRound: 0,
+      isInitialized: true,
+      currentHighlight: null,
+      showGameEndDialog: false,
+      players: [],
+      isTempMode: false,
+    ));
+
+    _broadcastResetGame();
+  }
+
+  /// 确认联赛比赛结果
+  Future<void> confirmLeagueMatchResult() async {
+    if (_checkAndHandleClientRestriction()) return;
+
+    final currentState = state.valueOrNull;
+    if (currentState?.currentSession == null ||
+        currentState?.template == null ||
+        currentState?.currentSession?.leagueMatchId == null) {
+      Log.w('确认联赛结果失败：缺少会话、模板或联赛比赛ID');
+      return;
+    }
+
+    final sessionToEnd = currentState!.currentSession!;
+    final template = currentState.template!;
+
+    // 1. 将会话标记为已完成
+    final completedSession = sessionToEnd.copyWith(
+      isCompleted: true,
+      endTime: DateTime.now(),
+    );
+    await _sessionDao.saveGameSession(completedSession);
+    Log.d('联赛比赛会话 ${sessionToEnd.sid} 已标记为完成');
+
+    // 2. 计算比赛结果并更新联赛数据
+    final gameResult = calculateGameResult(template);
+    // 联赛中，即使平局，winnerId也为null。我们只关心第一个赢家（如果有）
+    final winnerId = gameResult.winners.isNotEmpty
+        ? gameResult.winners.first.playerId
+        : null;
+    final scores = Map.fromEntries(
+        completedSession.scores.map((s) => MapEntry(s.playerId, s.totalScore)));
+
+    await ref.read(leagueNotifierProvider.notifier).updateMatchResult(
+          leagueMatchId: completedSession.leagueMatchId!,
+          winnerId: winnerId,
+          scores: scores,
+        );
+    Log.i('联赛比赛结果已更新，比赛ID: ${completedSession.leagueMatchId}');
+
+    // 3. 重置计分状态
+    state = AsyncData(const ScoreState(
+      currentSession: null,
+      template: null,
       currentRound: 0,
       isInitialized: true,
       currentHighlight: null,
@@ -644,6 +818,7 @@ class Score extends _$Score {
   }
 
   void loadSession(GameSession session) {
+    BaseTemplate? sessionTemplate;
     List<PlayerInfo> sessionPlayers = [];
     if (session.templateId.isNotEmpty) {
       final template = ref
@@ -651,6 +826,7 @@ class Score extends _$Score {
           .valueOrNull
           ?.firstWhereOrNull((t) => t.tid == session.templateId);
       if (template != null) {
+        sessionTemplate = template;
         sessionPlayers = template.players;
         Log.i(
             'ScoreNotifier loadSession: 从模板 "${template.templateName}" (TID: ${template.tid}) 加载了 ${sessionPlayers.length} 个玩家信息');
@@ -668,6 +844,7 @@ class Score extends _$Score {
 
     state = AsyncData(ScoreState(
       currentSession: updatedSession,
+      template: sessionTemplate,
       currentRound: _calculateCurrentRound(updatedSession),
       isInitialized: true,
       currentHighlight: null,
@@ -678,6 +855,7 @@ class Score extends _$Score {
     updateHighlight();
     final lanState = ref.read(lanProvider);
     if (lanState.isHost) {
+      if (sessionTemplate != null) broadcastTemplateInfo(sessionTemplate);
       _broadcastPlayerInfo(sessionPlayers);
       _broadcastSyncState(updatedSession);
     }
@@ -690,15 +868,20 @@ class Score extends _$Score {
       return const GameResult(winners: [], losers: [], hasFailures: false);
     }
 
-    final disableVictoryScoreCheck = template.getOtherSet<bool>('disableVictoryScoreCheck', defaultValue: false) ?? false;
-    
+    final disableVictoryScoreCheck = template.getOtherSet<bool>(
+            'disableVictoryScoreCheck',
+            defaultValue: false) ??
+        false;
+
     // 如果不检查胜利分数，直接返回空结果（不判断胜负）
     if (disableVictoryScoreCheck) {
       return const GameResult(winners: [], losers: [], hasFailures: false);
     }
 
     final targetScore = template.targetScore;
-    final reverseWinRule = template.getOtherSet<bool>('reverseWinRule', defaultValue: false) ?? false;
+    final reverseWinRule =
+        template.getOtherSet<bool>('reverseWinRule', defaultValue: false) ??
+            false;
 
     final failScores =
         scores.where((s) => s.totalScore >= targetScore).toList();
@@ -712,7 +895,8 @@ class Score extends _$Score {
         // 反转规则：先达到目标分数的获胜
         failScores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
         final minFailScore = failScores.first.totalScore;
-        winners = failScores.where((s) => s.totalScore == minFailScore).toList();
+        winners =
+            failScores.where((s) => s.totalScore == minFailScore).toList();
         losers = scores.where((s) => s.totalScore < targetScore).toList();
         losers.sort((a, b) => b.totalScore.compareTo(a.totalScore));
       } else {
@@ -721,7 +905,8 @@ class Score extends _$Score {
             scores.where((s) => s.totalScore < targetScore).toList();
         if (potentialWins.isEmpty) {
           winners = [];
-          losers = scores.sorted((a, b) => b.totalScore.compareTo(a.totalScore));
+          losers =
+              scores.sorted((a, b) => b.totalScore.compareTo(a.totalScore));
         } else {
           potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
           final minWinScore = potentialWins.first.totalScore;
@@ -854,7 +1039,8 @@ class Score extends _$Score {
       state = AsyncData(newState);
     } else {
       Log.w('ScoreNotifier applyPlayerInfo: 当前状态为空，将创建一个仅包含玩家信息的新状态');
-      state = AsyncData(ScoreState(players: players, isInitialized: true, isTempMode: false));
+      state = AsyncData(
+          ScoreState(players: players, isInitialized: true, isTempMode: false));
     }
   }
 
@@ -862,43 +1048,45 @@ class Score extends _$Score {
   void applySyncState(GameSession session) {
     Log.i('ScoreNotifier 应用全量同步状态 (会话ID: ${session.sid})');
     final currentState = state.valueOrNull;
-    final existingPlayers = currentState?.players ?? [];
 
-    // 修复：确保玩家信息不会丢失
-    Log.i(
-        'applySyncState: 当前玩家数量: ${existingPlayers.length}, 会话中玩家数量: ${session.scores.length}');
+    // 尝试从provider中找到模板
+    final template = ref
+        .read(templatesProvider)
+        .valueOrNull
+        ?.firstWhereOrNull((t) => t.tid == session.templateId);
 
-    // 如果当前状态中有玩家信息，优先保留
     final playersToUse =
-        existingPlayers.isNotEmpty ? existingPlayers : <PlayerInfo>[];
+        template?.players ?? currentState?.players ?? []; // 优先使用新模板的玩家，否则保留现有玩家
 
-    // 修复：直接更新状态，避免触发 Provider 重建导致从 DAO 重新加载空状态
+    Log.i(
+        'applySyncState: 当前玩家数量: ${playersToUse.length}, 会话中分数数量: ${session.scores.length}');
+
     final newState = currentState?.copyWith(
           currentSession: session,
+          template: template ?? currentState.template,
+          // 如果没找到新模板，保留旧的
           currentRound: _calculateCurrentRound(session),
           isInitialized: true,
           currentHighlight: null,
           showGameEndDialog: false,
-          players: playersToUse, // 明确设置玩家信息
+          players: playersToUse,
         ) ??
         ScoreState(
           currentSession: session,
+          template: template,
           currentRound: _calculateCurrentRound(session),
           isInitialized: true,
           players: playersToUse,
-          // 明确设置玩家信息
           showGameEndDialog: false,
           currentHighlight: null,
           isTempMode: false,
         );
 
-    // 使用 AsyncData 包装新状态，确保不触发重建
     state = AsyncData(newState);
 
     Log.i('applySyncState 完成: 最终玩家数量: ${newState.players.length}');
     updateHighlight();
 
-    // 客户端收到同步状态后，根据模式决定是否保存会话到本地 DAO
     _saveSession();
   }
 
@@ -1032,11 +1220,13 @@ class Score extends _$Score {
     Log.i('ScoreNotifier 应用游戏重置');
     state = AsyncData(const ScoreState(
       currentSession: null,
+      template: null,
       currentRound: 0,
       isInitialized: true,
       currentHighlight: null,
       showGameEndDialog: false,
-      players: [], // 重置时清空玩家列表
+      players: [],
+      // 重置时清空玩家列表
       isTempMode: false,
     ));
   }
@@ -1071,24 +1261,6 @@ class Score extends _$Score {
     final jsonString = jsonEncode(message.toJson());
     lanNotifier.sendJsonMessage(jsonString);
     Log.i('ScoreNotifier 广播模板信息');
-  }
-
-  /// 优化：带缓存的模板加载
-  Future<List<BaseTemplate>?> _loadTemplatesWithCache() async {
-    try {
-      Log.d('ScoreNotifier: 正在加载模板（带缓存）...');
-
-      // 修复：使用 ref.read 而不是 ref.watch，避免在模板更新时触发重建
-      final templatesAsync = ref.read(templatesProvider);
-      final templates = templatesAsync.valueOrNull ??
-          await ref.read(templatesProvider.future);
-
-      Log.d('ScoreNotifier: 从Provider获取到 ${templates?.length ?? 0} 个模板');
-      return templates;
-    } catch (e, s) {
-      Log.e('ScoreNotifier: 加载模板时出错： $e\nStack: $s');
-      return null;
-    }
   }
 }
 

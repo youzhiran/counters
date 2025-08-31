@@ -230,7 +230,7 @@ class TemplateCard extends ConsumerWidget {
                   if (!context.mounted) return;
                   Navigator.of(context).pushReplacement(
                     CustomPageTransitions.slideFromRight(
-                      HomePage.buildSessionPage(template, template.tid),
+                      HomePage.buildSessionPage(template),
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,
                     ),
@@ -260,7 +260,7 @@ class TemplateCard extends ConsumerWidget {
     ref.read(scoreProvider.notifier).startNewGame(template);
     Navigator.of(context).pushReplacement(
       CustomPageTransitions.slideFromRight(
-        HomePage.buildSessionPage(template, template.tid),
+        HomePage.buildSessionPage(template),
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       ),
@@ -436,7 +436,7 @@ class TemplateCard extends ConsumerWidget {
       if (!context.mounted) return;
       Navigator.of(context).push(
         CustomPageTransitions.slideFromRight(
-          HomePage.buildSessionPage(tempTemplate, tempTemplate.tid),
+          HomePage.buildSessionPage(tempTemplate),
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         ),

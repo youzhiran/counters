@@ -19,7 +19,8 @@ mixin _$GameSession {
   DateTime get startTime; // 会话开始时间 (将被json_serializable自动处理为ISO 8601字符串)
   DateTime? get endTime; // 会话结束时间 (可选)
   bool get isCompleted; // 会话是否已完成 (将被json_serializable自动处理为true/false)
-  List<PlayerScore> get scores;
+  List<PlayerScore> get scores; // 玩家得分列表 (PlayerScore 也必须是可序列化的)
+  String? get leagueMatchId;
 
   /// Create a copy of GameSession
   /// with the given fields replaced by the non-null parameter values.
@@ -44,17 +45,26 @@ mixin _$GameSession {
             (identical(other.endTime, endTime) || other.endTime == endTime) &&
             (identical(other.isCompleted, isCompleted) ||
                 other.isCompleted == isCompleted) &&
-            const DeepCollectionEquality().equals(other.scores, scores));
+            const DeepCollectionEquality().equals(other.scores, scores) &&
+            (identical(other.leagueMatchId, leagueMatchId) ||
+                other.leagueMatchId == leagueMatchId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, sid, templateId, startTime,
-      endTime, isCompleted, const DeepCollectionEquality().hash(scores));
+  int get hashCode => Object.hash(
+      runtimeType,
+      sid,
+      templateId,
+      startTime,
+      endTime,
+      isCompleted,
+      const DeepCollectionEquality().hash(scores),
+      leagueMatchId);
 
   @override
   String toString() {
-    return 'GameSession(sid: $sid, templateId: $templateId, startTime: $startTime, endTime: $endTime, isCompleted: $isCompleted, scores: $scores)';
+    return 'GameSession(sid: $sid, templateId: $templateId, startTime: $startTime, endTime: $endTime, isCompleted: $isCompleted, scores: $scores, leagueMatchId: $leagueMatchId)';
   }
 }
 
@@ -70,7 +80,8 @@ abstract mixin class $GameSessionCopyWith<$Res> {
       DateTime startTime,
       DateTime? endTime,
       bool isCompleted,
-      List<PlayerScore> scores});
+      List<PlayerScore> scores,
+      String? leagueMatchId});
 }
 
 /// @nodoc
@@ -91,6 +102,7 @@ class _$GameSessionCopyWithImpl<$Res> implements $GameSessionCopyWith<$Res> {
     Object? endTime = freezed,
     Object? isCompleted = null,
     Object? scores = null,
+    Object? leagueMatchId = freezed,
   }) {
     return _then(_self.copyWith(
       sid: null == sid
@@ -117,6 +129,10 @@ class _$GameSessionCopyWithImpl<$Res> implements $GameSessionCopyWith<$Res> {
           ? _self.scores
           : scores // ignore: cast_nullable_to_non_nullable
               as List<PlayerScore>,
+      leagueMatchId: freezed == leagueMatchId
+          ? _self.leagueMatchId
+          : leagueMatchId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -212,16 +228,28 @@ extension GameSessionPatterns on GameSession {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(String sid, String templateId, DateTime startTime,
-            DateTime? endTime, bool isCompleted, List<PlayerScore> scores)?
+    TResult Function(
+            String sid,
+            String templateId,
+            DateTime startTime,
+            DateTime? endTime,
+            bool isCompleted,
+            List<PlayerScore> scores,
+            String? leagueMatchId)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _GameSession() when $default != null:
-        return $default(_that.sid, _that.templateId, _that.startTime,
-            _that.endTime, _that.isCompleted, _that.scores);
+        return $default(
+            _that.sid,
+            _that.templateId,
+            _that.startTime,
+            _that.endTime,
+            _that.isCompleted,
+            _that.scores,
+            _that.leagueMatchId);
       case _:
         return orElse();
     }
@@ -242,15 +270,27 @@ extension GameSessionPatterns on GameSession {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(String sid, String templateId, DateTime startTime,
-            DateTime? endTime, bool isCompleted, List<PlayerScore> scores)
+    TResult Function(
+            String sid,
+            String templateId,
+            DateTime startTime,
+            DateTime? endTime,
+            bool isCompleted,
+            List<PlayerScore> scores,
+            String? leagueMatchId)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _GameSession():
-        return $default(_that.sid, _that.templateId, _that.startTime,
-            _that.endTime, _that.isCompleted, _that.scores);
+        return $default(
+            _that.sid,
+            _that.templateId,
+            _that.startTime,
+            _that.endTime,
+            _that.isCompleted,
+            _that.scores,
+            _that.leagueMatchId);
     }
   }
 
@@ -268,15 +308,27 @@ extension GameSessionPatterns on GameSession {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(String sid, String templateId, DateTime startTime,
-            DateTime? endTime, bool isCompleted, List<PlayerScore> scores)?
+    TResult? Function(
+            String sid,
+            String templateId,
+            DateTime startTime,
+            DateTime? endTime,
+            bool isCompleted,
+            List<PlayerScore> scores,
+            String? leagueMatchId)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _GameSession() when $default != null:
-        return $default(_that.sid, _that.templateId, _that.startTime,
-            _that.endTime, _that.isCompleted, _that.scores);
+        return $default(
+            _that.sid,
+            _that.templateId,
+            _that.startTime,
+            _that.endTime,
+            _that.isCompleted,
+            _that.scores,
+            _that.leagueMatchId);
       case _:
         return null;
     }
@@ -292,7 +344,8 @@ class _GameSession extends GameSession {
       required this.startTime,
       this.endTime,
       required this.isCompleted,
-      required final List<PlayerScore> scores})
+      required final List<PlayerScore> scores,
+      this.leagueMatchId})
       : _scores = scores,
         super._();
   factory _GameSession.fromJson(Map<String, dynamic> json) =>
@@ -322,6 +375,10 @@ class _GameSession extends GameSession {
     return EqualUnmodifiableListView(_scores);
   }
 
+// 玩家得分列表 (PlayerScore 也必须是可序列化的)
+  @override
+  final String? leagueMatchId;
+
   /// Create a copy of GameSession
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -350,17 +407,26 @@ class _GameSession extends GameSession {
             (identical(other.endTime, endTime) || other.endTime == endTime) &&
             (identical(other.isCompleted, isCompleted) ||
                 other.isCompleted == isCompleted) &&
-            const DeepCollectionEquality().equals(other._scores, _scores));
+            const DeepCollectionEquality().equals(other._scores, _scores) &&
+            (identical(other.leagueMatchId, leagueMatchId) ||
+                other.leagueMatchId == leagueMatchId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, sid, templateId, startTime,
-      endTime, isCompleted, const DeepCollectionEquality().hash(_scores));
+  int get hashCode => Object.hash(
+      runtimeType,
+      sid,
+      templateId,
+      startTime,
+      endTime,
+      isCompleted,
+      const DeepCollectionEquality().hash(_scores),
+      leagueMatchId);
 
   @override
   String toString() {
-    return 'GameSession(sid: $sid, templateId: $templateId, startTime: $startTime, endTime: $endTime, isCompleted: $isCompleted, scores: $scores)';
+    return 'GameSession(sid: $sid, templateId: $templateId, startTime: $startTime, endTime: $endTime, isCompleted: $isCompleted, scores: $scores, leagueMatchId: $leagueMatchId)';
   }
 }
 
@@ -378,7 +444,8 @@ abstract mixin class _$GameSessionCopyWith<$Res>
       DateTime startTime,
       DateTime? endTime,
       bool isCompleted,
-      List<PlayerScore> scores});
+      List<PlayerScore> scores,
+      String? leagueMatchId});
 }
 
 /// @nodoc
@@ -399,6 +466,7 @@ class __$GameSessionCopyWithImpl<$Res> implements _$GameSessionCopyWith<$Res> {
     Object? endTime = freezed,
     Object? isCompleted = null,
     Object? scores = null,
+    Object? leagueMatchId = freezed,
   }) {
     return _then(_GameSession(
       sid: null == sid
@@ -425,6 +493,10 @@ class __$GameSessionCopyWithImpl<$Res> implements _$GameSessionCopyWith<$Res> {
           ? _self._scores
           : scores // ignore: cast_nullable_to_non_nullable
               as List<PlayerScore>,
+      leagueMatchId: freezed == leagueMatchId
+          ? _self.leagueMatchId
+          : leagueMatchId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }

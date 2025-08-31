@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 abstract class BaseTemplate {
   final String tid;
+  final String templateType;
   String templateName;
   int playerCount;
   int targetScore;
@@ -15,6 +16,7 @@ abstract class BaseTemplate {
 
   BaseTemplate({
     String? tid,
+    required this.templateType,
     required this.templateName,
     required this.playerCount,
     required this.targetScore,
@@ -32,6 +34,7 @@ abstract class BaseTemplate {
   // 抽象复制方法
   BaseTemplate copyWith({
     String? tid,
+    String? templateType,
     String? templateName,
     int? playerCount,
     int? targetScore,

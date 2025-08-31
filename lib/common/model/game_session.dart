@@ -1,4 +1,4 @@
-import 'package:counters/common/utils/log.dart'; // 确保导入日志库
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -6,6 +6,7 @@ import 'player_score.dart'; // 确保正确导入 PlayerScore 模型
 
 // 这两行是必须的，告诉 build_runner 生成哪些文件
 part 'game_session.freezed.dart';
+
 part 'game_session.g.dart'; // json_serializable 生成的文件
 
 /// 游戏会话模型，用于在内存中表示一个完整的计分游戏会话。
@@ -26,6 +27,7 @@ sealed class GameSession with _$GameSession {
     DateTime? endTime, // 会话结束时间 (可选)
     required bool isCompleted, // 会话是否已完成 (将被json_serializable自动处理为true/false)
     required List<PlayerScore> scores, // 玩家得分列表 (PlayerScore 也必须是可序列化的)
+    String? leagueMatchId, // 关联的联赛比赛ID
   }) = _GameSession; // = 后面的名字是生成类的前缀
 
   // === JSON 序列化/反序列化方法 (由 json_serializable 生成) ===
@@ -47,6 +49,7 @@ sealed class GameSession with _$GameSession {
     required DateTime startTime,
     DateTime? endTime,
     bool isCompleted = false,
+    String? leagueMatchId,
   }) =>
       GameSession(
         sid: const Uuid().v4(),
@@ -56,6 +59,7 @@ sealed class GameSession with _$GameSession {
         startTime: startTime,
         endTime: endTime,
         isCompleted: isCompleted,
+        leagueMatchId: leagueMatchId,
       );
 
   // === 数据库序列化/反序列化方法 (保留原有逻辑，用于数据库交互) ===
@@ -72,6 +76,7 @@ sealed class GameSession with _$GameSession {
       'end_time': endTime?.millisecondsSinceEpoch,
       // 数据库通常存储整数表示布尔值
       'is_completed': isCompleted ? 1 : 0,
+      'league_match_id': leagueMatchId,
     };
     // 注意：这里不包含 scores 列表，因为 PlayerScore 存储在另一个表中
   }
@@ -91,6 +96,7 @@ sealed class GameSession with _$GameSession {
       final startTimeMillis = map['start_time'];
       final endTimeMillis = map['end_time'];
       final isCompletedInt = map['is_completed'];
+      final leagueMatchId = map['league_match_id'] as String?;
 
       if (sessionSid == null ||
           templateId == null ||
@@ -119,40 +125,13 @@ sealed class GameSession with _$GameSession {
         startTime: startTime,
         endTime: endTime,
         isCompleted: isCompleted,
-        scores: scores, // 这里的 scores 是从外部传入的，不是从 map 解析的
-      );
-    } catch (e) {
-      Log.e('解析GameSession失败: $e, 输入数据: $map');
-      // 提供更健壮的错误处理或返回一个表示错误的 GameSession 或 null
-      // 这里为了兼容性，提供一个带有默认值的 GameSession，但可能会丢失部分数据
-      // 更好的做法是抛出异常或返回 null，让调用方处理错误
-      // 警告: 这种错误处理方式可能会隐藏问题
-      final templateId = map['template_id'] as String? ?? 'error';
-      final sid = map['sid'] as String? ?? const Uuid().v4();
-      // 尝试从 Map 中恢复 isCompleted 和 endTime
-      final isCompleted = (map['is_completed'] as int?) == 1;
-      DateTime? endTime;
-      try {
-        if (map['end_time'] != null) {
-          final endTimeMillis = map['end_time'];
-          endTime = DateTime.fromMillisecondsSinceEpoch(endTimeMillis is int
-              ? endTimeMillis
-              : int.parse(endTimeMillis.toString()));
-        }
-      } catch (e2) {
-        Log.e('解析GameSession endTime 失败: $e2');
-      }
-
-      return GameSession(
-        sid: sid,
-        templateId: templateId,
         scores: scores,
-        // scores 仍然是外部传入的
-        startTime: DateTime.now(),
-        // 无法解析开始时间，使用当前时间
-        isCompleted: isCompleted,
-        endTime: endTime,
+        // 这里的 scores 是从外部传入的，不是从 map 解析的
+        leagueMatchId: leagueMatchId,
       );
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '从数据库解析GameSession失败');
+      rethrow;
     }
   }
 

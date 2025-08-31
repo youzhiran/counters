@@ -2,7 +2,7 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 
 class MahjongTemplate extends BaseTemplate {
-  static const String templateType = 'mahjong';
+  static const String staticTemplateType = 'mahjong';
 
   MahjongTemplate({
     super.tid,
@@ -15,13 +15,11 @@ class MahjongTemplate extends BaseTemplate {
     int baseScore = 1,
     bool checkMultiplier = false,
     bool bombMultiplyMode = false,
-  }) : super(
-          otherSet: {
-            'baseScore': baseScore,
-            'checkMultiplier': checkMultiplier,
-            'bombMultiplyMode': bombMultiplyMode,
-          },
-        );
+  }) : super(templateType: staticTemplateType) {
+    setOtherSet('baseScore', baseScore);
+    setOtherSet('checkMultiplier', checkMultiplier);
+    setOtherSet('bombMultiplyMode', bombMultiplyMode);
+  }
 
   int get baseScore => getOtherSet<int>('baseScore', defaultValue: 1) ?? 1;
 
@@ -48,6 +46,7 @@ class MahjongTemplate extends BaseTemplate {
   @override
   BaseTemplate copyWith({
     String? tid,
+    String? templateType,
     String? templateName,
     int? playerCount,
     int? targetScore,
@@ -58,22 +57,13 @@ class MahjongTemplate extends BaseTemplate {
   }) {
     final newOtherSet =
         Map<String, dynamic>.from(otherSet ?? this.otherSet ?? {});
-    if (tid != null) newOtherSet['tid'] = tid;
-    if (templateName != null) newOtherSet['templateName'] = templateName;
-    if (playerCount != null) newOtherSet['playerCount'] = playerCount;
-    if (targetScore != null) newOtherSet['targetScore'] = targetScore;
-    if (players != null) newOtherSet['players'] = players;
-    if (isSystemTemplate != null) {
-      newOtherSet['isSystemTemplate'] = isSystemTemplate;
-    }
-    if (baseTemplateId != null) newOtherSet['baseTemplateId'] = baseTemplateId;
 
     return MahjongTemplate(
       tid: tid ?? this.tid,
       templateName: templateName ?? this.templateName,
       playerCount: playerCount ?? this.playerCount,
       targetScore: targetScore ?? this.targetScore,
-      players: players ?? this.players,
+      players: players ?? List.from(this.players),
       isSystemTemplate: isSystemTemplate ?? this.isSystemTemplate,
       baseTemplateId: baseTemplateId ?? this.baseTemplateId,
       baseScore: newOtherSet['baseScore'] as int? ?? baseScore,

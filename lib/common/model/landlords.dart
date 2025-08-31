@@ -2,7 +2,7 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 
 class LandlordsTemplate extends BaseTemplate {
-  static const String templateType = 'landlords';
+  static const String staticTemplateType = 'landlords';
 
   LandlordsTemplate({
     super.tid,
@@ -15,7 +15,7 @@ class LandlordsTemplate extends BaseTemplate {
     int baseScore = 1,
     bool checkMultiplier = true,
     bool bombMultiplyMode = false,
-  }) {
+  }) : super(templateType: staticTemplateType) {
     // 初始化时设置 baseScore
     setOtherSet('baseScore', baseScore);
     setOtherSet('checkMultiplier', checkMultiplier);
@@ -68,6 +68,7 @@ class LandlordsTemplate extends BaseTemplate {
   @override
   LandlordsTemplate copyWith({
     String? tid,
+    String? templateType,
     String? templateName,
     int? playerCount,
     int? targetScore,

@@ -35,7 +35,7 @@ class _ClientModeTemplateCache {
   }
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class Templates extends _$Templates {
   final _templateDao = TemplateDao();
 
