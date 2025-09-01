@@ -14,7 +14,6 @@ import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
-
 // 引入 LAN Provider 和 消息 Payload 类
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/player/player_provider.dart';
@@ -586,13 +585,19 @@ class Score extends _$Score {
           ps.roundScores.length > roundIndex &&
           ps.roundScores[roundIndex] != null);
 
-      if (roundJustCompleted) {
-        final template = ref
-            .read(templatesProvider)
-            .valueOrNull
-            ?.firstWhereOrNull((t) => t.tid == sessionAfterUpdate.templateId);
+      // 检查游戏结束的条件：
+      // 1. 整个回合刚刚完成。
+      // 2. 或者，模板被标记为“每次分数变化都检查胜利条件”。
+      final template = ref
+          .read(templatesProvider)
+          .valueOrNull
+          ?.firstWhereOrNull((t) => t.tid == sessionAfterUpdate.templateId);
 
-        if (template != null && template.targetScore > 0) {
+      if (template != null) {
+        final shouldCheckVictory =
+            roundJustCompleted || (template.checkVictoryOnScoreChange);
+
+        if (shouldCheckVictory) {
           final disableVictoryScoreCheck = template.getOtherSet<bool>(
                   'disableVictoryScoreCheck',
                   defaultValue: false) ??

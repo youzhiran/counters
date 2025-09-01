@@ -14,6 +14,7 @@ class Poker50Template extends BaseTemplate {
     super.baseTemplateId,
     super.disableVictoryScoreCheck,
     super.reverseWinRule,
+    super.checkVictoryOnScoreChange = false,
     bool isAllowNegative = false,
   }) : super(templateType: staticTemplateType) {
     setOtherSet('isAllowNegative', isAllowNegative);
@@ -69,6 +70,7 @@ class Poker50Template extends BaseTemplate {
     Map<String, dynamic>? otherSet,
     bool? disableVictoryScoreCheck,
     bool? reverseWinRule,
+    bool? checkVictoryOnScoreChange,
     bool? isAllowNegative,
   }) {
     final template = Poker50Template(
@@ -83,6 +85,8 @@ class Poker50Template extends BaseTemplate {
       disableVictoryScoreCheck:
           disableVictoryScoreCheck ?? this.disableVictoryScoreCheck,
       reverseWinRule: reverseWinRule ?? this.reverseWinRule,
+      checkVictoryOnScoreChange:
+          checkVictoryOnScoreChange ?? this.checkVictoryOnScoreChange,
     );
 
     // 设置 otherSet

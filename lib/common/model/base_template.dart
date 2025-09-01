@@ -15,6 +15,7 @@ abstract class BaseTemplate {
   Map<String, dynamic>? otherSet;
   bool disableVictoryScoreCheck;
   bool reverseWinRule;
+  bool checkVictoryOnScoreChange;
 
   BaseTemplate({
     String? tid,
@@ -28,6 +29,7 @@ abstract class BaseTemplate {
     this.otherSet,
     this.disableVictoryScoreCheck = false,
     this.reverseWinRule = false,
+    this.checkVictoryOnScoreChange = false,
   }) : tid = tid ?? const Uuid().v4();
 
   Map<String, dynamic> toMap();
@@ -48,6 +50,7 @@ abstract class BaseTemplate {
     Map<String, dynamic>? otherSet,
     bool? disableVictoryScoreCheck,
     bool? reverseWinRule,
+    bool? checkVictoryOnScoreChange,
   });
 
   // 获取指定类型的值，如果不存在或类型不匹配则返回默认值

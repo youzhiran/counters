@@ -14,6 +14,7 @@ class MahjongTemplate extends BaseTemplate {
     super.baseTemplateId,
     super.disableVictoryScoreCheck,
     super.reverseWinRule,
+    super.checkVictoryOnScoreChange = false,
     int baseScore = 1,
     bool checkMultiplier = false,
     bool bombMultiplyMode = false,
@@ -60,6 +61,7 @@ class MahjongTemplate extends BaseTemplate {
     Map<String, dynamic>? otherSet,
     bool? disableVictoryScoreCheck,
     bool? reverseWinRule,
+    bool? checkVictoryOnScoreChange,
   }) {
     final newOtherSet =
         Map<String, dynamic>.from(otherSet ?? this.otherSet ?? {});
@@ -75,6 +77,8 @@ class MahjongTemplate extends BaseTemplate {
       disableVictoryScoreCheck:
           disableVictoryScoreCheck ?? this.disableVictoryScoreCheck,
       reverseWinRule: reverseWinRule ?? this.reverseWinRule,
+      checkVictoryOnScoreChange:
+          checkVictoryOnScoreChange ?? this.checkVictoryOnScoreChange,
       baseScore: newOtherSet['baseScore'] as int? ?? baseScore,
       checkMultiplier:
           newOtherSet['checkMultiplier'] as bool? ?? checkMultiplier,

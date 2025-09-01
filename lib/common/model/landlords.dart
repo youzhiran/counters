@@ -14,6 +14,7 @@ class LandlordsTemplate extends BaseTemplate {
     super.baseTemplateId,
     super.disableVictoryScoreCheck,
     super.reverseWinRule,
+    super.checkVictoryOnScoreChange = false,
     int baseScore = 1,
     bool checkMultiplier = true,
     bool bombMultiplyMode = false,
@@ -84,6 +85,7 @@ class LandlordsTemplate extends BaseTemplate {
     Map<String, dynamic>? otherSet,
     bool? disableVictoryScoreCheck,
     bool? reverseWinRule,
+    bool? checkVictoryOnScoreChange,
     int? baseScore,
     bool? checkMultiplier,
     bool? bombMultiplyMode,
@@ -99,6 +101,8 @@ class LandlordsTemplate extends BaseTemplate {
       disableVictoryScoreCheck:
           disableVictoryScoreCheck ?? this.disableVictoryScoreCheck,
       reverseWinRule: reverseWinRule ?? this.reverseWinRule,
+      checkVictoryOnScoreChange:
+          checkVictoryOnScoreChange ?? this.checkVictoryOnScoreChange,
     );
 
     // 设置 otherSet
