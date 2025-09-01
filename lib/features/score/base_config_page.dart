@@ -60,10 +60,10 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     players = List.from(widget.oriTemplate.players);
 
     // 初始化胜利规则设置
-    _reverseWinRule = widget.oriTemplate.getOtherSet<bool>('reverseWinRule', defaultValue: false) ?? false;
-    
+    _reverseWinRule = widget.oriTemplate.reverseWinRule;
+
     // 初始化不检查胜利分数选项
-    _disableVictoryScoreCheck = widget.oriTemplate.getOtherSet<bool>('disableVictoryScoreCheck', defaultValue: false) ?? false;
+    _disableVictoryScoreCheck = widget.oriTemplate.disableVictoryScoreCheck;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkHistoryTemp();
@@ -584,27 +584,11 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   }
 
   /// 获取当前的胜利规则设置，供子类在保存模板时使用
-  Map<String, dynamic> getWinRuleSettings() {
-    return {
-      'reverseWinRule': _reverseWinRule,
-      'disableVictoryScoreCheck': _disableVictoryScoreCheck,
-    };
-  }
-
-  /// 将胜利规则设置应用到模板，供子类调用
-  void applyWinRuleSettings(BaseTemplate template) {
-    final winRuleSettings = getWinRuleSettings();
-    winRuleSettings.forEach((key, value) {
-      template.setOtherSet(key, value);
-    });
-  }
-
-  /// 将胜利规则设置合并到 otherSet 中，供 copyWith 使用
-  Map<String, dynamic> mergeWinRuleSettings(Map<String, dynamic>? existingOtherSet) {
-    return {
-      ...existingOtherSet ?? {},
-      ...getWinRuleSettings(),
-    };
+  BaseTemplate applyWinRuleSettings(BaseTemplate template) {
+    return template.copyWith(
+      reverseWinRule: _reverseWinRule,
+      disableVictoryScoreCheck: _disableVictoryScoreCheck,
+    );
   }
 
   void _handleTargetScoreChange(String value) {

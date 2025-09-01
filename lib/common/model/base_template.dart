@@ -13,6 +13,8 @@ abstract class BaseTemplate {
   bool isSystemTemplate;
   final String? baseTemplateId;
   Map<String, dynamic>? otherSet;
+  bool disableVictoryScoreCheck;
+  bool reverseWinRule;
 
   BaseTemplate({
     String? tid,
@@ -24,6 +26,8 @@ abstract class BaseTemplate {
     this.isSystemTemplate = false,
     this.baseTemplateId,
     this.otherSet,
+    this.disableVictoryScoreCheck = false,
+    this.reverseWinRule = false,
   }) : tid = tid ?? const Uuid().v4();
 
   Map<String, dynamic> toMap();
@@ -42,6 +46,8 @@ abstract class BaseTemplate {
     bool? isSystemTemplate,
     String? baseTemplateId,
     Map<String, dynamic>? otherSet,
+    bool? disableVictoryScoreCheck,
+    bool? reverseWinRule,
   });
 
   // 获取指定类型的值，如果不存在或类型不匹配则返回默认值

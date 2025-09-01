@@ -12,6 +12,8 @@ class LandlordsTemplate extends BaseTemplate {
     required super.players,
     super.isSystemTemplate,
     super.baseTemplateId,
+    super.disableVictoryScoreCheck,
+    super.reverseWinRule,
     int baseScore = 1,
     bool checkMultiplier = true,
     bool bombMultiplyMode = false,
@@ -44,6 +46,8 @@ class LandlordsTemplate extends BaseTemplate {
       'base_template_id': baseTemplateId,
       'template_type': templateType,
       'other_set': otherSetToJson(),
+      'disable_victory_score_check': disableVictoryScoreCheck ? 1 : 0,
+      'reverse_win_rule': reverseWinRule ? 1 : 0,
       'players': players.map((p) => p.toJson()).toList(),
     };
   }
@@ -57,6 +61,8 @@ class LandlordsTemplate extends BaseTemplate {
       targetScore: map['target_score'],
       isSystemTemplate: map['is_system_template'] == 1,
       baseTemplateId: map['base_template_id'],
+      disableVictoryScoreCheck: map['disable_victory_score_check'] == 1,
+      reverseWinRule: map['reverse_win_rule'] == 1,
       players: players,
     );
 
@@ -76,6 +82,8 @@ class LandlordsTemplate extends BaseTemplate {
     bool? isSystemTemplate,
     String? baseTemplateId,
     Map<String, dynamic>? otherSet,
+    bool? disableVictoryScoreCheck,
+    bool? reverseWinRule,
     int? baseScore,
     bool? checkMultiplier,
     bool? bombMultiplyMode,
@@ -88,6 +96,9 @@ class LandlordsTemplate extends BaseTemplate {
       players: players ?? List.from(this.players),
       isSystemTemplate: isSystemTemplate ?? this.isSystemTemplate,
       baseTemplateId: baseTemplateId ?? this.baseTemplateId,
+      disableVictoryScoreCheck:
+          disableVictoryScoreCheck ?? this.disableVictoryScoreCheck,
+      reverseWinRule: reverseWinRule ?? this.reverseWinRule,
     );
 
     // 设置 otherSet

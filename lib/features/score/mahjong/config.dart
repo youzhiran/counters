@@ -64,12 +64,14 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
     }
 
     final template = widget.oriTemplate as MahjongTemplate;
-    final updated = template.copyWith(
+    var updated = template.copyWith(
       templateName: templateNameController.text,
       playerCount: int.parse(playerCountController.text),
       targetScore: int.parse(targetScoreController.text),
       players: players,
     );
+
+    updated = applyWinRuleSettings(updated) as MahjongTemplate;
 
     // 在异步操作前获取需要的对象
     final templateNotifier = ref.read(templatesProvider.notifier);
@@ -92,7 +94,7 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
 
     final rootId = getRootBaseTemplateId() ?? widget.oriTemplate.tid;
 
-    final newTemplate = MahjongTemplate(
+    var newTemplate = MahjongTemplate(
       templateName: templateNameController.text,
       playerCount: playerCount,
       targetScore: targetScore,
@@ -103,7 +105,7 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
     );
 
     // 应用胜利规则设置
-    applyWinRuleSettings(newTemplate);
+    newTemplate = applyWinRuleSettings(newTemplate) as MahjongTemplate;
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
     globalState.navigatorKey.currentState?.pop();

@@ -1,8 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/platform_utils.dart';
-import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -21,6 +21,8 @@ class DatabaseHelper {
       'is_system_template': 1,
       'base_template_id': null,
       'template_type': 'poker50',
+      'disable_victory_score_check': 0,
+      'reverse_win_rule': 0,
       'other_set': null
     },
     {
@@ -31,6 +33,8 @@ class DatabaseHelper {
       'is_system_template': 1,
       'base_template_id': null,
       'template_type': 'landlords',
+      'disable_victory_score_check': 0,
+      'reverse_win_rule': 0,
       'other_set': null
     },
     {
@@ -41,6 +45,8 @@ class DatabaseHelper {
       'is_system_template': 1,
       'base_template_id': null,
       'template_type': 'mahjong',
+      'disable_victory_score_check': 0,
+      'reverse_win_rule': 0,
       'other_set': null
     },
     {
@@ -51,6 +57,8 @@ class DatabaseHelper {
       'is_system_template': 1,
       'base_template_id': null,
       'template_type': 'counter',
+      'disable_victory_score_check': 0,
+      'reverse_win_rule': 0,
       'other_set': null
     }
     // 如果有新的系统模板，在这里添加
@@ -136,7 +144,6 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    GlobalMsgManager.showMessage("_onCreate db:${db.path}");
     Log.i("_onCreate db:${db.path}");
 
     final batch = db.batch();
@@ -162,6 +169,8 @@ class DatabaseHelper {
         is_system_template INTEGER NOT NULL DEFAULT 0, -- 是否为系统模板 (1:是, 0:否)
         base_template_id TEXT, -- 自定义模板所基于的系统模板ID
         template_type TEXT NOT NULL, -- 模板类型 (如: poker50, mahjong)
+        disable_victory_score_check INTEGER NOT NULL DEFAULT 0, -- 不检查胜利分数 (1:是, 0:否)
+        reverse_win_rule INTEGER NOT NULL DEFAULT 0, -- 反转胜利规则 (1:是, 0:否)
         other_set TEXT -- 其他设置 (JSON格式字符串)
       );
       ''');
@@ -266,8 +275,65 @@ class DatabaseHelper {
       batch.execute('''
         ALTER TABLE game_sessions ADD COLUMN league_match_id TEXT
       ''');
+
+      // 为 templates 表添加新列
+      batch.execute('''
+        ALTER TABLE templates ADD COLUMN disable_victory_score_check INTEGER NOT NULL DEFAULT 0
+      ''');
+      batch.execute('''
+        ALTER TABLE templates ADD COLUMN reverse_win_rule INTEGER NOT NULL DEFAULT 0
+      ''');
       await batch.commit(noResult: true);
       Log.i("Version 2 schema changes applied.");
+
+      // 从 other_set 迁移数据到新列
+      await _migrateTemplateData(db);
+    }
+  }
+
+  Future<void> _migrateTemplateData(Database db) async {
+    Log.i("Starting data migration for templates table...");
+    try {
+      final templates =
+          await db.query('templates', columns: ['tid', 'other_set']);
+      final batch = db.batch();
+
+      for (final template in templates) {
+        final tid = template['tid'] as String;
+        final otherSetJson = template['other_set'] as String?;
+
+        if (otherSetJson != null && otherSetJson.isNotEmpty) {
+          try {
+            final otherSet = jsonDecode(otherSetJson) as Map<String, dynamic>;
+            final disableCheck = otherSet['disableVictoryScoreCheck'] as bool?;
+            final reverseRule = otherSet['reverseWinRule'] as bool?;
+
+            if (disableCheck != null || reverseRule != null) {
+              final updates = <String, dynamic>{};
+              if (disableCheck != null) {
+                updates['disable_victory_score_check'] = disableCheck ? 1 : 0;
+              }
+              if (reverseRule != null) {
+                updates['reverse_win_rule'] = reverseRule ? 1 : 0;
+              }
+
+              if (updates.isNotEmpty) {
+                batch.update('templates', updates,
+                    where: 'tid = ?', whereArgs: [tid]);
+                Log.v("Migrating data for template $tid: $updates");
+              }
+            }
+          } catch (e) {
+            Log.w("Failed to parse or migrate other_set for template $tid: $e");
+          }
+        }
+      }
+
+      await batch.commit(noResult: true);
+      Log.i("Data migration for templates table completed successfully.");
+    } catch (e) {
+      Log.e("An error occurred during template data migration: $e");
+      // 如果迁移失败，不应阻塞整个升级过程，但需要记录错误
     }
   }
 

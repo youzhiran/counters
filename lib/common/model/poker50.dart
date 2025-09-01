@@ -12,6 +12,8 @@ class Poker50Template extends BaseTemplate {
     required super.players,
     super.isSystemTemplate,
     super.baseTemplateId,
+    super.disableVictoryScoreCheck,
+    super.reverseWinRule,
     bool isAllowNegative = false,
   }) : super(templateType: staticTemplateType) {
     setOtherSet('isAllowNegative', isAllowNegative);
@@ -31,6 +33,8 @@ class Poker50Template extends BaseTemplate {
       'base_template_id': baseTemplateId,
       'template_type': templateType,
       'other_set': otherSetToJson(),
+      'disable_victory_score_check': disableVictoryScoreCheck ? 1 : 0,
+      'reverse_win_rule': reverseWinRule ? 1 : 0,
       'players': players.map((p) => p.toJson()).toList(),
     };
   }
@@ -44,6 +48,8 @@ class Poker50Template extends BaseTemplate {
       targetScore: map['target_score'],
       isSystemTemplate: map['is_system_template'] == 1,
       baseTemplateId: map['base_template_id'],
+      disableVictoryScoreCheck: map['disable_victory_score_check'] == 1,
+      reverseWinRule: map['reverse_win_rule'] == 1,
       players: players,
     );
     template.otherSetFromJson(map['other_set']);
@@ -61,6 +67,8 @@ class Poker50Template extends BaseTemplate {
     bool? isSystemTemplate,
     String? baseTemplateId,
     Map<String, dynamic>? otherSet,
+    bool? disableVictoryScoreCheck,
+    bool? reverseWinRule,
     bool? isAllowNegative,
   }) {
     final template = Poker50Template(
@@ -72,6 +80,9 @@ class Poker50Template extends BaseTemplate {
       isAllowNegative: isAllowNegative ?? this.isAllowNegative,
       isSystemTemplate: isSystemTemplate ?? this.isSystemTemplate,
       baseTemplateId: baseTemplateId ?? this.baseTemplateId,
+      disableVictoryScoreCheck:
+          disableVictoryScoreCheck ?? this.disableVictoryScoreCheck,
+      reverseWinRule: reverseWinRule ?? this.reverseWinRule,
     );
 
     // 设置 otherSet

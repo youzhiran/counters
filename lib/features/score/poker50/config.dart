@@ -55,14 +55,15 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
     }
 
     final template = widget.oriTemplate as Poker50Template;
-    final updated = template.copyWith(
+    var updated = template.copyWith(
       templateName: templateNameController.text,
       playerCount: int.parse(playerCountController.text),
       targetScore: int.parse(targetScoreController.text),
       isAllowNegative: _allowNegative,
       players: players,
-      otherSet: mergeWinRuleSettings(template.otherSet),
     );
+
+    updated = applyWinRuleSettings(updated) as Poker50Template;
 
     // 在异步操作前获取需要的对象
     final templateNotifier = ref.read(templatesProvider.notifier);
@@ -85,7 +86,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
 
     final rootId = getRootBaseTemplateId() ?? widget.oriTemplate.tid;
 
-    final newTemplate = Poker50Template(
+    var newTemplate = Poker50Template(
       templateName: templateNameController.text,
       playerCount: playerCount,
       targetScore: targetScore,
@@ -95,7 +96,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
     );
 
     // 应用胜利规则设置
-    applyWinRuleSettings(newTemplate);
+    newTemplate = applyWinRuleSettings(newTemplate) as Poker50Template;
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
     globalState.navigatorKey.currentState?.pop();

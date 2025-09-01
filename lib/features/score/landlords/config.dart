@@ -83,7 +83,7 @@ class _LandlordsConfigPageState
     }
 
     final template = widget.oriTemplate as LandlordsTemplate;
-    final updated = template.copyWith(
+    var updated = template.copyWith(
       templateName: templateNameController.text,
       playerCount: int.parse(playerCountController.text),
       targetScore: int.parse(targetScoreController.text),
@@ -91,8 +91,9 @@ class _LandlordsConfigPageState
       players: players,
       checkMultiplier: _checkMultiplier,
       bombMultiplyMode: _bombMultiplyMode,
-      otherSet: mergeWinRuleSettings(template.otherSet),
     );
+
+    updated = applyWinRuleSettings(updated) as LandlordsTemplate;
 
     // 在异步操作前获取需要的对象
     final templateNotifier = ref.read(templatesProvider.notifier);
@@ -115,7 +116,7 @@ class _LandlordsConfigPageState
 
     final rootId = getRootBaseTemplateId() ?? widget.oriTemplate.tid;
 
-    final newTemplate = LandlordsTemplate(
+    var newTemplate = LandlordsTemplate(
       templateName: templateNameController.text,
       playerCount: playerCount,
       targetScore: targetScore,
@@ -127,7 +128,7 @@ class _LandlordsConfigPageState
     );
 
     // 应用胜利规则设置
-    applyWinRuleSettings(newTemplate);
+    newTemplate = applyWinRuleSettings(newTemplate) as LandlordsTemplate;
 
     ref.read(templatesProvider.notifier).saveUserTemplate(newTemplate, rootId);
     globalState.navigatorKey.currentState?.pop();

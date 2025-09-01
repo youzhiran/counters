@@ -12,6 +12,8 @@ class MahjongTemplate extends BaseTemplate {
     required super.players,
     required super.isSystemTemplate,
     super.baseTemplateId,
+    super.disableVictoryScoreCheck,
+    super.reverseWinRule,
     int baseScore = 1,
     bool checkMultiplier = false,
     bool bombMultiplyMode = false,
@@ -40,6 +42,8 @@ class MahjongTemplate extends BaseTemplate {
       'is_system_template': isSystemTemplate ? 1 : 0,
       'base_template_id': baseTemplateId,
       'other_set': otherSetToJson(),
+      'disable_victory_score_check': disableVictoryScoreCheck ? 1 : 0,
+      'reverse_win_rule': reverseWinRule ? 1 : 0,
     };
   }
 
@@ -54,6 +58,8 @@ class MahjongTemplate extends BaseTemplate {
     bool? isSystemTemplate,
     String? baseTemplateId,
     Map<String, dynamic>? otherSet,
+    bool? disableVictoryScoreCheck,
+    bool? reverseWinRule,
   }) {
     final newOtherSet =
         Map<String, dynamic>.from(otherSet ?? this.otherSet ?? {});
@@ -66,6 +72,9 @@ class MahjongTemplate extends BaseTemplate {
       players: players ?? List.from(this.players),
       isSystemTemplate: isSystemTemplate ?? this.isSystemTemplate,
       baseTemplateId: baseTemplateId ?? this.baseTemplateId,
+      disableVictoryScoreCheck:
+          disableVictoryScoreCheck ?? this.disableVictoryScoreCheck,
+      reverseWinRule: reverseWinRule ?? this.reverseWinRule,
       baseScore: newOtherSet['baseScore'] as int? ?? baseScore,
       checkMultiplier:
           newOtherSet['checkMultiplier'] as bool? ?? checkMultiplier,
@@ -84,6 +93,8 @@ class MahjongTemplate extends BaseTemplate {
       players: players,
       isSystemTemplate: map['is_system_template'] == 1,
       baseTemplateId: map['base_template_id'] as String?,
+      disableVictoryScoreCheck: map['disable_victory_score_check'] == 1,
+      reverseWinRule: map['reverse_win_rule'] == 1,
     );
 
     template.otherSetFromJson(map['other_set']);
@@ -102,6 +113,9 @@ class MahjongTemplate extends BaseTemplate {
           .toList(),
       isSystemTemplate: json['isSystemTemplate'] as bool,
       baseTemplateId: json['baseTemplateId'] as String?,
+      disableVictoryScoreCheck:
+          json['disableVictoryScoreCheck'] as bool? ?? false,
+      reverseWinRule: json['reverseWinRule'] as bool? ?? false,
       baseScore: json['baseScore'] as int? ?? 1,
       checkMultiplier: json['checkMultiplier'] as bool? ?? false,
       bombMultiplyMode: json['bombMultiplyMode'] as bool? ?? false,
