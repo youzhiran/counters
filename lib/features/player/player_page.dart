@@ -49,6 +49,9 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         automaticallyImplyLeading: false,
         title: _isSearching
             ? TextField(

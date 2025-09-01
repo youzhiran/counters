@@ -36,6 +36,9 @@ class LogTestPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('程序日志'),
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         actions: [
           // LAN状态显示按钮（显示主机模式、客户端模式、连接状态等）
           LanStatusButton(),

@@ -111,6 +111,9 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
         return Scaffold(
           appBar: AppBar(
             title: Text(league.name),
+            elevation: 0,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
           ),
           body: PageView(
             controller: _pageController,

@@ -115,6 +115,9 @@ class _AboutPageState extends State<AboutPage> with WidgetsBindingObserver {
     return widget.showAppBar
         ? Scaffold(
             appBar: AppBar(
+              elevation: 0,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
               title: const Text('关于应用'),
             ),
             body: _buildContent(),

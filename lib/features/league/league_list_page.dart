@@ -21,6 +21,9 @@ class LeagueListPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         title: const Text('联赛管理'),
       ),
       body: leagueAsync.when(

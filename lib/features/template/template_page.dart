@@ -43,6 +43,9 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('模板'),
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         automaticallyImplyLeading: false,
         actions: [
           IconButton(

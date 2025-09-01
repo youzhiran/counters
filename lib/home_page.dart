@@ -120,6 +120,9 @@ class HomePage extends ConsumerWidget {
     return Scaffold(
         appBar: AppBar(
           title: const Text('主页'),
+          elevation: 0,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           automaticallyImplyLeading: false,
         ),
         body: scoreAsync.when(
@@ -180,7 +183,12 @@ class HomePage extends ConsumerWidget {
       ),
       onPressed: () => Navigator.of(context).pushWithSlide(
         Scaffold(
-          appBar: AppBar(title: Text('选择模板')),
+          appBar: AppBar(
+            title: Text('选择模板'),
+            elevation: 0,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          ),
           body: _TemplateSelector(),
         ),
         direction: SlideDirection.fromRight,
@@ -439,7 +447,12 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
         }
       }
       return Scaffold(
-        appBar: AppBar(title: const Text('模板同步中')),
+        appBar: AppBar(
+          title: const Text('模板同步中'),
+          elevation: 0,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+        ),
         body: const Center(child: Text('正在同步模板信息，请稍候...')),
       );
     }
@@ -465,7 +478,11 @@ class _SessionPageLoaderState extends ConsumerState<_SessionPageLoader> {
         Future.microtask(() =>
             GlobalMsgManager.showError('未知的模板类型: ${template.templateType}'));
         return Scaffold(
-          appBar: AppBar(),
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          ),
           body: const Center(
             child: Text('错误：未知的模板类型，无法加载计分页面。'),
           ),

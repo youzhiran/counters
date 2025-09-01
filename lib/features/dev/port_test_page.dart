@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:counters/app/config.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/port_manager.dart';
 import 'package:counters/features/setting/port_config_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PortTestPage extends ConsumerStatefulWidget {
   const PortTestPage({super.key});
@@ -107,7 +107,9 @@ class _PortTestPageState extends ConsumerState<PortTestPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('端口管理测试'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
