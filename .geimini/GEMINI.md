@@ -85,23 +85,6 @@
 - **用途**: 为 `Navigator` 提供了 `pushWithSlide` 扩展方法。
 - **价值**: 统一了应用内的页面切换动画（如此处定义的左右滑动），提供了连贯、一致的导航体验。
 
-### 三、 全局服务与叠加层
-
-这些组件或服务通常是无UI的，但对用户体验和代码组织至关重要。
-
-#### 1. `MessageOverlay`
-
-- **文件**: `message_overlay.dart`
-- **用途**: 实现一个全局的消息提醒管理器 (`GlobalMsgManager`)，可以在应用的任何地方（无需 `BuildContext`）弹出成功、警告或错误等提示信息。
-- **实现**: 通过 `Overlay` 和 `OverlayEntry` 实现，不会打断用户操作。
-- **调用**: 通常通过 `ref.showSuccess('...')` 等封装好的扩展方法来调用。
-
-#### 2. `PageTransitions`
-
-- **文件**: `page_transitions.dart`
-- **用途**: 为 `Navigator` 提供了 `pushWithSlide` 扩展方法。
-- **价值**: 统一了应用内的页面切换动画（如此处定义的左右滑动），提供了连贯、一致的导航体验。
-
 #### 3. `ErrorHandler`
 
 - **文件**: `lib/common/utils/error_handler.dart`

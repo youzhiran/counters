@@ -219,13 +219,6 @@ class TemplateCard extends ConsumerWidget {
                 title: const Text('开始计分'),
                 leading: const Icon(Icons.play_arrow),
                 onTap: () async {
-                  final scoreState = await ref.watch(scoreProvider.future);
-                  if (!context.mounted) return;
-
-                  if (scoreState.currentSession != null) {
-                    showAlreadyDialog();
-                    return;
-                  }
                   ref.read(scoreProvider.notifier).startNewGame(template);
                   if (!context.mounted) return;
                   Navigator.of(context).pushReplacement(
@@ -416,14 +409,6 @@ class TemplateCard extends ConsumerWidget {
   // 开始快速游戏
   Future<void> _startQuickGame(BuildContext context, WidgetRef ref) async {
     try {
-      final scoreState = await ref.watch(scoreProvider.future);
-      if (!context.mounted) return;
-
-      if (scoreState.currentSession != null) {
-        showAlreadyDialog();
-        return;
-      }
-
       // 创建临时模板副本，使用默认玩家信息
       final tempTemplate = _createTempTemplate();
 
@@ -444,21 +429,6 @@ class TemplateCard extends ConsumerWidget {
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '快速体验失败');
     }
-  }
-
-  void showAlreadyDialog() {
-    globalState.showCommonDialog(
-      child: AlertDialog(
-        title: const Text('无法开始新计分'),
-        content: const Text('当前已有正在进行的计分，请前往主页完成当前计分后再开始新的计分。'),
-        actions: [
-          TextButton(
-            child: const Text('确认'),
-            onPressed: () => globalState.navigatorKey.currentState?.pop(),
-          ),
-        ],
-      ),
-    );
   }
 
   // 创建临时模板

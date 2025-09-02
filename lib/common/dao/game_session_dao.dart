@@ -195,6 +195,27 @@ class GameSessionDao {
     return null;
   }
 
+  /// DAO 方法：获取所有未完成的游戏会话
+  Future<List<GameSession>> getAllIncompleteGameSessions() async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'game_sessions',
+      where: 'is_completed = ?',
+      whereArgs: [0],
+      orderBy: 'start_time DESC',
+    );
+
+    final sessions = <GameSession>[];
+    for (final map in maps) {
+      final sessionSid = map['sid'] as String;
+      final session = await getGameSession(sessionSid);
+      if (session != null) {
+        sessions.add(session);
+      }
+    }
+    return sessions;
+  }
+
   /// DAO 方法：获取所有游戏会话
   Future<List<GameSession>> getAllGameSessions() async {
     final db = await dbHelper.database;

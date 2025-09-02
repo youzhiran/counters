@@ -354,16 +354,19 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             onPressed: Navigator.of(context).pop,
             child: const Text('确定'),
           ),
-          // 如果是联赛对局且游戏已结束，额外显示“确认胜负”按钮
-          if (scoreState?.currentSession?.leagueMatchId != null &&
-              result.hasFailures)
+          // 修复：始终显示“确认胜负”按钮，除非是临时模式
+          if (scoreState?.isTempMode == false && result.hasFailures)
             TextButton(
               onPressed: () {
                 // 先关闭对话框
                 Navigator.of(context).pop();
-                // 调用 provider 方法确认结果
-                ref.read(scoreProvider.notifier).confirmLeagueMatchResult();
-                // 再退出计分页面，返回到联赛详情
+                // 根据是否为联赛，调用不同的确认方法
+                if (scoreState?.currentSession?.leagueMatchId != null) {
+                  ref.read(scoreProvider.notifier).confirmLeagueMatchResult();
+                } else {
+                  ref.read(scoreProvider.notifier).confirmGameResult();
+                }
+                // 退出计分页面
                 Navigator.of(context).pop();
               },
               child: const Text('确认胜负'),

@@ -333,15 +333,18 @@ class GlobalState {
       return null;
     }
 
-    return await showModal<T>(
-      context: navigatorKey.currentState!.context,
-      configuration: FadeScaleTransitionConfiguration(
-        barrierColor: Colors.black38,
-        barrierDismissible: dismissible,
-      ),
-      builder: (_) => child,
-      filter: filter,
-    );
+    // 使用一个新的微任务来显示对话框，确保它在新的事件循环中执行
+    return await Future.microtask(() {
+      return showModal<T>(
+        context: navigatorKey.currentState!.context,
+        configuration: FadeScaleTransitionConfiguration(
+          barrierColor: Colors.black38,
+          barrierDismissible: dismissible,
+        ),
+        builder: (_) => child,
+        filter: filter,
+      );
+    });
   }
 
   /// 显示消息对话框

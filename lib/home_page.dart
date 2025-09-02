@@ -1,16 +1,13 @@
 import 'package:collection/collection.dart';
-import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/landlords.dart';
 import 'package:counters/common/model/mahjong.dart';
-import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/optimized_list.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
-import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/common/widgets/template_card.dart';
 import 'package:counters/features/history/history_page.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
@@ -129,34 +126,32 @@ class HomePage extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => Center(child: Text('加载失败: $err')),
           data: (scoreState) {
-            // 只有在非联赛模式下的计分才在主页显示计分板
-            if (scoreState.currentSession?.isCompleted == false &&
-                scoreState.currentSession?.leagueMatchId == null) {
-              return _buildScoringBoard(context, ref, scoreState);
-            } else {
-              return _buildHomeWithHistory(context, ref, lanState);
-            }
+            return _buildHomeWithHistory(context, ref, lanState, scoreState);
           },
         ));
   }
 
-  Widget _buildHomeWithHistory(
-      BuildContext context, WidgetRef ref, LanState lanState) {
+  Widget _buildHomeWithHistory(BuildContext context, WidgetRef ref,
+      LanState lanState, ScoreState scoreState) {
     return Column(
       children: [
-        _buildEmptyState(context, ref, lanState),
+        _buildEmptyState(context, ref, lanState, scoreState),
       ],
     );
   }
 
-  Widget _buildEmptyState(
-      BuildContext context, WidgetRef ref, LanState lanState) {
+  Widget _buildEmptyState(BuildContext context, WidgetRef ref,
+      LanState lanState, ScoreState scoreState) {
+    final hasOngoingGames = scoreState.ongoingSessions.isNotEmpty;
+    final text = hasOngoingGames ? '选择模板开始新游戏\n或从历史记录中继续' : '没有进行中的游戏';
+
     return Expanded(
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('没有进行中的游戏', style: TextStyle(fontSize: 18)),
+            Text(text,
+                style: TextStyle(fontSize: 18), textAlign: TextAlign.center),
             SizedBox(height: 20),
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -266,130 +261,6 @@ class HomePage extends ConsumerWidget {
     } else {
       return '连接到局域网计分';
     }
-  }
-
-  Widget _buildScoringBoard(
-      BuildContext context, WidgetRef ref, ScoreState scoreState) {
-    final session = scoreState.currentSession!;
-    final template = scoreState.template;
-    final players = scoreState.players;
-
-    if (template == null) {
-      // This can happen briefly if loading from history or joining a LAN game
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('正在加载计分板...'),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Expanded(
-          child: OptimizedListView.builder(
-            itemCount: session.scores.length,
-            itemBuilder: (context, index) {
-              final score = session.scores[index];
-              final player = players.firstWhere(
-                (p) => p.pid == score.playerId,
-                orElse: () {
-                  Log.w('找不到玩家ID: ${score.playerId}');
-                  return PlayerInfo(
-                    pid: 'default_$index',
-                    name: '玩家 ${index + 1}',
-                    avatar: 'default_avatar.png',
-                  );
-                },
-              );
-              return SmartListItem(
-                debugLabel: 'PlayerScore_$index',
-                child: ListTile(
-                  leading: PlayerAvatar.build(context, player),
-                  title: Text(player.name),
-                  subtitle: Text('总得分: ${score.totalScore}'),
-                  trailing: () {
-                    final lastScore = score.roundScores.lastOrNull;
-                    final displayScore = lastScore ?? 0;
-                    final prefix = displayScore >= 0 ? '+' : '';
-                    return Text('$prefix$displayScore');
-                  }(),
-                ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                ),
-                onPressed: () => Navigator.of(context).push(
-                  CustomPageTransitions.slideFromRight(
-                    HomePage.buildSessionPage(template),
-                    duration: const Duration(milliseconds: 350),
-                    curve: Curves.easeInOut,
-                  ),
-                ),
-                child: Text('继续本轮', style: TextStyle(color: Colors.white)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                ),
-                onPressed: () => _showEndConfirmation(context, ref, scoreState),
-                child: Text('结束本轮', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        )
-      ],
-    );
-  }
-
-  void _showEndConfirmation(
-      BuildContext context, WidgetRef ref, ScoreState scoreState) {
-    final hasScores = scoreState.currentSession?.scores
-            .any((s) => s.roundScores.isNotEmpty) ??
-        false;
-
-    final message =
-        hasScores ? '确定要结束当前游戏吗？进度将会保存' : '当前游戏没有任何得分记录，结束后将不会保存到历史记录中';
-
-    final scoreNotifier = ref.read(scoreProvider.notifier);
-    final lanNotifier = ref.read(lanProvider.notifier);
-
-    globalState.showCommonDialog(
-      child: AlertDialog(
-        title: Text('结束本轮游戏'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => globalState.navigatorKey.currentState?.pop(),
-            child: Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              globalState.navigatorKey.currentState?.pop();
-              scoreNotifier.resetGame(hasScores);
-              lanNotifier.disposeManager();
-              ref.showSuccess('已结束当前游戏计分');
-            },
-            child: Text('确认结束', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
   }
 }
 

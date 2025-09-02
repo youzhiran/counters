@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/league.dart' as model;
+import 'package:counters/common/model/league_enums.dart';
 import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
 import 'package:counters/common/widgets/history_session_item.dart';
@@ -181,6 +182,11 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 
   Widget _buildLeagueCard(model.League league) {
+    final isCompleted =
+        league.matches.every((m) => m.status == MatchStatus.completed);
+    final statusText = isCompleted ? '已完成' : '进行中';
+    final statusColor = isCompleted ? Colors.green : Colors.orange;
+
     return Card(
       elevation: 0,
       shape: OutlineInputBorder(
@@ -204,16 +210,23 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Row(
             children: [
-              const Icon(Icons.emoji_events, size: 40, color: Colors.orangeAccent),
+              const Icon(Icons.emoji_events,
+                  size: 40, color: Colors.orangeAccent),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(league.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis),
+                    Text(league.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                        overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    const Text('联赛记录', style: TextStyle(color: Colors.grey)),
+                    Text(
+                      '状态：$statusText',
+                      style: TextStyle(color: statusColor),
+                    ),
                   ],
                 ),
               ),
