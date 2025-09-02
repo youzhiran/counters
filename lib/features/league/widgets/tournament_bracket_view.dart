@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:collection/collection.dart';
 import 'package:counters/common/model/league.dart';
 import 'package:counters/common/model/league_enums.dart';
@@ -5,30 +7,120 @@ import 'package:counters/common/model/match.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 const _cardWidth = 180.0;
 const _cardHeight = 70.0;
 const _roundSpacing = 50.0;
 const _verticalCardSpacing = 32.0; // Spacing between cards in the same round
+const _maxScale = 2.5;
 
-class TournamentBracketView extends ConsumerWidget {
+class TournamentBracketView extends ConsumerStatefulWidget {
   final League league;
+  final ValueChanged<bool> onFullscreenToggle;
 
-  const TournamentBracketView({super.key, required this.league});
+  const TournamentBracketView(
+      {super.key, required this.league, required this.onFullscreenToggle});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TournamentBracketView> createState() =>
+      _TournamentBracketViewState();
+}
+
+class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
+    with AutomaticKeepAliveClientMixin {
+  double _minScale = 0.2; // Default value, will be updated dynamically.
+  bool _isFullscreen = false;
+  final TransformationController _transformationController =
+      TransformationController();
+  final GlobalKey _interactiveViewerKey = GlobalKey();
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    // 保证在第一帧渲染完成后，只执行一次居中操作
+    WidgetsBinding.instance.addPostFrameCallback((_) => _centerView());
+  }
+
+  @override
+  void dispose() {
+    // Ensure we exit fullscreen when the widget is disposed.
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _centerView() {
+    if (!mounted || _interactiveViewerKey.currentContext == null) return;
+
+    final RenderBox renderBox =
+        _interactiveViewerKey.currentContext!.findRenderObject() as RenderBox;
+    final viewSize = renderBox.size;
+
+    final groupedMatches =
+        groupBy<Match, int>(widget.league.matches, (match) => match.round);
+    final sortedRounds = groupedMatches.keys.toList()..sort();
+    if (sortedRounds.isEmpty) return;
+
+    final matchPositions =
+        _calculateMatchPositions(groupedMatches, sortedRounds);
+    if (matchPositions.isEmpty) return;
+
+    final totalWidth = sortedRounds.length * _cardWidth +
+        (sortedRounds.length - 1) * _roundSpacing;
+    final totalHeight = matchPositions.values
+            .map((p) => p.dy)
+            .reduce((max, y) => y > max ? y : max) +
+        _cardHeight;
+
+    final scaleX = viewSize.width / (totalWidth + 32);
+    final scaleY = viewSize.height / (totalHeight + 32);
+    final initialScale = (min(scaleX, scaleY) * 0.8).clamp(0.1, 1.0);
+
+    if (mounted) {
+      setState(() {
+        _minScale = initialScale;
+      });
+    }
+
+    final initialX = (viewSize.width - totalWidth * initialScale) / 2;
+    final initialY = (viewSize.height - totalHeight * initialScale) / 2;
+
+    final initialMatrix = Matrix4.identity()
+      ..translate(initialX > 0 ? initialX : 0, initialY > 0 ? initialY : 0)
+      ..scale(initialScale);
+
+    _transformationController.value = initialMatrix;
+  }
+
+  void _toggleFullscreen() {
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+      if (_isFullscreen) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      } else {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      }
+    });
+    widget.onFullscreenToggle(_isFullscreen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     final playerState = ref.watch(playerProvider).value;
     if (playerState == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final groupedMatches =
-        groupBy<Match, int>(league.matches, (match) => match.round);
+        groupBy<Match, int>(widget.league.matches, (match) => match.round);
     final sortedRounds = groupedMatches.keys.toList()..sort();
 
-    // Pre-calculate all match positions
     final matchPositions =
         _calculateMatchPositions(groupedMatches, sortedRounds);
 
@@ -43,24 +135,52 @@ class TournamentBracketView extends ConsumerWidget {
             .reduce((max, y) => y > max ? y : max) +
         _cardHeight;
 
-    return InteractiveViewer(
-      minScale: 0.5,
-      maxScale: 2.5,
-      constrained: false,
-      // 允许内容超出视图边界
-      boundaryMargin: const EdgeInsets.all(80.0),
-      // 增加边界，解决缩放问题
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SizedBox(
-          width: totalWidth,
-          height: totalHeight,
-          child: Stack(
-            children: _buildBracketWidgets(context, groupedMatches,
-                sortedRounds, playerState.players, matchPositions),
+    return Stack(
+      children: [
+        InteractiveViewer(
+          key: _interactiveViewerKey,
+          transformationController: _transformationController,
+          minScale: _minScale,
+          maxScale: _maxScale,
+          constrained: false,
+          boundaryMargin: const EdgeInsets.all(double.infinity),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: totalWidth,
+              height: totalHeight,
+              child: Stack(
+                children: _buildBracketWidgets(context, groupedMatches,
+                    sortedRounds, playerState.players, matchPositions),
+              ),
+            ),
           ),
         ),
-      ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FloatingActionButton.small(
+                heroTag: 'center_view',
+                onPressed: _centerView,
+                tooltip: '回到中心',
+                child: const Icon(Icons.filter_center_focus),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton.small(
+                heroTag: 'fullscreen_toggle',
+                onPressed: _toggleFullscreen,
+                tooltip: _isFullscreen ? '退出全屏' : '全屏',
+                child: Icon(
+                    _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -72,6 +192,8 @@ class TournamentBracketView extends ConsumerWidget {
     for (int i = 0; i < sortedRounds.length; i++) {
       final round = sortedRounds[i];
       final matchesInRound = groupedMatches[round]!;
+      // 关键改动：根据 mid 对当前轮次的比赛进行排序，确保布局稳定性
+      matchesInRound.sort((a, b) => a.mid.compareTo(b.mid));
       final double x = i * (_cardWidth + _roundSpacing);
 
       if (i == 0) {

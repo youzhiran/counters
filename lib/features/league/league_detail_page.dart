@@ -28,6 +28,7 @@ class LeagueDetailPage extends ConsumerStatefulWidget {
 
 class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
   int _selectedIndex = 0;
+  bool _isBracketFullscreen = false;
   late PageController _pageController;
 
   @override
@@ -92,7 +93,14 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
         } else {
           pages = [
             _KnockoutMatchesList(league: league),
-            TournamentBracketView(league: league),
+            TournamentBracketView(
+              league: league,
+              onFullscreenToggle: (isFullscreen) {
+                setState(() {
+                  _isBracketFullscreen = isFullscreen;
+                });
+              },
+            ),
           ];
           destinations = [
             const NavigationDestination(
@@ -109,13 +117,16 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
         }
 
         return Scaffold(
-          appBar: AppBar(
-            title: Text(league.name),
-            elevation: 0,
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            foregroundColor: Theme.of(context).colorScheme.onSurface,
-          ),
+          appBar: _isBracketFullscreen
+              ? null
+              : AppBar(
+                  title: Text(league.name),
+                  elevation: 0,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
+                ),
           body: PageView(
+            physics: const NeverScrollableScrollPhysics(),
             controller: _pageController,
             onPageChanged: (index) {
               setState(() {
@@ -124,17 +135,19 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
             },
             children: pages,
           ),
-          bottomNavigationBar: NavigationBar(
-            destinations: destinations,
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) {
-              _pageController.animateToPage(
-                index,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-              );
-            },
-          ),
+          bottomNavigationBar: _isBracketFullscreen
+              ? null
+              : NavigationBar(
+                  destinations: destinations,
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (index) {
+                    _pageController.animateToPage(
+                      index,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                ),
         );
       },
     );
