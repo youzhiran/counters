@@ -7,7 +7,7 @@ part of 'backup_preview_provider.dart';
 // **************************************************************************
 
 String _$backupPreviewManagerHash() =>
-    r'4091f2bf94c75dc70708daa73b1943823fd25e18';
+    r'fd4cea48286fd4a372c75cba867e0363844f4ec8';
 
 /// 备份预览状态管理
 ///

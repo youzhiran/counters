@@ -355,25 +355,57 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             child: const Text('确定'),
           ),
           // 修复：始终显示“确认胜负”按钮，除非是临时模式
-          if (scoreState?.isTempMode == false && result.hasFailures)
+          if (scoreState?.isTempMode == false)
             TextButton(
               onPressed: () {
-                // 先关闭对话框
-                Navigator.of(context).pop();
-                // 根据是否为联赛，调用不同的确认方法
-                if (scoreState?.currentSession?.leagueMatchId != null) {
-                  ref.read(scoreProvider.notifier).confirmLeagueMatchResult();
+                // 如果已经分出胜负，则直接确认
+                if (result.hasFailures) {
+                  _confirmAndExit(context, scoreState);
                 } else {
-                  ref.read(scoreProvider.notifier).confirmGameResult();
+                  // 否则，弹窗二次确认
+                  globalState.showCommonDialog(
+                    child: AlertDialog(
+                      title: const Text('提前结束'),
+                      content: const Text('提前结束将按当前分数结算胜负，确定吗？'),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              globalState.navigatorKey.currentState?.pop(),
+                          child: const Text('取消'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            // 关闭二次确认对话框
+                            globalState.navigatorKey.currentState?.pop();
+                            // 执行确认并退出
+                            _confirmAndExit(context, scoreState);
+                          },
+                          child: const Text('确定'),
+                        ),
+                      ],
+                    ),
+                  );
                 }
-                // 退出计分页面
-                Navigator.of(context).pop();
               },
-              child: const Text('确认胜负'),
+              child: Text(result.hasFailures ? '确认胜负' : '提前结束'),
             ),
         ],
       ),
     ));
+  }
+
+  /// 封装确认比赛结果并退出的逻辑
+  void _confirmAndExit(BuildContext context, ScoreState? scoreState) {
+    // 先关闭计分结果对话框
+    Navigator.of(context).pop();
+    // 根据是否为联赛，调用不同的确认方法
+    if (scoreState?.currentSession?.leagueMatchId != null) {
+      ref.read(scoreProvider.notifier).confirmLeagueMatchResult();
+    } else {
+      ref.read(scoreProvider.notifier).confirmGameResult();
+    }
+    // 退出计分页面
+    Navigator.of(context).pop();
   }
 
   void showResetConfirmation(BuildContext context) {

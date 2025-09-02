@@ -203,8 +203,10 @@ class Score extends _$Score {
     }
 
     Log.d('ScoreNotifier: 未找到活动会话。返回默认 ScoreState。');
+    // 修复：即使没有当前活动会话，也要确保加载了所有进行中的会话
+    final allOngoing = await _sessionDao.getAllIncompleteGameSessions();
     return ScoreState(
-        ongoingSessions: ongoingSessions,
+        ongoingSessions: allOngoing,
         isInitialized: true,
         players: [],
         isTempMode: false);

@@ -142,8 +142,7 @@ class HomePage extends ConsumerWidget {
 
   Widget _buildEmptyState(BuildContext context, WidgetRef ref,
       LanState lanState, ScoreState scoreState) {
-    final hasOngoingGames = scoreState.ongoingSessions.isNotEmpty;
-    final text = hasOngoingGames ? '选择模板开始新计分\n或从历史记录中继续' : '没有进行中的计分';
+    final text = '选择模板开始新计分\n或从历史记录中继续';
 
     return Expanded(
       child: Center(

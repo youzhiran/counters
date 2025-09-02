@@ -375,7 +375,7 @@ class TemplateCard extends ConsumerWidget {
                     ],
                   ),
                   SizedBox(height: 4),
-                  Text('• 此模式下的计分数据为临时数据，仅适用于快速体验',
+                  Text('• 此模式下的计分数据为临时数据，仅适用于快速体验，无确认胜负功能',
                       style: TextStyle(fontSize: 12)),
                   Text('• 退出计分界面后，所有数据将自动丢失', style: TextStyle(fontSize: 12)),
                   Text('• 如需正常计分，请使用"另存新模板"功能', style: TextStyle(fontSize: 12)),
