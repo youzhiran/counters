@@ -52,9 +52,9 @@ class _MahjongConfigPageState extends BaseConfigPageState<MahjongConfigPage> {
   int getMaxPlayerCount() => 20;
 
   @override
-  String getTemplateDescription() => '• 适用于：麻将游戏，支持4人玩法。\n'
+  String getTemplateDescription() => '• 适用于：麻将计分，支持4人玩法。\n'
       '• 本模板显示为 2 位小数计分\n'
-      '• 这里目标分数1分=实际游戏中0.01分';
+      '• 这里目标分数1分=实际计分中0.01分';
 
   @override
   Future<void> updateTempConf() async {

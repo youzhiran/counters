@@ -74,7 +74,7 @@ class GameSessionDao {
       }
     });
 
-    Log.d('游戏会话 ${session.sid} 已保存到数据库');
+    Log.d('计分会话 ${session.sid} 已保存到数据库');
 
     // 通知玩家游玩次数更新
     if (onPlayerPlayCountUpdate != null && playerIds.isNotEmpty) {
@@ -95,7 +95,7 @@ class GameSessionDao {
     );
 
     if (sessionMaps.isEmpty) {
-      Log.w('未找到会话ID为 $sid 的游戏会话');
+      Log.w('未找到会话ID为 $sid 的计分会话');
       return null; // 未找到该会话
     }
 
@@ -158,7 +158,7 @@ class GameSessionDao {
     return GameSession.fromDatabaseMap(sessionMap, scores);
   }
 
-  /// DAO 方法：获取最近一个未完成的游戏会话
+  /// DAO 方法：获取最近一个未完成的计分会话
   Future<GameSession?> getLastIncompleteGameSession() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -176,7 +176,7 @@ class GameSessionDao {
     return null; // 未找到未完成的会话
   }
 
-  /// DAO 方法：根据联赛比赛ID获取未完成的游戏会话
+  /// DAO 方法：根据联赛比赛ID获取未完成的计分会话
   Future<GameSession?> getIncompleteSessionByLeagueMatchId(
       String leagueMatchId) async {
     final db = await dbHelper.database;
@@ -195,7 +195,7 @@ class GameSessionDao {
     return null;
   }
 
-  /// DAO 方法：获取所有未完成的游戏会话
+  /// DAO 方法：获取所有未完成的计分会话
   Future<List<GameSession>> getAllIncompleteGameSessions() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -216,7 +216,7 @@ class GameSessionDao {
     return sessions;
   }
 
-  /// DAO 方法：获取所有游戏会话
+  /// DAO 方法：获取所有计分会话
   Future<List<GameSession>> getAllGameSessions() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> sessionMaps = await db.query(
@@ -236,17 +236,17 @@ class GameSessionDao {
     return sessions;
   }
 
-  /// DAO 方法：删除所有游戏会话和得分数据
+  /// DAO 方法：删除所有计分会话和得分数据
   Future<void> deleteAllGameSessions() async {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
       await txn.delete('game_sessions');
       await txn.delete('player_scores');
     });
-    Log.i('已删除所有游戏会话及其得分数据');
+    Log.i('已删除所有计分会话及其得分数据');
   }
 
-  /// DAO 方法：统计某个模板下的游戏会话数量
+  /// DAO 方法：统计某个模板下的计分会话数量
   Future<int> countSessionsByTemplate(String templateId) async {
     final db = await dbHelper.database;
     final count = Sqflite.firstIntValue(await db.rawQuery(
@@ -256,7 +256,7 @@ class GameSessionDao {
     return count ?? 0;
   }
 
-  /// DAO 方法：删除某个模板下的所有游戏会话和得分数据
+  /// DAO 方法：删除某个模板下的所有计分会话和得分数据
   Future<void> deleteSessionsByTemplate(String templateId) async {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
@@ -282,10 +282,10 @@ class GameSessionDao {
         whereArgs: [templateId],
       );
     });
-    Log.i('已删除模板 $templateId 下的所有游戏会话及其得分数据');
+    Log.i('已删除模板 $templateId 下的所有计分会话及其得分数据');
   }
 
-  /// DAO 方法：删除指定游戏会话及其得分数据
+  /// DAO 方法：删除指定计分会话及其得分数据
   Future<void> deleteGameSession(String sid) async {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
@@ -300,7 +300,7 @@ class GameSessionDao {
         whereArgs: [sid],
       );
     });
-    Log.i('已删除会话ID为 $sid 的游戏会话及其得分数据');
+    Log.i('已删除会话ID为 $sid 的计分会话及其得分数据');
   }
 
 // 注意：单独更新某个回合得分或扩展字段的方法可以添加到这里，

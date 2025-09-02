@@ -193,7 +193,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
     if (lanState.isClientMode) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('发现局域网游戏'),
+          title: const Text('发现局域网计分'),
         ),
         body: Center(
           child: Column(
@@ -206,7 +206,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                '客户端模式下无法发现局域网游戏',
+                '客户端模式下无法发现局域网计分',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Theme.of(context).colorScheme.error,
                     ),
@@ -234,7 +234,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('发现局域网游戏'),
+        title: const Text('发现局域网计分'),
         actions: [
           // 添加刷新按钮
           IconButton(

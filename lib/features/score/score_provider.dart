@@ -435,7 +435,7 @@ class Score extends _$Score {
     }
   }
 
-  /// 开始临时计分游戏（快速体验模式）
+  /// 开始临时计分计分（快速体验模式）
   void startTempGame(BaseTemplate template) {
     final validatedPlayers = template.players
         .map((p) => p.pid.isEmpty ? p.copyWith(pid: const Uuid().v4()) : p)
@@ -598,7 +598,7 @@ class Score extends _$Score {
       currentRound: _calculateCurrentRound(updatedSession),
     ));
 
-    // 检查是否显示游戏结束对话框
+    // 检查是否显示计分结束对话框
     final currentScoreState = state.value;
     if (currentScoreState != null && currentScoreState.currentSession != null) {
       final sessionAfterUpdate = currentScoreState.currentSession!;
@@ -607,7 +607,7 @@ class Score extends _$Score {
           ps.roundScores.length > roundIndex &&
           ps.roundScores[roundIndex] != null);
 
-      // 检查游戏结束的条件：
+      // 检查计分结束的条件：
       // 1. 整个回合刚刚完成。
       // 2. 或者，模板被标记为“每次分数变化都检查胜利条件”。
       final template = ref
@@ -725,7 +725,7 @@ class Score extends _$Score {
 
     // 临时模式下不保存历史记录
     if (saveToHistory && currentState?.isTempMode == true) {
-      Log.i('临时计分模式：跳过游戏历史保存，数据仅在内存中');
+      Log.i('临时计分模式：跳过计分历史保存，数据仅在内存中');
     }
     // 修复：客户端模式下不保存历史记录到本地数据库
     else if (saveToHistory &&
@@ -738,7 +738,7 @@ class Score extends _$Score {
         endTime: DateTime.now(),
       );
       await _sessionDao.saveGameSession(completedSession);
-      Log.d('主机模式：游戏历史已保存到本地数据库');
+      Log.d('主机模式：计分历史已保存到本地数据库');
 
       // 检查是否为联赛对局，并更新联赛提供者
       if (completedSession.leagueMatchId != null) {
@@ -764,7 +764,7 @@ class Score extends _$Score {
         }
       }
     } else if (saveToHistory && _isClientMode()) {
-      Log.i('客户端模式：跳过游戏历史保存，数据仅在内存中');
+      Log.i('客户端模式：跳过计分历史保存，数据仅在内存中');
     }
 
     // 如果是临时模式，清理临时模板
@@ -1120,7 +1120,7 @@ class Score extends _$Score {
     final lanState = ref.read(lanProvider);
     if (!lanState.isHost) return;
 
-    Log.i('ScoreNotifier 广播游戏重置');
+    Log.i('ScoreNotifier 广播计分重置');
     final payload = ResetGamePayload();
     final message = SyncMessage(type: "reset_game", data: payload.toJson());
     final jsonString = jsonEncode(message.toJson());
@@ -1346,9 +1346,9 @@ class Score extends _$Score {
     updateHighlight();
   }
 
-  /// 应用接收到的游戏重置通知
+  /// 应用接收到的计分重置通知
   void applyResetGame() {
-    Log.i('ScoreNotifier 应用游戏重置');
+    Log.i('ScoreNotifier 应用计分重置');
     state = AsyncData(const ScoreState(
       currentSession: null,
       template: null,
@@ -1362,12 +1362,12 @@ class Score extends _$Score {
     ));
   }
 
-  /// 应用接收到的游戏结束通知
+  /// 应用接收到的计分结束通知
   void applyGameEnd(/* GameEndPayload? payload */) {
-    Log.i('ScoreNotifier 应用游戏结束');
+    Log.i('ScoreNotifier 应用计分结束');
     final currentState = state.valueOrNull;
     if (currentState?.currentSession == null) {
-      Log.w('应用游戏结束失败: 无当前会话');
+      Log.w('应用计分结束失败: 无当前会话');
       return;
     }
 
@@ -1436,7 +1436,7 @@ class ScoreEditService {
     );
   }
 
-  /// 显示总分编辑弹窗（适用于Counter等累计分数的游戏）
+  /// 显示总分编辑弹窗（适用于Counter等累计分数的计分）
   void showTotalScoreEditDialog({
     required String templateId,
     required PlayerInfo player,

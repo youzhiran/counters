@@ -170,7 +170,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                       LanStatusButton(),
                       IconButton(
                         icon: Icon(Icons.sports_score),
-                        tooltip: '当前游戏情况',
+                        tooltip: '当前计分情况',
                         onPressed: () => showGameResult(context),
                       ),
                       IconButton(
@@ -314,7 +314,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         ref.read(scoreProvider.notifier).resetGameEndDialog();
       },
       child: AlertDialog(
-        title: Text(result.hasFailures ? '游戏结束' : '当前游戏情况'),
+        title: Text(result.hasFailures ? '计分结束' : '当前计分情况'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -341,7 +341,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
               if (result.hasFailures) ...[
                 SizedBox(height: 16),
-                Text('💡 游戏结束，但仍可继续计分，每回合结束将再次检查计分',
+                Text('💡 计分结束，但仍可继续计分，每回合结束将再次检查计分',
                     style: TextStyle(
                       color: Colors.blue,
                     )),
@@ -379,8 +379,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   void showResetConfirmation(BuildContext context) {
     globalState.showCommonDialog(
       child: AlertDialog(
-        title: Text('重置游戏'),
-        content: Text('确定要重置当前游戏吗？\n' '当前进度将会自动保存并标记为已完成，并启动一个新的计分。'),
+        title: Text('重置计分'),
+        content: Text('确定要重置当前计分吗？\n' '当前进度将会自动保存并标记为已完成，并启动一个新的计分。'),
         actions: [
           TextButton(
             onPressed: () => globalState.navigatorKey.currentState?.pop(),
@@ -451,7 +451,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     );
   }
 
-  /// 显示轮次分数编辑弹窗（适用于麻将、Poker50等基于轮次的游戏）
+  /// 显示轮次分数编辑弹窗（适用于麻将、Poker50等基于轮次的计分）
   ///
   /// [player] 玩家信息
   /// [roundIndex] 轮次索引（从0开始）
@@ -527,7 +527,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
               // 检查并断开联机连接
               await _handleNetworkDisconnection();
 
-              // 重置游戏状态（不保存历史）
+              // 重置计分状态（不保存历史）
               ref.read(scoreProvider.notifier).resetGame(false);
 
               // 返回到上一个页面（保持底部导航）
@@ -698,7 +698,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   Future<void> _handleStandaloneModeExit() async {
     final confirmed = await _showExitConfirmDialog(
       title: '确认退出',
-      content: '确定要退出当前游戏吗？',
+      content: '确定要退出当前计分吗？',
       actionText: '确认退出',
       isDestructive: false,
     );
@@ -809,7 +809,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           break;
         case 'reset_game':
           if (scoreState.isTempMode) {
-            ref.showWarning('临时计分模式下不可重置游戏');
+            ref.showWarning('临时计分模式下不可重置计分');
             break;
           }
           showResetConfirmation(context);
@@ -909,13 +909,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     buildGridItem(
                       value: 'lan_discovery',
                       icon: Icons.search,
-                      label: '发现局域网游戏',
+                      label: '发现局域网计分',
                       enabled: !lanState.isHost && !lanState.isClientMode,
                     ),
                     buildGridItem(
                       value: 'reset_game',
                       icon: Icons.restart_alt_rounded,
-                      label: '重置游戏',
+                      label: '重置计分',
                       enabled: !scoreState.isTempMode,
                     ),
                     buildGridItem(
@@ -934,7 +934,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                 ),
                 const Divider(height: 32),
                 Text(
-                  '游戏工具',
+                  '计分工具',
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
                 const SizedBox(height: 8),

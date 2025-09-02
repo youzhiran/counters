@@ -389,12 +389,12 @@ class Lan extends _$Lan {
             break;
 
           case "reset_game":
-            Log.i('收到游戏重置通知');
+            Log.i('收到计分重置通知');
             ref.read(scoreProvider.notifier).applyResetGame();
             break;
 
           case "game_end":
-            Log.i('收到游戏结束通知');
+            Log.i('收到计分结束通知');
             ref.read(scoreProvider.notifier).applyGameEnd();
             break;
 

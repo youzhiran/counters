@@ -103,7 +103,7 @@ class _Poker50ConfigPageState extends BaseConfigPageState<Poker50ConfigPage> {
   }
 
   @override
-  String getTemplateDescription() => '• 适用于：类似达到指定分数后计算胜局的游戏，计分最少的玩家获胜。\n'
+  String getTemplateDescription() => '• 适用于：类似达到指定分数后计算胜局的计分，计分最少的玩家获胜。\n'
       '• 典型情况：3人打牌记录剩余手牌数量，累计到50张为败，此时计分最少的玩家获胜。';
 
   Widget _buildOtherList() {

@@ -190,9 +190,9 @@ class DatabaseHelper {
       );
     ''');
 
-    // 创建游戏会话表
+    // 创建计分会话表
     batch.execute('''
-      -- 游戏会话历史表
+      -- 计分会话历史表
       CREATE TABLE game_sessions (
         sid TEXT PRIMARY KEY, -- 会话唯一ID
         template_id TEXT NOT NULL, -- 使用的模板ID
@@ -211,7 +211,7 @@ class DatabaseHelper {
         player_id TEXT NOT NULL, -- 玩家ID
         round_number INTEGER NOT NULL, -- 回合数
         score INTEGER, -- 本回合得分
-        extended_field TEXT, -- 扩展字段 (用于特殊游戏类型, JSON格式)
+        extended_field TEXT, -- 扩展字段 (用于特殊计分类型, JSON格式)
         PRIMARY KEY (session_id, player_id, round_number)
       )
     ''');

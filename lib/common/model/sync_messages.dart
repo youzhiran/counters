@@ -42,7 +42,7 @@ sealed class SyncStatePayload with _$SyncStatePayload {
   const SyncStatePayload._(); // 需要私有构造函数，因为我们可能添加方法/getter
 
   const factory SyncStatePayload({
-    required GameSession session, // 完整的游戏会话数据
+    required GameSession session, // 完整的计分会话数据
   }) = _SyncStatePayload;
 
   factory SyncStatePayload.fromJson(Map<String, dynamic> json) =>
@@ -84,7 +84,7 @@ sealed class NewRoundPayload with _$NewRoundPayload {
 }
 
 /// "reset_game" 消息的负载
-/// 通知游戏重置。负载可以是空的。
+/// 通知计分重置。负载可以是空的。
 @freezed
 sealed class ResetGamePayload with _$ResetGamePayload {
   const ResetGamePayload._();
@@ -110,7 +110,7 @@ sealed class HostDisconnectPayload with _$HostDisconnectPayload {
 }
 
 /// "game_end" 消息的负载
-/// 通知游戏结束。负载可以包含游戏结果信息。
+/// 通知计分结束。负载可以包含计分结果信息。
 @freezed
 sealed class GameEndPayload with _$GameEndPayload {
   const GameEndPayload._();

@@ -6,7 +6,7 @@ part of 'lan_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$lanHash() => r'ab1c9481d6b38b78951bf9b79f59aad15b9b5d9b';
+String _$lanHash() => r'6494088ab043b6c9e692963e8b011f4a4465734e';
 
 /// See also [Lan].
 @ProviderFor(Lan)

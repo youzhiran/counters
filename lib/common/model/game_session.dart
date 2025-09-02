@@ -6,10 +6,9 @@ import 'player_score.dart'; // 确保正确导入 PlayerScore 模型
 
 // 这两行是必须的，告诉 build_runner 生成哪些文件
 part 'game_session.freezed.dart';
-
 part 'game_session.g.dart'; // json_serializable 生成的文件
 
-/// 游戏会话模型，用于在内存中表示一个完整的计分游戏会话。
+/// 计分会话模型，用于在内存中表示一个完整的计分计分会话。
 /// 使用 freezed 进行不可变性、值比较、copy方法，并结合 json_serializable 进行JSON序列化。
 @freezed
 sealed class GameSession with _$GameSession {
@@ -42,7 +41,7 @@ sealed class GameSession with _$GameSession {
 
   // === 自定义工厂方法 - 方便创建新的会话并生成 SID ===
 
-  /// 创建一个新的游戏会话实例，自动生成 SID
+  /// 创建一个新的计分会话实例，自动生成 SID
   factory GameSession.newSession({
     required String templateId,
     required List<PlayerScore> scores,

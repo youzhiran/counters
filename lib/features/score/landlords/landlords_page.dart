@@ -445,7 +445,7 @@ class _LandlordsSessionPageState
       setState(() {
         _springUsed.updateAll((key, value) => false);
       });
-      ref.showWarning('每局游戏最多只能有一个「春天」，请重新选择');
+      ref.showWarning('每局计分最多只能有一个「春天」，请重新选择');
       return false;
     }
 

@@ -6,7 +6,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'player_score.freezed.dart';
 part 'player_score.g.dart'; // json_serializable 生成的文件
 
-/// 玩家在一次游戏会话中的得分模型。
+/// 玩家在一次计分会话中的得分模型。
 /// 使用 freezed 进行不可变性、值比较、copy方法，并结合 json_serializable 进行JSON序列化。
 @freezed
 sealed class PlayerScore with _$PlayerScore {
@@ -80,7 +80,7 @@ sealed class PlayerScore with _$PlayerScore {
   // 它不是整个 PlayerScore 对象的序列化。
 
   /// 将特定回合的得分信息转换为数据库表 player_scores 的 Map 格式
-  /// [sessionId] 游戏会话 ID
+  /// [sessionId] 计分会话 ID
   /// [roundNumber]  回合号 (与数据库存储一致)
   /// [score]  该回合的得分
   Map<String, dynamic> toSingleScoreDatabaseMap(
@@ -89,7 +89,7 @@ sealed class PlayerScore with _$PlayerScore {
     // 注意：这里的 score 和 roundNumber 来自参数，而不是 PlayerScore 实例的 roundScores 列表
     // 但 extendedField 来自 PlayerScore 实例的状态
     return {
-      'session_id': sessionId, // 游戏会话 ID (外部传入)
+      'session_id': sessionId, // 计分会话 ID (外部传入)
       'player_id': playerId, // 玩家 ID (来自 PlayerScore 实例)
       'round_number': roundNumber, // 回合号 (外部传入)
       'score': score, // 得分 (外部传入)

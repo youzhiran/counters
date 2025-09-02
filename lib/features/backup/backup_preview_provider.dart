@@ -261,7 +261,7 @@ class BackupPreviewManager extends _$BackupPreviewManager {
       dataTypes.add('玩家信息 (${dbStatistics['playersCount']}个)');
     }
     if (dbStatistics['gameSessionsCount'] > 0) {
-      dataTypes.add('游戏记录 (${dbStatistics['gameSessionsCount']}个)');
+      dataTypes.add('计分记录 (${dbStatistics['gameSessionsCount']}个)');
     }
 
     // 按模板类型分类显示
@@ -330,7 +330,7 @@ class BackupPreviewManager extends _$BackupPreviewManager {
       )) ?? 0;
       statistics['currentPlayersCount'] = playersCount;
 
-      // 查询游戏会话总数
+      // 查询计分会话总数
       final gameSessionsCount = Sqflite.firstIntValue(await db.rawQuery(
         'SELECT COUNT(*) FROM game_sessions'
       )) ?? 0;
@@ -437,7 +437,7 @@ class BackupPreviewManager extends _$BackupPreviewManager {
       )) ?? 0;
       statistics['playersCount'] = playersCount;
 
-      // 查询游戏会话总数
+      // 查询计分会话总数
       final gameSessionsCount = Sqflite.firstIntValue(await tempDb.rawQuery(
         'SELECT COUNT(*) FROM game_sessions'
       )) ?? 0;

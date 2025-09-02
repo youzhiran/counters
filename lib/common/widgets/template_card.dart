@@ -24,7 +24,7 @@ import 'package:uuid/uuid.dart';
 ///
 /// 支持两种模式：
 /// - [TemplateCardMode.management] - 模板管理模式，支持编辑、删除等操作
-/// - [TemplateCardMode.selection] - 模板选择模式，点击直接开始游戏
+/// - [TemplateCardMode.selection] - 模板选择模式，点击直接开始计分
 class TemplateCard extends ConsumerWidget {
   final BaseTemplate template;
   final TemplateCardMode mode;
@@ -406,7 +406,7 @@ class TemplateCard extends ConsumerWidget {
     return List.generate(playerCount, (index) => '玩家${index + 1}');
   }
 
-  // 开始快速游戏
+  // 开始快速计分
   Future<void> _startQuickGame(BuildContext context, WidgetRef ref) async {
     try {
       // 创建临时模板副本，使用默认玩家信息
@@ -485,6 +485,6 @@ enum TemplateCardMode {
   /// 管理模式 - 显示编辑、删除等操作
   management,
 
-  /// 选择模式 - 点击直接开始游戏
+  /// 选择模式 - 点击直接开始计分
   selection,
 }
