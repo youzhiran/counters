@@ -195,6 +195,24 @@ class GameSessionDao {
     return null;
   }
 
+  /// DAO 方法：根据联赛比赛ID获取计分会话（无论是否完成）
+  Future<GameSession?> getSessionByLeagueMatchId(String leagueMatchId) async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'game_sessions',
+      where: 'league_match_id = ?',
+      whereArgs: [leagueMatchId],
+      orderBy: 'start_time DESC',
+      limit: 1,
+    );
+
+    if (maps.isNotEmpty) {
+      final sessionSid = maps.first['sid'] as String;
+      return getGameSession(sessionSid);
+    }
+    return null;
+  }
+
   /// DAO 方法：获取所有未完成的计分会话
   Future<List<GameSession>> getAllIncompleteGameSessions() async {
     final db = await dbHelper.database;

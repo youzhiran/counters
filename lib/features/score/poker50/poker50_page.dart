@@ -174,7 +174,7 @@ class _ScoreBoardState extends ConsumerState<_ScoreBoard> {
   Widget build(BuildContext context) {
     final result =
         ref.read(scoreProvider.notifier).calculateGameResult(widget.template);
-    final hasFailures = result.hasFailures;
+    final hasFailures = result.havTargetScore;
 
     final currentRound = ref.watch(scoreProvider).when(
           loading: () => 0,

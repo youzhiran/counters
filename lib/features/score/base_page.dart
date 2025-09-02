@@ -4,9 +4,11 @@ import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/counter.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/landlords.dart';
+import 'package:counters/common/model/league_enums.dart';
 import 'package:counters/common/model/mahjong.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/poker50.dart';
+import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/wakelock_helper.dart';
@@ -37,6 +39,8 @@ abstract class BaseSessionPage extends ConsumerStatefulWidget {
 
 abstract class BaseSessionPageState<T extends BaseSessionPage>
     extends ConsumerState<T> {
+  GameSession? _initialSession;
+
   @override
   void initState() {
     super.initState();
@@ -119,6 +123,16 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             body: Center(child: Text('模板加载失败')),
           );
         }
+
+        // 在第一次构建时，创建会话数据的快照
+        _initialSession ??= session.copyWith(
+          scores: session.scores
+              .map((s) => s.copyWith(
+                    roundScores: List.from(s.roundScores),
+                    roundExtendedFields: Map.from(s.roundExtendedFields),
+                  ))
+              .toList(),
+        );
 
         // 客户端模式和主机模式退出提示
         return PopScope(
@@ -304,9 +318,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     final result =
         ref.read(scoreProvider.notifier).calculateGameResult(template);
 
-    final reverseWinRule =
-        template.getOtherSet<bool>('reverseWinRule', defaultValue: false) ??
-            false;
+    final reverseWinRule = template.reverseWinRule;
 
     globalState.showCommonDialog(
         child: PopScope(
@@ -314,7 +326,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         ref.read(scoreProvider.notifier).resetGameEndDialog();
       },
       child: AlertDialog(
-        title: Text(result.hasFailures ? '计分结束' : '当前计分情况'),
+        title: Text(result.havTargetScore ? '计分结束' : '当前计分情况'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -322,24 +334,25 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             children: [
               if (result.losers.isNotEmpty) ...[
                 Text(
-                    result.hasFailures
-                        ? (reverseWinRule ? '😓 失败' : '😓 失败')
+                    result.havTargetScore
+                        ? '💔 失败'
                         : (reverseWinRule ? '⚠️ 最少计分' : '⚠️ 最多计分'),
                     style: TextStyle(
-                        color:
-                            result.hasFailures ? Colors.red : Colors.orange)),
+                        color: result.havTargetScore
+                            ? Colors.red
+                            : Colors.orange)),
                 ...result.losers.map((s) =>
                     Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
                 SizedBox(height: 16),
               ],
               Text(
-                  result.hasFailures
+                  result.havTargetScore
                       ? '🏆 胜利'
                       : (reverseWinRule ? '🎉 最多计分' : '🎉 最少计分'),
                   style: TextStyle(color: Colors.green)),
               ...result.winners.map((s) =>
                   Text('${_getPlayerName(s.playerId)}（${s.totalScore}分）')),
-              if (result.hasFailures) ...[
+              if (result.havTargetScore) ...[
                 SizedBox(height: 16),
                 Text('💡 计分结束，但仍可继续计分，每回合结束将再次检查计分',
                     style: TextStyle(
@@ -359,7 +372,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             TextButton(
               onPressed: () {
                 // 如果已经分出胜负，则直接确认
-                if (result.hasFailures) {
+                if (result.havTargetScore) {
                   _confirmAndExit(context, scoreState);
                 } else {
                   // 否则，弹窗二次确认
@@ -387,7 +400,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   );
                 }
               },
-              child: Text(result.hasFailures ? '确认胜负' : '提前结束'),
+              child: Text(result.havTargetScore ? '确认胜负' : '提前结束'),
             ),
         ],
       ),
@@ -395,17 +408,69 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   /// 封装确认比赛结果并退出的逻辑
-  void _confirmAndExit(BuildContext context, ScoreState? scoreState) {
+  void _confirmAndExit(BuildContext context, ScoreState? scoreState) async {
+    // UI层前置校验：检查淘汰赛平局
+    final league = ref
+        .read(leagueNotifierProvider)
+        .value
+        ?.leagues
+        .firstWhereOrNull((l) => l.matches
+            .any((m) => m.mid == scoreState?.currentSession?.leagueMatchId));
+    if (league != null && league.type == LeagueType.knockout) {
+      final scores = scoreState?.currentSession?.scores;
+      if (scores != null && scores.length == 2) {
+        if (scores[0].totalScore == scores[1].totalScore) {
+          ref.showWarning('淘汰赛不允许平局，请决出胜负！');
+          return; // 中断执行
+        }
+      }
+    }
+
+    // 在 await 之前获取 Navigator
+    final navigator = Navigator.of(context);
     // 先关闭计分结果对话框
-    Navigator.of(context).pop();
+    navigator.pop();
+
     // 根据是否为联赛，调用不同的确认方法
     if (scoreState?.currentSession?.leagueMatchId != null) {
-      ref.read(scoreProvider.notifier).confirmLeagueMatchResult();
+      final message =
+          await ref.read(scoreProvider.notifier).confirmLeagueMatchResult();
+
+      if (!mounted) return;
+
+      if (message != null && message.isNotEmpty) {
+        // 如果有消息返回，说明有后续比赛被修改，弹窗提示用户
+        await globalState.showCommonDialog(
+          dismissible: false,
+          child: AlertDialog(
+            title: const Text('赛程更新'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  globalState.navigatorKey.currentState?.pop();
+                },
+                child: const Text('好的'),
+              ),
+            ],
+          ),
+        );
+      }
+      // 无论是否有消息，都重置状态并退出
+      ref.read(scoreProvider.notifier).resetScoreState();
+      // 延迟pop以避免渲染错误
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) navigator.pop();
+      });
     } else {
-      ref.read(scoreProvider.notifier).confirmGameResult();
+      // 普通比赛的逻辑保持不变
+      await ref.read(scoreProvider.notifier).confirmGameResult();
+      // 退出计分页面
+      // 延迟pop以避免渲染错误
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) navigator.pop();
+      });
     }
-    // 退出计分页面
-    Navigator.of(context).pop();
   }
 
   void showResetConfirmation(BuildContext context) {
@@ -601,9 +666,24 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   /// 处理退出请求的主入口
   Future<void> _handleExitRequest() async {
     try {
+      final scoreState = ref.read(scoreProvider).value;
+      final session = scoreState?.currentSession;
+
+      // 检查是否为已完成的联赛对局且有修改
+      if (session != null &&
+          _initialSession != null &&
+          session.isCompleted &&
+          session.leagueMatchId != null) {
+        final hasChanges = !const DeepCollectionEquality()
+            .equals(session.scores, _initialSession!.scores);
+        if (hasChanges) {
+          await _handleCompletedLeagueExit();
+          return;
+        }
+      }
+
       // 临时计分模式优先级最高，优先处理
-      final scoreState = ref.read(scoreProvider);
-      if (scoreState.value?.isTempMode == true) {
+      if (scoreState?.isTempMode == true) {
         _handleTempModeExit(context);
         return;
       }
@@ -620,6 +700,98 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '退出计分失败');
     }
+  }
+
+  /// 处理已完成联赛的退出逻辑
+  Future<void> _handleCompletedLeagueExit() async {
+    final result = await globalState.showCommonDialog<String>(
+      child: AlertDialog(
+        title: const Text('保留修改'),
+        content: const Text('你对已结束的比赛计分进行了修改，要保留这些修改吗？\n\n'
+            '注意：保存后可能会影响并重新生成后续的比赛。'),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                globalState.navigatorKey.currentState?.pop('cancel'),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () =>
+                globalState.navigatorKey.currentState?.pop('discard'),
+            child: const Text('放弃修改'),
+          ),
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop('save'),
+            child: const Text('保存并退出'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == 'save') {
+      // UI层前置校验：检查淘汰赛平局
+      final scoreState = ref.read(scoreProvider).value;
+      final league = ref
+          .read(leagueNotifierProvider)
+          .value
+          ?.leagues
+          .firstWhereOrNull((l) => l.matches
+              .any((m) => m.mid == scoreState?.currentSession?.leagueMatchId));
+      if (league != null && league.type == LeagueType.knockout) {
+        final scores = scoreState?.currentSession?.scores;
+        if (scores != null && scores.length == 2) {
+          if (scores[0].totalScore == scores[1].totalScore) {
+            ref.showWarning('淘汰赛不允许平局，请决出胜负！');
+            return; // 中断执行
+          }
+        }
+      }
+
+      // 在 await 之前获取 Navigator
+      final navigator = Navigator.of(context);
+      final message = await ref
+          .read(scoreProvider.notifier)
+          .updateCompletedLeagueMatchResult(_initialSession!);
+
+      if (!mounted) return;
+
+      if (message != null && message.isNotEmpty) {
+        // 如果有消息返回，说明有后续比赛被修改，弹窗提示用户
+        await globalState.showCommonDialog(
+          dismissible: false,
+          child: AlertDialog(
+            title: const Text('后续比赛已更新'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  globalState.navigatorKey.currentState?.pop();
+                  // 关闭计分页面
+                  // 延迟pop以避免渲染错误
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) navigator.pop();
+                  });
+                },
+                child: const Text('好的'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // 如果没有影响，直接退出
+        // 延迟pop以避免渲染错误
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) navigator.pop();
+        });
+      }
+    } else if (result == 'discard') {
+      // 恢复到初始状态
+      ref.read(scoreProvider.notifier).loadSession(_initialSession!);
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+    // if result is 'cancel' or null, do nothing
   }
 
   /// 检查是否为客户端模式

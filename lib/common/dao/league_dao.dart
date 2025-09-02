@@ -136,11 +136,20 @@ class LeagueDao {
   /// 删除一个联赛及其所有关联的比赛 (级联删除)。
   Future<void> deleteLeague(String lid) async {
     final db = await dbHelper.database;
-    await db.delete(
-      'leagues',
-      where: 'lid = ?',
-      whereArgs: [lid],
-    );
+    await db.transaction((txn) async {
+      // 首先删除所有关联的比赛
+      await txn.delete(
+        'matches',
+        where: 'league_id = ?',
+        whereArgs: [lid],
+      );
+      // 然后删除联赛本身
+      await txn.delete(
+        'leagues',
+        where: 'lid = ?',
+        whereArgs: [lid],
+      );
+    });
     Log.i('已删除ID为 $lid 的联赛及其关联比赛。');
   }
 

@@ -33,12 +33,12 @@ part 'score_provider.g.dart';
 class GameResult {
   final List<PlayerScore> winners;
   final List<PlayerScore> losers;
-  final bool hasFailures;
+  final bool havTargetScore;
 
   const GameResult({
     required this.winners,
     required this.losers,
-    required this.hasFailures,
+    required this.havTargetScore,
   });
 }
 
@@ -180,6 +180,8 @@ class Score extends _$Score {
           Log.i('[联赛]重建的临时模板: ${initialTemplate.templateName}');
         } else {
           Log.e('[联赛]无法重建状态：缺少一些信息。');
+          Log.e(
+              'baseTemplate=$baseTemplate;league=$league,match=$match,player1=$player1,player2=$player2');
         }
       } else {
         // 普通对局的状态重建
@@ -361,7 +363,7 @@ class Score extends _$Score {
     // 修复联赛计分：检查是否已有该比赛的会话
     if (leagueMatchId != null) {
       final existingSession =
-          await _sessionDao.getIncompleteSessionByLeagueMatchId(leagueMatchId);
+          await _sessionDao.getSessionByLeagueMatchId(leagueMatchId);
       if (existingSession != null) {
         Log.i(
             '[联赛] 发现已存在的未完成会话: ${existingSession.sid} for match: $leagueMatchId. 正在恢复...');
@@ -628,7 +630,7 @@ class Score extends _$Score {
               false;
           if (!disableVictoryScoreCheck) {
             final gameResult = calculateGameResult(template);
-            if (gameResult.hasFailures) {
+            if (gameResult.havTargetScore) {
               state = AsyncData(currentScoreState.copyWith(
                 showGameEndDialog: true,
                 currentHighlight: null,
@@ -799,21 +801,34 @@ class Score extends _$Score {
   }
 
   /// 确认联赛比赛结果
-  Future<void> confirmLeagueMatchResult() async {
-    if (_checkAndHandleClientRestriction()) return;
+  ///
+  /// 记录比赛结果，如果胜负方发生变化，则重新生成后续比赛。
+  /// 返回一个可选的字符串消息，用于通知用户后续比赛的更新情况。
+  Future<String?> confirmLeagueMatchResult() async {
+    if (_checkAndHandleClientRestriction()) return null;
 
     final currentState = state.valueOrNull;
     if (currentState?.currentSession == null ||
         currentState?.template == null ||
         currentState?.currentSession?.leagueMatchId == null) {
       Log.w('确认联赛结果失败：缺少会话、模板或联赛比赛ID');
-      return;
+      return null;
     }
 
     final sessionToEnd = currentState!.currentSession!;
     final template = currentState.template!;
+    final leagueMatchId = sessionToEnd.leagueMatchId!;
 
-    // 1. 将会话标记为已完成
+    // 1. 获取原始胜负方
+    // 在比赛被确认为“完成”之前，其在联赛中的胜者ID应该是null
+    final leagueState = await ref.read(leagueNotifierProvider.future);
+    final league = leagueState.leagues
+        .firstWhere((l) => l.matches.any((m) => m.mid == leagueMatchId));
+    final originalMatch =
+        league.matches.firstWhere((m) => m.mid == leagueMatchId);
+    final originalWinnerId = originalMatch.winnerId;
+
+    // 2. 将会话标记为已完成并保存
     final completedSession = sessionToEnd.copyWith(
       isCompleted: true,
       endTime: DateTime.now(),
@@ -821,23 +836,50 @@ class Score extends _$Score {
     await _sessionDao.saveGameSession(completedSession);
     Log.d('联赛比赛会话 ${sessionToEnd.sid} 已标记为完成');
 
-    // 2. 计算比赛结果并更新联赛数据
+    // 3. 计算新的比赛结果并更新联赛数据
     final gameResult = calculateGameResult(template);
-    // 联赛中，即使平局，winnerId也为null。我们只关心第一个赢家（如果有）
-    final winnerId = gameResult.winners.isNotEmpty
+    final newWinnerId = gameResult.winners.isNotEmpty
         ? gameResult.winners.first.playerId
         : null;
     final scores = Map.fromEntries(
         completedSession.scores.map((s) => MapEntry(s.playerId, s.totalScore)));
 
     await ref.read(leagueNotifierProvider.notifier).updateMatchResult(
-          leagueMatchId: completedSession.leagueMatchId!,
-          winnerId: winnerId,
+          leagueMatchId: leagueMatchId,
+          winnerId: newWinnerId,
           scores: scores,
         );
-    Log.i('联赛比赛结果已更新，比赛ID: ${completedSession.leagueMatchId}');
+    Log.i('联赛比赛结果已更新，比赛ID: $leagueMatchId');
 
-    // 3. 重置计分状态
+    // 4. 比较胜负方是否变化，并决定是否重新生成比赛
+    String? returnMessage;
+    // 只有当旧的胜者和新的胜者不同时，才触发重新生成
+    if (originalWinnerId != newWinnerId) {
+      Log.i(
+          '胜负方发生变化 (from ${originalWinnerId} to ${newWinnerId})，正在重新生成后续比赛...');
+      try {
+        await ref
+            .read(leagueNotifierProvider.notifier)
+            .regenerateMatchesAfter(leagueMatchId);
+        returnMessage = '比赛结果已记录，后续赛程已自动更新。';
+        Log.i('后续比赛已成功重新生成。');
+      } catch (e, s) {
+        ErrorHandler.handle(e, s, prefix: '重新生成后续比赛失败');
+        returnMessage = '比赛结果已记录，但更新后续赛程时出错。';
+      }
+    } else {
+      // 即使胜负方没变，也可能有下一轮比赛生成（例如，这是本轮最后一场比赛）
+      // updateMatchResult 内部会处理这个逻辑，所以这里不需要额外操作
+      // 但我们可以给一个通用提示
+      GlobalMsgManager.showSuccess('比赛结果已记录');
+    }
+
+    // 5. 不重置状态，由UI层负责
+    return returnMessage;
+  }
+
+  /// 重置计分状态
+  void resetScoreState() {
     state = AsyncData(const ScoreState(
       currentSession: null,
       template: null,
@@ -848,8 +890,64 @@ class Score extends _$Score {
       players: [],
       isTempMode: false,
     ));
-
     _broadcastResetGame();
+  }
+
+  /// 更新已完成的联赛比赛结果
+  ///
+  /// 如果分数修改，将删除并重新生成后续所有比赛。
+  /// 返回一个可选的字符串消息，用于通知用户后续比赛的更新情况。
+  Future<String?> updateCompletedLeagueMatchResult(
+      GameSession originalSession) async {
+    if (_checkAndHandleClientRestriction()) return null;
+
+    final currentState = state.valueOrNull;
+    if (currentState?.currentSession == null ||
+        currentState?.template == null ||
+        currentState?.currentSession?.leagueMatchId == null) {
+      Log.w('更新已完成的联赛结果失败：缺少会话、模板或联赛比赛ID');
+      return null;
+    }
+
+    final sessionToUpdate = currentState!.currentSession!;
+    final template = currentState.template!;
+    final leagueMatchId = sessionToUpdate.leagueMatchId!;
+
+    // 1. 保存对计分会话的修改
+    final updatedSession = sessionToUpdate.copyWith(endTime: DateTime.now());
+    await _sessionDao.saveGameSession(updatedSession);
+    Log.d('已完成的联赛比赛会话 ${sessionToUpdate.sid} 的分数已更新');
+
+    // 2. 重新计算新的比赛结果并更新联赛数据
+    final newResult = calculateGameResult(template);
+    final newWinnerId =
+        newResult.winners.isNotEmpty ? newResult.winners.first.playerId : null;
+    final scores = Map.fromEntries(
+        updatedSession.scores.map((s) => MapEntry(s.playerId, s.totalScore)));
+
+    await ref.read(leagueNotifierProvider.notifier).updateMatchResult(
+          leagueMatchId: leagueMatchId,
+          winnerId: newWinnerId,
+          scores: scores,
+        );
+    Log.i('已完成的联赛比赛结果已更新，比赛ID: $leagueMatchId');
+
+    // 3. 若已经生成之后轮次，则删除这些已经生成的轮次match，并重新生成
+    String? returnMessage;
+    Log.i('修改已完成的比赛，尝试删除并重新生成后续轮次...');
+    try {
+      await ref
+          .read(leagueNotifierProvider.notifier)
+          .regenerateMatchesAfter(leagueMatchId);
+      returnMessage = '计分已更新，后续赛程已自动刷新。';
+      Log.i('后续比赛刷新完成。');
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '重新生成后续比赛失败');
+      returnMessage = '计分已更新，但刷新后续赛程时出错，请手动检查。';
+    }
+
+    GlobalMsgManager.showSuccess('比赛结果已更新');
+    return returnMessage;
   }
 
   /// 确认普通比赛结果（提前结束）
@@ -998,7 +1096,7 @@ class Score extends _$Score {
     final scores = state.valueOrNull?.currentSession?.scores ?? [];
     if (scores.isEmpty ||
         scores.every((s) => s.roundScores.every((score) => score == null))) {
-      return const GameResult(winners: [], losers: [], hasFailures: false);
+      return const GameResult(winners: [], losers: [], havTargetScore: false);
     }
 
     final disableVictoryScoreCheck = template.getOtherSet<bool>(
@@ -1008,13 +1106,11 @@ class Score extends _$Score {
 
     // 如果不检查胜利分数，直接返回空结果（不判断胜负）
     if (disableVictoryScoreCheck) {
-      return const GameResult(winners: [], losers: [], hasFailures: false);
+      return const GameResult(winners: [], losers: [], havTargetScore: false);
     }
 
     final targetScore = template.targetScore;
-    final reverseWinRule =
-        template.getOtherSet<bool>('reverseWinRule', defaultValue: false) ??
-            false;
+    final reverseWinRule = template.reverseWinRule;
 
     final failScores =
         scores.where((s) => s.totalScore >= targetScore).toList();
@@ -1059,15 +1155,24 @@ class Score extends _$Score {
         winners = List.from(sortedScores);
         losers = [];
       } else {
-        winners = sortedScores.where((s) => s.totalScore == minScore).toList();
-        losers = sortedScores.where((s) => s.totalScore == maxScore).toList();
+        if (reverseWinRule) {
+          // 反转规则：分数高者暂时领先
+          winners =
+              sortedScores.where((s) => s.totalScore == maxScore).toList();
+          losers = sortedScores.where((s) => s.totalScore == minScore).toList();
+        } else {
+          // 默认规则：分数低者暂时领先
+          winners =
+              sortedScores.where((s) => s.totalScore == minScore).toList();
+          losers = sortedScores.where((s) => s.totalScore == maxScore).toList();
+        }
       }
     }
 
     return GameResult(
       winners: winners,
       losers: losers,
-      hasFailures: hasFailures,
+      havTargetScore: hasFailures,
     );
   }
 

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:collection/collection.dart';
+import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/league.dart';
 import 'package:counters/common/model/league_enums.dart';
@@ -9,6 +10,7 @@ import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/utils/league_helper.dart';
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/league/widgets/tournament_bracket_view.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/score/score_provider.dart';
@@ -184,6 +186,43 @@ class _KnockoutMatchesList extends ConsumerWidget {
             roundName,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
+          deleteButton: Builder(
+              builder: (context) => IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: '重置此轮次',
+                    onPressed: () async {
+                      final confirmed = await globalState.showCommonDialog(
+                child: AlertDialog(
+                  title: const Text('确认重置'),
+                  content: Text(
+                      '确定要重置 "$roundName" 吗？\n\n此操作将删除此轮次及其所有后续轮次的比赛，并根据前一轮的结果重新生成 "$roundName" 的对阵。此操作不可撤销。'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('取消'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('重置',
+                          style: TextStyle(color: Colors.orange)),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmed == true) {
+                try {
+                  await ref
+                      .read(leagueNotifierProvider.notifier)
+                      .resetRound(league.lid, round);
+                } catch (e) {
+                  if (context.mounted) {
+                    GlobalMsgManager.showWarn('重置失败');
+                  }
+                }
+              }
+            },
+                  )),
           children: matchesInRound
               .map((match) => _MatchTile(match: match, league: league))
               .toList(),
@@ -196,8 +235,10 @@ class _KnockoutMatchesList extends ConsumerWidget {
 class _AnimatedExpansionPanel extends StatefulWidget {
   final Widget title;
   final List<Widget> children;
+  final Widget? deleteButton; // 新增删除按钮参数
 
-  const _AnimatedExpansionPanel({required this.title, required this.children});
+  const _AnimatedExpansionPanel(
+      {required this.title, required this.children, this.deleteButton});
 
   @override
   _AnimatedExpansionPanelState createState() => _AnimatedExpansionPanelState();
@@ -267,6 +308,7 @@ class _AnimatedExpansionPanelState extends State<_AnimatedExpansionPanel>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(child: widget.title),
+                  if (widget.deleteButton != null) widget.deleteButton!,
                   RotationTransition(
                     turns: _iconTurns,
                     child: const Icon(Icons.expand_more),
@@ -378,6 +420,7 @@ class _MatchTile extends ConsumerWidget {
         title: Text('${player1.name} vs ${player2.name}'),
         subtitle: _buildSubtitle(match),
         trailing: _buildMatchTrailing(context, ref, match, templates),
+        onTap: () => _navigateToGame(context, ref, match, templates, league),
       ),
     );
   }
@@ -405,67 +448,67 @@ class _MatchTile extends ConsumerWidget {
 
   Widget? _buildMatchTrailing(BuildContext context, WidgetRef ref, Match match,
       List<BaseTemplate> templates) {
+    final String buttonText;
     if (match.status == MatchStatus.completed) {
-      final winnerId = match.winnerId;
-      if (winnerId == null) return const Text('平局');
-
-      final winnerName = ref
-              .read(playerProvider)
-              .value
-              ?.players
-              .firstWhereOrNull((p) => p.pid == winnerId)
-              ?.name ??
-          '未知';
-      return Text(
-          '胜者: $winnerName\n${match.player1Score} - ${match.player2Score}');
+      buttonText = '查看详情';
+    } else if (match.status == MatchStatus.inProgress) {
+      buttonText = '继续计分';
+    } else {
+      buttonText = '进入比赛';
     }
 
-    final buttonText = match.status == MatchStatus.inProgress ? '继续计分' : '进入比赛';
-
     return ElevatedButton(
-      onPressed: () async {
-        final baseTemplate = templates
-            .firstWhereOrNull((t) => t.tid == league.defaultTemplateId);
-
-        if (baseTemplate == null) {
-          Log.e(
-              '[League Detail] FATAL: Could not find base template with ID: ${league.defaultTemplateId}');
-          return;
-        }
-
-        final player1 = ref
-            .read(playerProvider)
-            .value!
-            .players
-            .firstWhere((p) => p.pid == match.player1Id);
-        final player2 = ref
-            .read(playerProvider)
-            .value!
-            .players
-            .firstWhere((p) => p.pid == match.player2Id);
-
-        final matchTemplate = baseTemplate.copyWith(
-          tid: 'temp_league_${match.mid}',
-          templateName: '${league.name}: ${player1.name} vs ${player2.name}',
-          playerCount: 2,
-          players: [player1, player2],
-          isSystemTemplate: false,
-        );
-
-        await ref.read(scoreProvider.notifier).startNewGame(
-              matchTemplate,
-              leagueMatchId: match.mid, // 传入联赛比赛ID
-              persistentTemplateId: league.defaultTemplateId, // 传入用于持久化的模板ID
-            );
-
-        if (context.mounted) {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => HomePage.buildSessionPage(matchTemplate),
-          ));
-        }
-      },
+      onPressed: () => _navigateToGame(context, ref, match, templates, league),
       child: Text(buttonText),
     );
+  }
+
+  void _navigateToGame(BuildContext context, WidgetRef ref, Match match,
+      List<BaseTemplate> templates, League league) async {
+    // 处理轮空情况
+    if (match.player2Id == 'bye') {
+      return;
+    }
+
+    final baseTemplate =
+        templates.firstWhereOrNull((t) => t.tid == league.defaultTemplateId);
+
+    if (baseTemplate == null) {
+      Log.e(
+          '[League Detail] FATAL: Could not find base template with ID: ${league.defaultTemplateId}');
+      return;
+    }
+
+    final player1 = ref
+        .read(playerProvider)
+        .value!
+        .players
+        .firstWhere((p) => p.pid == match.player1Id);
+    final player2 = ref
+        .read(playerProvider)
+        .value!
+        .players
+        .firstWhere((p) => p.pid == match.player2Id);
+
+    final matchTemplate = baseTemplate.copyWith(
+      tid: 'temp_league_${match.mid}',
+      templateName: '${league.name}: ${player1.name} vs ${player2.name}',
+      playerCount: 2,
+      players: [player1, player2],
+      isSystemTemplate: false,
+    );
+
+    await ref.read(scoreProvider.notifier).startNewGame(
+          matchTemplate,
+          leagueMatchId: match.mid, // 传入联赛比赛ID
+          persistentTemplateId: league.defaultTemplateId, // 传入用于持久化的模板ID
+        );
+
+    if (context.mounted) {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => HomePage.buildSessionPage(matchTemplate),
+      ));
+    }
   }
 }
 
@@ -574,4 +617,3 @@ class _RankingInfo {
 
   _RankingInfo({required this.player});
 }
-

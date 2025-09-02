@@ -86,6 +86,52 @@ class LeagueNotifier extends _$LeagueNotifier {
     }
   }
 
+  /// 重置并重新生成指定轮次及其后续所有轮次
+  Future<void> resetRound(String leagueId, int round) async {
+    if (!state.hasValue) return;
+    try {
+      final league = state.value!.leagues.firstWhere((l) => l.lid == leagueId);
+
+      // 1. 保留该轮次之前的所有比赛
+      final preservedMatches =
+          league.matches.where((m) => m.round < round).toList();
+      var leagueWithPreservedMatches =
+          league.copyWith(matches: preservedMatches);
+
+      // 2. 重新生成当前轮次的比赛
+      List<Match> newRoundMatches;
+      if (round == 1) {
+        // 如果重置的是第一轮，则基于初始玩家列表生成
+        newRoundMatches =
+            _generateKnockoutRound(league.playerIds, 1, league.lid);
+      } else {
+        // 否则，基于前一轮的结果生成
+        // 确保前一轮已完成
+        final previousRoundMatches =
+            preservedMatches.where((m) => m.round == round - 1);
+        if (previousRoundMatches
+            .any((m) => m.status != MatchStatus.completed)) {
+          throw Exception('无法重置，因为前一轮比赛尚未全部完成。');
+        }
+        newRoundMatches =
+            _generateNextRoundMatches(leagueWithPreservedMatches, round - 1);
+      }
+
+      // 3. 组合并保存
+      final finalMatches = [...preservedMatches, ...newRoundMatches];
+      final updatedLeague = league.copyWith(matches: finalMatches);
+
+      await _leagueDao.saveLeague(updatedLeague);
+      await _reloadLeagues();
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '重置轮次失败');
+      // 将错误信息放入状态，以便UI层可以显示
+      state = AsyncError(e, s);
+      // 重新抛出，以便UI层可以捕获并显示SnackBar等
+      rethrow;
+    }
+  }
+
   Future<void> updateMatch(Match updatedMatch) async {
     try {
       await _leagueDao.updateMatch(updatedMatch);
@@ -149,6 +195,47 @@ class LeagueNotifier extends _$LeagueNotifier {
     } catch (e, s) {
       ErrorHandler.handle(e, s, prefix: '更新比赛结果失败');
       state = AsyncError(e, s);
+    }
+  }
+
+  Future<void> regenerateMatchesAfter(String leagueMatchId) async {
+    if (!state.hasValue) return;
+
+    try {
+      final league = state.value!.leagues
+          .firstWhere((l) => l.matches.any((m) => m.mid == leagueMatchId));
+      final anchorMatch =
+          league.matches.firstWhere((m) => m.mid == leagueMatchId);
+      final anchorRound = anchorMatch.round;
+
+      // 1. 删除所有后续轮次的比赛
+      final preservedMatches =
+          league.matches.where((m) => m.round <= anchorRound).toList();
+      var updatedLeague = league.copyWith(matches: preservedMatches);
+
+      // 2. 检查锚点轮次是否已全部完成，如果完成则生成下一轮
+      if (league.type == LeagueType.knockout) {
+        final anchorRoundMatches =
+            preservedMatches.where((m) => m.round == anchorRound);
+        final isAnchorRoundCompleted =
+            anchorRoundMatches.every((m) => m.status == MatchStatus.completed);
+
+        if (isAnchorRoundCompleted) {
+          final nextRoundMatches =
+              _generateNextRoundMatches(updatedLeague, anchorRound);
+          if (nextRoundMatches.isNotEmpty) {
+            final finalMatches = [...preservedMatches, ...nextRoundMatches];
+            updatedLeague = updatedLeague.copyWith(matches: finalMatches);
+          }
+        }
+      }
+
+      // 3. 保存并刷新状态
+      await _leagueDao.saveLeague(updatedLeague);
+      await _reloadLeagues();
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '重新生成后续比赛失败');
+      rethrow;
     }
   }
 
