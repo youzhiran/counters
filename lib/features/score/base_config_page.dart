@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
+import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/features/player/player_select_dialog.dart';
@@ -41,9 +44,12 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
 
   // 胜利规则设置
   late bool _reverseWinRule;
-  
+
   // 不检查胜利分数选项
   late bool _disableVictoryScoreCheck;
+
+  // 冗余数据
+  Map<String, dynamic>? _redundantData;
 
   @override
   void initState() {
@@ -67,7 +73,20 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkHistoryTemp();
+      _checkRedundantData();
     });
+  }
+
+  Future<void> _checkRedundantData() async {
+    Log.d('开始检查模板 ${widget.oriTemplate.tid} 的冗余数据...');
+    final data = await ref
+        .read(templatesProvider.notifier)
+        .checkTemplateForRedundantData(widget.oriTemplate.tid);
+    if (mounted) {
+      setState(() {
+        _redundantData = data;
+      });
+    }
   }
 
   // 获取根模板ID的方法
@@ -99,7 +118,6 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
   /// 构建模板信息说明
   Widget buildTemplateInfo() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context)
@@ -154,9 +172,12 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
 
     // 检查输入值是否有效并更新
     final newPlayerCount = int.tryParse(playerCountController.text);
-    final newTargetScore = _disableVictoryScoreCheck ? 0 : int.tryParse(targetScoreController.text);
+    final newTargetScore = _disableVictoryScoreCheck
+        ? 0
+        : int.tryParse(targetScoreController.text);
 
-    if (newPlayerCount == null || (!_disableVictoryScoreCheck && newTargetScore == null)) {
+    if (newPlayerCount == null ||
+        (!_disableVictoryScoreCheck && newTargetScore == null)) {
       ref.showWarning('玩家数量${_disableVictoryScoreCheck ? '' : '和目标分数'}必须为有效数字');
       return false;
     }
@@ -317,6 +338,9 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               buildTemplateInfo(),
+              SizedBox(height: 12),
+              if (_redundantData != null) buildCleanupWarning(),
+              SizedBox(height: 12),
               buildBasicSettings(getMinPlayerCount(), getMaxPlayerCount()),
               buildOtherSettings(),
             ],
@@ -450,10 +474,13 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                   decoration: InputDecoration(
                     labelText: '目标分数',
                     border: OutlineInputBorder(),
-                    errorText: _disableVictoryScoreCheck ? null : _targetScoreError,
+                    errorText:
+                        _disableVictoryScoreCheck ? null : _targetScoreError,
                     hintText: _disableVictoryScoreCheck ? '不检查胜利分数' : '输入正整数',
                   ),
-                  onChanged: _disableVictoryScoreCheck ? null : _handleTargetScoreChange,
+                  onChanged: _disableVictoryScoreCheck
+                      ? null
+                      : _handleTargetScoreChange,
                 ),
               ),
             ),
@@ -465,11 +492,13 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
             title: const Text('不检查胜利分数'),
             subtitle: const Text('开启后不计分胜利条件，仅记录分数'),
             value: _disableVictoryScoreCheck,
-            onChanged: widget.isReadOnly ? null : (value) {
-              setState(() {
-                _disableVictoryScoreCheck = value;
-              });
-            },
+            onChanged: widget.isReadOnly
+                ? null
+                : (value) {
+                    setState(() {
+                      _disableVictoryScoreCheck = value;
+                    });
+                  },
           ),
         ),
         // 胜利规则设置（仅在检查胜利分数时显示）
@@ -477,17 +506,16 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
           SizedBox(
             child: SwitchListTile(
               title: const Text('反转胜利规则'),
-              subtitle: Text(
-                _reverseWinRule
-                  ? '先达到目标分数的玩家获胜'
-                  : '先达到目标分数的玩家失败（默认）'
-              ),
+              subtitle:
+                  Text(_reverseWinRule ? '先达到目标分数的玩家获胜' : '先达到目标分数的玩家失败（默认）'),
               value: _reverseWinRule,
-              onChanged: widget.isReadOnly ? null : (value) {
-                setState(() {
-                  _reverseWinRule = value;
-                });
-              },
+              onChanged: widget.isReadOnly
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _reverseWinRule = value;
+                      });
+                    },
               // contentPadding: EdgeInsets.zero,
             ),
           ),
@@ -604,4 +632,105 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
       setState(() => _targetScoreError = null);
     }
   }
+
+  /// 构建清理提示区
+  Widget buildCleanupWarning() {
+    // 使用 JsonEncoder 来格式化输出
+    const encoder = JsonEncoder.withIndent('  ');
+    final formattedRedundantData = encoder.convert(_redundantData);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.warning.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.warning.withOpacity(0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  color: Theme.of(context).colorScheme.warning),
+              const SizedBox(width: 8),
+              Text(
+                '发现数据冗余',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.warning,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '当前模板存在旧版本数据残留，建议核对本模板设置并清理以确保数据一致性。残留数据如下：',
+          ),
+          const SizedBox(height: 4),
+          Text(
+            formattedRedundantData,
+            style: const TextStyle(
+                fontFamily: 'monospace', fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              icon: const Icon(Icons.cleaning_services),
+              label: const Text('清理'),
+              onPressed: _showCleanupConfirmationDialog,
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.warning,
+                foregroundColor: Theme.of(context).colorScheme.onWarning,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCleanupConfirmationDialog() async {
+    final result = await globalState.showCommonDialog(
+      child: AlertDialog(
+        title: const Text('确认清理'),
+        content: const Text('此操作将仅移除当前模板中的冗余数据，不会删除模板本身，是否继续？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('确认清理'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      try {
+        Log.d('开始清理模板 ${widget.oriTemplate.tid} 的冗余数据...');
+        await ref
+            .read(templatesProvider.notifier)
+            .cleanRedundantDataForTemplate(widget.oriTemplate.tid);
+        ref.showSuccess('数据清理成功！');
+        // 清理成功后，重新检查以更新UI
+        await _checkRedundantData();
+      } catch (e) {
+        Log.e('清理模板 ${widget.oriTemplate.tid} 失败: $e');
+        ref.showError('清理失败: $e');
+      }
+    }
+  }
+}
+
+extension on ColorScheme {
+  Color get warning => Colors.orange;
+
+  Color get onWarning => Colors.white;
 }

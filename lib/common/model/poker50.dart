@@ -24,6 +24,11 @@ class Poker50Template extends BaseTemplate {
       getOtherSet<bool>('isAllowNegative', defaultValue: false) ?? false;
 
   @override
+  List<String> getValidOtherSetKeys() {
+    return ['isAllowNegative'];
+  }
+
+  @override
   Map<String, dynamic> toMap() {
     return {
       'tid': tid,

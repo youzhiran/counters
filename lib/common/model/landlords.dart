@@ -37,6 +37,11 @@ class LandlordsTemplate extends BaseTemplate {
       getOtherSet<bool>('bombMultiplyMode', defaultValue: false) ?? false;
 
   @override
+  List<String> getValidOtherSetKeys() {
+    return ['baseScore', 'checkMultiplier', 'bombMultiplyMode'];
+  }
+
+  @override
   Map<String, dynamic> toMap() {
     return {
       'tid': tid,

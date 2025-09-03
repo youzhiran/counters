@@ -32,6 +32,9 @@ abstract class BaseTemplate {
     this.checkVictoryOnScoreChange = false,
   }) : tid = tid ?? const Uuid().v4();
 
+  // 抽象方法，由子类实现以提供其在 other_set 中使用的合法键列表
+  List<String> getValidOtherSetKeys();
+
   Map<String, dynamic> toMap();
 
   // 新增：标准toJson方法，便于网络传输

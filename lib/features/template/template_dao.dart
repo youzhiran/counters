@@ -161,4 +161,15 @@ class TemplateDao {
       }
     }
   }
+
+  /// 检查单个模板的 other_set 中是否包含冗余数据
+  Future<Map<String, dynamic>?> checkTemplateForRedundantData(
+      String tid) async {
+    return await dbHelper.checkTemplateForRedundantData(tid);
+  }
+
+  /// 清理指定模板 other_set 中的冗余数据
+  Future<void> cleanRedundantDataForTemplate(String tid) async {
+    await dbHelper.cleanRedundantOtherSetForTemplate(tid);
+  }
 }
