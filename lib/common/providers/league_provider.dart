@@ -205,6 +205,8 @@ class LeagueNotifier extends _$LeagueNotifier {
 
       // 3. 保存并刷新状态
       await _leagueDao.saveLeague(updatedLeague);
+      // 关键修复：添加一个微任务延迟，以避免在UI重建期间发生布局错误。
+      await Future.delayed(Duration.zero);
       await _reloadLeagues();
     } catch (e, s) {
       ErrorHandler.handle(e, s, prefix: '更新比赛结果失败');
@@ -246,6 +248,9 @@ class LeagueNotifier extends _$LeagueNotifier {
 
       // 3. 保存并刷新状态
       await _leagueDao.saveLeague(updatedLeague);
+      // 关键修复：添加一个微任务延迟，以避免在UI重建期间发生布局错误。
+      // 这可以防止因Tooltip等组件在旧UI元素被销毁时尝试访问其布局信息而导致的竞态条件。
+      await Future.delayed(Duration.zero);
       await _reloadLeagues();
     } catch (e, s) {
       ErrorHandler.handle(e, s, prefix: '重新生成后续比赛失败');
@@ -311,55 +316,69 @@ class LeagueNotifier extends _$LeagueNotifier {
   }
 
   List<Match> _generateNextRoundMatches(League league, int completedRound) {
-    final winners = league.matches
+    // 获取已完成的上一轮所有比赛
+    final completedRoundMatches = league.matches
         .where((m) => m.round == completedRound && m.winnerId != null)
-        .map((m) => m.winnerId!)
         .toList();
+
+    // 关键修复：对比赛进行排序，确保对阵顺序的稳定性。
+    // 我们根据比赛ID（mid）进行排序，它提供了一个唯一的、稳定的排序依据。
+    completedRoundMatches.sort((a, b) => a.mid.compareTo(b.mid));
+
+    // 按排序后的顺序提取胜者
+    final winners = completedRoundMatches.map((m) => m.winnerId!).toList();
 
     if (winners.length < 2) {
       return []; // 冠军已产生
     }
 
+    // 将排序好的胜者列表传给下一轮生成函数
     return _generateKnockoutRound(winners, completedRound + 1, league.lid);
   }
 
   List<Match> _generateKnockoutRound(
       List<String> playerIds, int round, String leagueId) {
     List<Match> matches = [];
-    var players = List<String>.from(playerIds)..shuffle();
+    var players = List<String>.from(playerIds);
 
-    // 计算下一个2的幂次方
+    // 只在第一轮时进行随机排序，以确定初始对阵。
+    if (round == 1) {
+      players.shuffle();
+    }
+
+    // 计算下一个2的幂次方，以确定本轮需要多少个“席位”
     int nextPowerOfTwo = 1;
     while (nextPowerOfTwo < players.length) {
       nextPowerOfTwo *= 2;
     }
 
     int byes = nextPowerOfTwo - players.length;
-    int matchesInRound = (players.length - byes) ~/ 2;
 
-    // 分配轮空名额
-    for (int i = 0; i < byes; i++) {
-      String byePlayer = players.removeAt(0);
+    // 1. 分配轮空名额：列表前面的选手获得轮空
+    final byePlayers = players.sublist(0, byes);
+    for (final player in byePlayers) {
       matches.add(Match(
         leagueId: leagueId,
         round: round,
-        player1Id: byePlayer,
+        player1Id: player,
         player2Id: 'bye',
         // 特殊ID表示轮空
         status: MatchStatus.completed,
-        winnerId: byePlayer,
+        winnerId: player,
+        // 轮空者直接成为胜者
         startTime: DateTime.now(),
         endTime: DateTime.now(),
       ));
     }
 
-    // 为剩余玩家配对
-    for (int i = 0; i < matchesInRound; i++) {
+    // 2. 为剩余玩家两两配对
+    final playingPlayers = players.sublist(byes);
+    for (int i = 0; i < playingPlayers.length; i += 2) {
       matches.add(Match(
         leagueId: leagueId,
         round: round,
-        player1Id: players.removeAt(0),
-        player2Id: players.removeAt(0),
+        player1Id: playingPlayers[i],
+        player2Id: playingPlayers[i + 1],
       ));
     }
 

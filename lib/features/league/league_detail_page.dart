@@ -192,36 +192,36 @@ class _KnockoutMatchesList extends ConsumerWidget {
                     tooltip: '重置此轮次',
                     onPressed: () async {
                       final confirmed = await globalState.showCommonDialog(
-                child: AlertDialog(
-                  title: const Text('确认重置'),
-                  content: Text(
-                      '确定要重置 "$roundName" 吗？\n\n此操作将删除此轮次及其所有后续轮次的比赛，并根据前一轮的结果重新生成 "$roundName" 的对阵。此操作不可撤销。'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('取消'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('重置',
-                          style: TextStyle(color: Colors.orange)),
-                    ),
-                  ],
-                ),
-              );
+                        child: AlertDialog(
+                          title: const Text('确认重置'),
+                          content: Text('确定要重置 "$roundName" 吗？\n\n'
+                              '此操作将删除此轮次及其所有后续轮次的比赛，并根据前一轮的结果重新生成 "$roundName" 的对阵，且玩家对阵结果可能被改变。此操作不可撤销。'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('取消'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('重置',
+                                  style: TextStyle(color: Colors.orange)),
+                            ),
+                          ],
+                        ),
+                      );
 
-              if (confirmed == true) {
-                try {
-                  await ref
-                      .read(leagueNotifierProvider.notifier)
-                      .resetRound(league.lid, round);
-                } catch (e) {
-                  if (context.mounted) {
-                    GlobalMsgManager.showWarn('重置失败');
-                  }
-                }
-              }
-            },
+                      if (confirmed == true) {
+                        try {
+                          await ref
+                              .read(leagueNotifierProvider.notifier)
+                              .resetRound(league.lid, round);
+                        } catch (e) {
+                          if (context.mounted) {
+                            GlobalMsgManager.showWarn('重置失败');
+                          }
+                        }
+                      }
+                    },
                   )),
           children: matchesInRound
               .map((match) => _MatchTile(match: match, league: league))
@@ -380,7 +380,7 @@ class _MatchTile extends ConsumerWidget {
         (p) => p.pid == match.player1Id,
         orElse: () => PlayerInfo(name: '未知', avatar: ''));
 
-    // 处理轮空情况
+    // 关键修复：处理轮空情况
     if (match.player2Id == 'bye') {
       return Card(
         elevation: 0,
@@ -394,7 +394,8 @@ class _MatchTile extends ConsumerWidget {
           ),
         ),
         child: ListTile(
-          leading: const Icon(Icons.airline_stops_rounded, color: Colors.green),
+          leading: Icon(Icons.airline_stops_rounded,
+              color: Theme.of(context).colorScheme.primary),
           title: Text('${player1.name} - 轮空'),
           subtitle: const Text('自动晋级'),
         ),
@@ -440,7 +441,8 @@ class _MatchTile extends ConsumerWidget {
     }
 
     if (match.status != MatchStatus.pending) {
-      statusText += ' - ${match.player1Score} : ${match.player2Score}';
+      statusText +=
+          ' - ${match.player1Score ?? 0} : ${match.player2Score ?? 0}';
     }
 
     return Text(statusText);
@@ -448,6 +450,11 @@ class _MatchTile extends ConsumerWidget {
 
   Widget? _buildMatchTrailing(BuildContext context, WidgetRef ref, Match match,
       List<BaseTemplate> templates) {
+    // 关键修复：轮空比赛不应有任何操作按钮
+    if (match.player2Id == 'bye') {
+      return null;
+    }
+
     final String buttonText;
     if (match.status == MatchStatus.completed) {
       buttonText = '查看详情';
@@ -465,8 +472,9 @@ class _MatchTile extends ConsumerWidget {
 
   void _navigateToGame(BuildContext context, WidgetRef ref, Match match,
       List<BaseTemplate> templates, League league) async {
-    // 处理轮空情况
+    // 关键修复：增加安全检查，防止导航到轮空比赛
     if (match.player2Id == 'bye') {
+      Log.d('尝试导航到轮空比赛，操作被阻止。');
       return;
     }
 
@@ -479,16 +487,10 @@ class _MatchTile extends ConsumerWidget {
       return;
     }
 
-    final player1 = ref
-        .read(playerProvider)
-        .value!
-        .players
-        .firstWhere((p) => p.pid == match.player1Id);
-    final player2 = ref
-        .read(playerProvider)
-        .value!
-        .players
-        .firstWhere((p) => p.pid == match.player2Id);
+    final allPlayers = ref.read(playerProvider).value!.players;
+
+    final player1 = allPlayers.firstWhere((p) => p.pid == match.player1Id);
+    final player2 = allPlayers.firstWhere((p) => p.pid == match.player2Id);
 
     final matchTemplate = baseTemplate.copyWith(
       tid: 'temp_league_${match.mid}',
