@@ -9,6 +9,7 @@ import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
 import 'package:counters/common/widgets/history_session_item.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/common/widgets/outline_card.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/league/league_detail_page.dart';
 import 'package:counters/features/score/score_provider.dart';
@@ -125,17 +126,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 
   Widget _buildGameSessionCard(GameSession session) {
-    return Card(
-      elevation: 0,
-      shape: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(
-          color: Theme.of(context)
-              .colorScheme
-              .outline
-              .withAlpha((0.2 * 255).toInt()),
-        ),
-      ),
+    return OutlineCard(
       key: ValueKey(session.sid),
       child: Dismissible(
         key: Key(session.sid),

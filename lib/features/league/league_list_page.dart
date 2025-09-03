@@ -5,6 +5,7 @@ import 'package:counters/common/model/league.dart';
 import 'package:counters/common/model/league_enums.dart';
 import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
+import 'package:counters/common/widgets/outline_card.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/league/create_league_page.dart';
 import 'package:flutter/material.dart';
@@ -80,34 +81,22 @@ class LeagueListPage extends ConsumerWidget {
         itemCount: leagues.length,
         itemBuilder: (context, index) {
           final league = leagues[index];
-          return Card(
-            elevation: 0,
-            shape: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
-              borderSide: BorderSide(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outline
-                    .withAlpha((0.2 * 255).toInt()),
-              ),
+          return OutlineCard(
+            title: Text(league.name),
+            subtitle: Text(
+                '类型: ${_getLeagueTypeDesc(league.type)} | 玩家: ${league.playerIds.length}'),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              tooltip: '删除联赛',
+              onPressed: () =>
+                  _showDeleteConfirmationDialog(context, ref, league.lid),
             ),
-            child: ListTile(
-              title: Text(league.name),
-              subtitle: Text(
-                  '类型: ${_getLeagueTypeDesc(league.type)} | 玩家: ${league.playerIds.length}'),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                tooltip: '删除联赛',
-                onPressed: () =>
-                    _showDeleteConfirmationDialog(context, ref, league.lid),
-              ),
-              onTap: () {
-                Navigator.of(context).pushWithSlide(
-                  LeagueDetailPage(leagueId: league.lid),
-                  direction: SlideDirection.fromRight,
-                );
-              },
-            ),
+            onTap: () {
+              Navigator.of(context).pushWithSlide(
+                LeagueDetailPage(leagueId: league.lid),
+                direction: SlideDirection.fromRight,
+              );
+            },
           );
         },
       ),

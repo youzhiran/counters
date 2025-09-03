@@ -4,6 +4,7 @@ import 'package:counters/app/state.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/common/widgets/outline_card.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/player_widget.dart';
 import 'package:counters/features/player/add_players.dart';
@@ -19,9 +20,32 @@ class PlayerManagementPage extends ConsumerStatefulWidget {
       _PlayerManagementPageState();
 }
 
-class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
+class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage>
+    with WidgetsBindingObserver {
   bool _isSearching = false;
   final _searchController = TextEditingController();
+  bool _isMenuShowing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    // 窗口尺寸变化时，如果菜单是打开的，则关闭它
+    if (_isMenuShowing) {
+      Navigator.of(context).pop();
+    }
+  }
 
   void _startSearch() {
     setState(() {
@@ -35,12 +59,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
       _searchController.clear();
       ref.read(playerProvider.notifier).setSearchQuery('');
     });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   @override
@@ -113,40 +131,85 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
                     final player = players[index];
                     final playCount =
                         playerState.playCountCache[player.pid] ?? 0;
-                    return Card(
-                      elevation: 0,
-                      shape: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide(
-                          color: Theme.of(gridItemContext)
-                              .colorScheme
-                              .outline
-                              .withAlpha((0.2 * 255).toInt()),
-                        ),
-                      ),
+                    return OutlineCard(
                       key: ValueKey(player.pid),
-                      child: Center(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTapDown: (details) {
-                            _showPlayerActionsMenu(
-                                context,
-                                details.globalPosition,
-                                player,
-                                ref.read(playerProvider.notifier));
-                          },
-                          child: ListTile(
-                            leading:
-                                PlayerAvatar.build(gridItemContext, player),
-                            title: Text(
-                              player.name,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                            subtitle: Text('游玩次数：$playCount'),
-                            trailing: const Icon(Icons.more_vert),
-                          ),
-                        ),
+                      leading: PlayerAvatar.build(gridItemContext, player),
+                      title: Text(
+                        player.name,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      subtitle: Text('游玩次数：$playCount'),
+                      trailing: Builder(
+                        builder: (buttonContext) {
+                          return IconButton(
+                            icon: const Icon(Icons.more_vert),
+                            onPressed: () {
+                              final RenderBox button =
+                                  buttonContext.findRenderObject() as RenderBox;
+                              final RenderBox overlay = Navigator.of(context)
+                                  .overlay!
+                                  .context
+                                  .findRenderObject() as RenderBox;
+                              final RelativeRect position =
+                                  RelativeRect.fromRect(
+                                Rect.fromPoints(
+                                  button.localToGlobal(Offset.zero,
+                                      ancestor: overlay),
+                                  button.localToGlobal(
+                                      button.size.bottomRight(Offset.zero),
+                                      ancestor: overlay),
+                                ),
+                                Offset.zero & overlay.size,
+                              );
+
+                              setState(() {
+                                _isMenuShowing = true;
+                              });
+                              showMenu<String>(
+                                context: context,
+                                position: position,
+                                items: <PopupMenuEntry<String>>[
+                                  const PopupMenuItem<String>(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('编辑'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem<String>(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('删除'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ).then((selectedValue) {
+                                setState(() {
+                                  _isMenuShowing = false;
+                                });
+                                if (selectedValue == null) return;
+                                switch (selectedValue) {
+                                  case 'edit':
+                                    _showEditDialog(player,
+                                        ref.read(playerProvider.notifier));
+                                    break;
+                                  case 'delete':
+                                    _showDeleteDialog(player,
+                                        ref.read(playerProvider.notifier));
+                                    break;
+                                }
+                              });
+                            },
+                          );
+                        },
                       ),
                     );
                   },
@@ -171,59 +234,6 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage> {
         ],
       ),
     );
-  }
-
-  Future<void> _showPlayerActionsMenu(
-    BuildContext pageContext,
-    Offset globalPosition, // 现在明确是 Offset
-    PlayerInfo player,
-    dynamic playerNotifier,
-  ) async {
-    final RelativeRect menuPosition = RelativeRect.fromLTRB(
-      globalPosition.dx,
-      globalPosition.dy,
-      globalPosition.dx + 1, // 让 showMenu 根据内容自动调整宽度
-      globalPosition.dy + 1, // 让 showMenu 根据内容自动调整高度
-    );
-
-    final String? selectedAction = await showMenu<String>(
-      context: pageContext,
-      position: menuPosition,
-      items: <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'edit',
-          child: Row(
-            children: [
-              Icon(Icons.edit, size: 20),
-              SizedBox(width: 8),
-              Text('编辑'),
-            ],
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete, size: 20),
-              SizedBox(width: 8),
-              Text('删除'),
-            ],
-          ),
-        ),
-      ],
-      elevation: 8.0,
-    );
-
-    if (selectedAction != null) {
-      switch (selectedAction) {
-        case 'edit':
-          _showEditDialog(player, playerNotifier);
-          break;
-        case 'delete':
-          _showDeleteDialog(player, playerNotifier);
-          break;
-      }
-    }
   }
 
   Future<void> showCleanPlayersDialog() async {
