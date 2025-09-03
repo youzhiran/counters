@@ -6,8 +6,8 @@ import 'package:counters/app/config.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/poker50.dart';
-import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/providers/log_export_provider.dart';
+import 'package:counters/common/providers/log_provider.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/net.dart';
@@ -304,6 +304,10 @@ class _MyAppState extends ConsumerState<MyApp> {
       colorScheme: ColorScheme.fromSeed(
         seedColor: seedColor,
         brightness: brightness,
+      ),
+      tooltipTheme: TooltipThemeData(
+        waitDuration: const Duration(milliseconds: 1000), // 设置延迟1秒
+        showDuration: const Duration(milliseconds: 2000), // 设置显示2秒
       ),
       appBarTheme: const AppBarTheme(
         elevation: 1,
