@@ -179,8 +179,10 @@ class Score extends _$Score {
           initialPlayers = initialTemplate.players;
           Log.i('[联赛]重建的临时模板: ${initialTemplate.templateName}');
         } else {
-          Log.e('[联赛]无法重建状态：缺少一些信息。');
-          Log.e(
+          // 这种情况通常发生在联赛被删除，但其下的游戏会话(GameSession)未被一同清理时。
+          // 这不是一个严重错误，只是无法恢复该特定会话。
+          Log.w('[联赛]无法重建状态：缺少一些信息 (可能由于关联的联赛已被删除)。');
+          Log.w(
               'baseTemplate=$baseTemplate;league=$league,match=$match,player1=$player1,player2=$player2');
         }
       } else {

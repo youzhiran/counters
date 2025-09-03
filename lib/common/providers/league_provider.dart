@@ -1,3 +1,4 @@
+import 'package:counters/common/dao/game_session_dao.dart';
 import 'package:counters/common/dao/league_dao.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/league.dart';
@@ -78,6 +79,19 @@ class LeagueNotifier extends _$LeagueNotifier {
 
   Future<void> deleteLeague(String lid) async {
     try {
+      // 在删除联赛前，先获取其所有比赛ID
+      final leagueToDelete = await _leagueDao.getLeague(lid);
+      if (leagueToDelete != null) {
+        final matchIds = leagueToDelete.matches.map((m) => m.mid).toList();
+
+        // 如果有关联的比赛，则删除相关的游戏会话
+        if (matchIds.isNotEmpty) {
+          final sessionDao = GameSessionDao(dbHelper: DatabaseHelper.instance);
+          await sessionDao.deleteSessionsByMatchIds(matchIds);
+        }
+      }
+
+      // 然后再删除联赛和比赛本身
       await _leagueDao.deleteLeague(lid);
       await _reloadLeagues();
     } catch (e, s) {

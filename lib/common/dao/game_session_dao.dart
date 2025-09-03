@@ -321,6 +321,43 @@ class GameSessionDao {
     Log.i('已删除会话ID为 $sid 的计分会话及其得分数据');
   }
 
+  /// DAO 方法：根据比赛ID列表删除所有相关的计分会话
+  Future<void> deleteSessionsByMatchIds(List<String> matchIds) async {
+    if (matchIds.isEmpty) return;
+
+    final db = await dbHelper.database;
+    await db.transaction((txn) async {
+      // 1. 找到所有与这些比赛ID相关的会话ID
+      final List<Map<String, dynamic>> sessions = await txn.query(
+        'game_sessions',
+        columns: ['sid'],
+        where:
+            'league_match_id IN (${('?' * matchIds.length).split('').join(',')})',
+        whereArgs: matchIds,
+      );
+
+      if (sessions.isEmpty) return;
+
+      final sessionIds = sessions.map((s) => s['sid'] as String).toList();
+
+      // 2. 删除这些会话的所有得分记录
+      await txn.delete(
+        'player_scores',
+        where:
+            'session_id IN (${('?' * sessionIds.length).split('').join(',')})',
+        whereArgs: sessionIds,
+      );
+
+      // 3. 删除这些会话本身
+      await txn.delete(
+        'game_sessions',
+        where: 'sid IN (${('?' * sessionIds.length).split('').join(',')})',
+        whereArgs: sessionIds,
+      );
+    });
+    Log.i('已根据比赛ID列表删除了 ${matchIds.length} 个比赛关联的计分会话');
+  }
+
 // 注意：单独更新某个回合得分或扩展字段的方法可以添加到这里，
 // 但为了保持简单和与当前 Provider 逻辑一致，
 // Score Provider 中的更新逻辑将继续在内存中修改 PlayerScore 对象（通过 copyWith），
