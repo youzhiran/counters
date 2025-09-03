@@ -379,7 +379,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   globalState.showCommonDialog(
                     child: AlertDialog(
                       title: const Text('提前结束'),
-                      content: const Text('提前结束将按当前分数结算胜负，确定吗？'),
+                      content:
+                          const Text('提前结束将按当前分数结算胜负，若改变了胜负情况，后续比赛也会更新，确定吗？'),
                       actions: [
                         TextButton(
                           onPressed: () =>
@@ -440,21 +441,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
 
       if (message != null && message.isNotEmpty) {
         // 如果有消息返回，说明有后续比赛被修改，弹窗提示用户
-        await globalState.showCommonDialog(
-          dismissible: false,
-          child: AlertDialog(
-            title: const Text('赛程更新'),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  globalState.navigatorKey.currentState?.pop();
-                },
-                child: const Text('好的'),
-              ),
-            ],
-          ),
-        );
+        GlobalMsgManager.showMessage(message);
       }
       // 无论是否有消息，都重置状态并退出
       ref.read(scoreProvider.notifier).resetScoreState();

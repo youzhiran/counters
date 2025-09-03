@@ -857,8 +857,7 @@ class Score extends _$Score {
     String? returnMessage;
     // 只有当旧的胜者和新的胜者不同时，才触发重新生成
     if (originalWinnerId != newWinnerId) {
-      Log.i(
-          '胜负方发生变化 (from ${originalWinnerId} to ${newWinnerId})，正在重新生成后续比赛...');
+      Log.i('胜负方发生变化 (from $originalWinnerId to $newWinnerId)，正在重新生成后续比赛...');
       try {
         await ref
             .read(leagueNotifierProvider.notifier)
@@ -915,12 +914,20 @@ class Score extends _$Score {
     final template = currentState.template!;
     final leagueMatchId = sessionToUpdate.leagueMatchId!;
 
-    // 1. 保存对计分会话的修改
+    // 1. 获取原始胜负方
+    final leagueState = await ref.read(leagueNotifierProvider.future);
+    final league = leagueState.leagues
+        .firstWhere((l) => l.matches.any((m) => m.mid == leagueMatchId));
+    final originalMatch =
+        league.matches.firstWhere((m) => m.mid == leagueMatchId);
+    final originalWinnerId = originalMatch.winnerId;
+
+    // 2. 保存对计分会话的修改
     final updatedSession = sessionToUpdate.copyWith(endTime: DateTime.now());
     await _sessionDao.saveGameSession(updatedSession);
     Log.d('已完成的联赛比赛会话 ${sessionToUpdate.sid} 的分数已更新');
 
-    // 2. 重新计算新的比赛结果并更新联赛数据
+    // 3. 重新计算新的比赛结果并更新联赛数据
     final newResult = calculateGameResult(template);
     final newWinnerId =
         newResult.winners.isNotEmpty ? newResult.winners.first.playerId : null;
@@ -934,18 +941,23 @@ class Score extends _$Score {
         );
     Log.i('已完成的联赛比赛结果已更新，比赛ID: $leagueMatchId');
 
-    // 3. 若已经生成之后轮次，则删除这些已经生成的轮次match，并重新生成
+    // 4. 关键优化：仅当胜负方发生变化时，才重新生成后续比赛
     String? returnMessage;
-    Log.i('修改已完成的比赛，尝试删除并重新生成后续轮次...');
-    try {
-      await ref
-          .read(leagueNotifierProvider.notifier)
-          .regenerateMatchesAfter(leagueMatchId);
-      returnMessage = '计分已更新，后续赛程已自动刷新。';
-      Log.i('后续比赛刷新完成。');
-    } catch (e, s) {
-      ErrorHandler.handle(e, s, prefix: '重新生成后续比赛失败');
-      returnMessage = '计分已更新，但刷新后续赛程时出错，请手动检查。';
+    if (originalWinnerId != newWinnerId) {
+      Log.i(
+          '胜负方因修改而改变 (from $originalWinnerId to $newWinnerId)，正在删除并重新生成后续轮次...');
+      try {
+        await ref
+            .read(leagueNotifierProvider.notifier)
+            .regenerateMatchesAfter(leagueMatchId);
+        returnMessage = '计分已更新，后续赛程已自动刷新。';
+        Log.i('后续比赛刷新完成。');
+      } catch (e, s) {
+        ErrorHandler.handle(e, s, prefix: '重新生成后续比赛失败');
+        returnMessage = '计分已更新，但刷新后续赛程时出错，请手动检查。';
+      }
+    } else {
+      Log.i('胜负方未改变，无需重新生成后续比赛。');
     }
 
     GlobalMsgManager.showSuccess('比赛结果已更新');

@@ -182,8 +182,11 @@ class LeagueNotifier extends _$LeagueNotifier {
       updatedMatches[matchIndex] = updatedMatch;
       var updatedLeague = league.copyWith(matches: updatedMatches);
 
-      // 2. 如果是淘汰赛，检查是否需要生成下一轮
-      if (league.type == LeagueType.knockout) {
+      // 2. 如果是淘汰赛，并且比赛状态从未完成变为完成，则检查是否需要生成下一轮
+      final bool justCompleted = oldMatch.status != MatchStatus.completed &&
+          updatedMatch.status == MatchStatus.completed;
+
+      if (league.type == LeagueType.knockout && justCompleted) {
         final currentRound = oldMatch.round;
         final currentRoundMatches = updatedMatches
             .where((m) => m.round == currentRound)
