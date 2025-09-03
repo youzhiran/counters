@@ -754,7 +754,8 @@ class Score extends _$Score {
             ?.firstWhereOrNull((t) => t.tid == completedSession.templateId);
         if (template != null) {
           final gameResult = calculateGameResult(template);
-          final winnerId = gameResult.winners.isNotEmpty
+          // 修复平局判定：只有当胜利者唯一时才设置winnerId
+          final winnerId = gameResult.winners.length == 1
               ? gameResult.winners.first.playerId
               : null;
           final scores = Map.fromEntries(completedSession.scores
@@ -840,7 +841,8 @@ class Score extends _$Score {
 
     // 3. 计算新的比赛结果并更新联赛数据
     final gameResult = calculateGameResult(template);
-    final newWinnerId = gameResult.winners.isNotEmpty
+    // 修复平局判定：只有当胜利者唯一时才设置winnerId
+    final newWinnerId = gameResult.winners.length == 1
         ? gameResult.winners.first.playerId
         : null;
     final scores = Map.fromEntries(
@@ -929,8 +931,9 @@ class Score extends _$Score {
 
     // 3. 重新计算新的比赛结果并更新联赛数据
     final newResult = calculateGameResult(template);
+    // 修复平局判定：只有当胜利者唯一时才设置winnerId
     final newWinnerId =
-        newResult.winners.isNotEmpty ? newResult.winners.first.playerId : null;
+        newResult.winners.length == 1 ? newResult.winners.first.playerId : null;
     final scores = Map.fromEntries(
         updatedSession.scores.map((s) => MapEntry(s.playerId, s.totalScore)));
 

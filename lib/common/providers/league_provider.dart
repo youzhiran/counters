@@ -52,6 +52,9 @@ class LeagueNotifier extends _$LeagueNotifier {
     required LeagueType type,
     required List<String> playerIds,
     required String defaultTemplateId,
+    int pointsForWin = 3,
+    int pointsForDraw = 1,
+    int pointsForLoss = 0,
   }) async {
     try {
       List<Match> matches = _generateFirstRoundMatches(type, playerIds);
@@ -61,6 +64,9 @@ class LeagueNotifier extends _$LeagueNotifier {
         playerIds: playerIds,
         matches: matches,
         defaultTemplateId: defaultTemplateId,
+        pointsForWin: pointsForWin,
+        pointsForDraw: pointsForDraw,
+        pointsForLoss: pointsForLoss,
       );
 
       final finalMatches = newLeague.matches

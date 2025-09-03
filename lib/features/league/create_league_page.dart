@@ -19,6 +19,9 @@ class CreateLeaguePage extends ConsumerStatefulWidget {
 class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _winPointsController = TextEditingController(text: '3');
+  final _drawPointsController = TextEditingController(text: '1');
+  final _lossPointsController = TextEditingController(text: '0');
   LeagueType _selectedType = LeagueType.roundRobin;
   final List<PlayerInfo> _selectedPlayers = [];
   BaseTemplate? _selectedTemplate;
@@ -26,6 +29,9 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _winPointsController.dispose();
+    _drawPointsController.dispose();
+    _lossPointsController.dispose();
     super.dispose();
   }
 
@@ -46,6 +52,9 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
               type: _selectedType,
               playerIds: _selectedPlayers.map((p) => p.pid).toList(),
               defaultTemplateId: _selectedTemplate!.tid,
+              pointsForWin: int.parse(_winPointsController.text),
+              pointsForDraw: int.parse(_drawPointsController.text),
+              pointsForLoss: int.parse(_lossPointsController.text),
             );
 
         // 检查组件是否仍然挂载
@@ -133,6 +142,74 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
                       });
                     }
                   },
+                ),
+                const SizedBox(height: 16),
+                // 积分设置
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _winPointsController,
+                        enabled: _selectedType == LeagueType.roundRobin,
+                        decoration: InputDecoration(
+                          labelText: '胜场得分',
+                          border: const OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (_selectedType == LeagueType.roundRobin &&
+                              (value == null ||
+                                  value.isEmpty ||
+                                  int.tryParse(value) == null)) {
+                            return '请输入有效数字';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _drawPointsController,
+                        enabled: _selectedType == LeagueType.roundRobin,
+                        decoration: const InputDecoration(
+                          labelText: '平局得分',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (_selectedType == LeagueType.roundRobin &&
+                              (value == null ||
+                                  value.isEmpty ||
+                                  int.tryParse(value) == null)) {
+                            return '请输入有效数字';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _lossPointsController,
+                        enabled: _selectedType == LeagueType.roundRobin,
+                        decoration: const InputDecoration(
+                          labelText: '负场得分',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (_selectedType == LeagueType.roundRobin &&
+                              (value == null ||
+                                  value.isEmpty ||
+                                  int.tryParse(value) == null)) {
+                            return '请输入有效数字';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 _buildPlayerSelector(context),
