@@ -23,7 +23,7 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
           '2. 点击您需要的系统模板\n'
           '3. 选择"另存新模板"选项\n'
           '4. 按要求填写信息并保存\n\n'
-          '这样就可以创建一个属于您的用户模板，用于计分计分！',
+          '这样就可以创建一个属于您的用户模板，用于计分！',
           style: TextStyle(height: 1.5),
         ),
         actions: [

@@ -74,7 +74,7 @@ class LeagueListPage extends ConsumerWidget {
             MediaQuery.of(context).size.width /
                 (MediaQuery.of(context).size.width ~/ 350),
           ),
-          mainAxisExtent: 72,
+          mainAxisExtent: 78,
           crossAxisSpacing: 0,
           mainAxisSpacing: 0,
         ),

@@ -47,15 +47,17 @@ class OutlineCard extends StatelessWidget {
               .withAlpha((0.2 * 255).toInt()),
         ),
       ),
-      child: Center(
-        child: child ??
-            ListTile(
-              leading: leading,
-              title: title!,
-              subtitle: subtitle,
-              trailing: trailing,
-              onTap: onTap,
-            ),
+      child: InkWell(
+        onTap: onTap,
+        child: Center(
+          child: child ??
+              ListTile(
+                leading: leading,
+                title: title!,
+                subtitle: subtitle,
+                trailing: trailing,
+              ),
+        ),
       ),
     );
   }

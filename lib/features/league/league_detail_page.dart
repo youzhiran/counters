@@ -11,6 +11,7 @@ import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/utils/league_helper.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/common/widgets/outline_card.dart';
 import 'package:counters/features/league/widgets/tournament_bracket_view.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/score/score_provider.dart';
@@ -345,7 +346,7 @@ class _RoundRobinMatchesList extends ConsumerWidget {
           MediaQuery.of(context).size.width /
               (MediaQuery.of(context).size.width ~/ 450),
         ),
-        mainAxisExtent: 72,
+        mainAxisExtent: 78,
         crossAxisSpacing: 0,
         mainAxisSpacing: 0,
       ),
@@ -382,23 +383,11 @@ class _MatchTile extends ConsumerWidget {
 
     // 关键修复：处理轮空情况
     if (match.player2Id == 'bye') {
-      return Card(
-        elevation: 0,
-        shape: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          borderSide: BorderSide(
-            color: Theme.of(context)
-                .colorScheme
-                .outline
-                .withAlpha((0.2 * 255).toInt()),
-          ),
-        ),
-        child: ListTile(
-          leading: Icon(Icons.airline_stops_rounded,
-              color: Theme.of(context).colorScheme.primary),
-          title: Text('${player1.name} - 轮空'),
-          subtitle: const Text('自动晋级'),
-        ),
+      return OutlineCard(
+        leading: Icon(Icons.airline_stops_rounded,
+            color: Theme.of(context).colorScheme.primary),
+        title: Text('${player1.name} - 轮空'),
+        subtitle: const Text('自动晋级'),
       );
     }
 
@@ -406,23 +395,11 @@ class _MatchTile extends ConsumerWidget {
         (p) => p.pid == match.player2Id,
         orElse: () => PlayerInfo(name: '未知', avatar: ''));
 
-    return Card(
-      elevation: 0,
-      shape: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(
-          color: Theme.of(context)
-              .colorScheme
-              .outline
-              .withAlpha((0.2 * 255).toInt()),
-        ),
-      ),
-      child: ListTile(
-        title: Text('${player1.name} vs ${player2.name}'),
-        subtitle: _buildSubtitle(match),
-        trailing: _buildMatchTrailing(context, ref, match, templates),
-        onTap: () => _navigateToGame(context, ref, match, templates, league),
-      ),
+    return OutlineCard(
+      title: Text('${player1.name} vs ${player2.name}'),
+      subtitle: _buildSubtitle(match),
+      trailing: _buildMatchTrailing(context, ref, match, templates),
+      onTap: () => _navigateToGame(context, ref, match, templates, league),
     );
   }
 

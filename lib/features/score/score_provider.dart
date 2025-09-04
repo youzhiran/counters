@@ -441,7 +441,7 @@ class Score extends _$Score {
     }
   }
 
-  /// 开始临时计分计分（快速体验模式）
+  /// 开始临时计分（快速体验模式）
   void startTempGame(BaseTemplate template) {
     final validatedPlayers = template.players
         .map((p) => p.pid.isEmpty ? p.copyWith(pid: const Uuid().v4()) : p)
