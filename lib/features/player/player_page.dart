@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
@@ -7,6 +5,7 @@ import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/outline_card.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/common/widgets/player_widget.dart';
+import 'package:counters/common/widgets/responsive_grid_view.dart';
 import 'package:counters/features/player/add_players.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:flutter/material.dart';
@@ -113,19 +112,10 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage>
               }
               return RefreshIndicator(
                 onRefresh: () => ref.refresh(playerProvider.future),
-                child: GridView.builder(
-                  key: const PageStorageKey('player_list'),
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 78),
-                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: max(
-                      250.0,
-                      MediaQuery.of(context).size.width /
-                          (MediaQuery.of(context).size.width ~/ 300),
-                    ),
-                    mainAxisExtent: 80,
-                    crossAxisSpacing: 0,
-                    mainAxisSpacing: 0,
-                  ),
+                child: ResponsiveGridView(
+                  minItemWidth: 250.0,
+                  idealItemWidth: 300.0,
+                  itemHeight: 80,
                   itemCount: players.length,
                   itemBuilder: (gridItemContext, index) {
                     final player = players[index];

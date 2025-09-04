@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/league.dart';
 import 'package:counters/common/model/league_enums.dart';
@@ -7,6 +5,7 @@ import 'package:counters/common/providers/league_provider.dart';
 import 'package:counters/common/widgets/confirmation_dialog.dart';
 import 'package:counters/common/widgets/outline_card.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
+import 'package:counters/common/widgets/responsive_grid_view.dart';
 import 'package:counters/features/league/create_league_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -66,18 +65,7 @@ class LeagueListPage extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: () => ref.refresh(leagueNotifierProvider.future),
-      child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 78),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: max(
-            300.0,
-            MediaQuery.of(context).size.width /
-                (MediaQuery.of(context).size.width ~/ 350),
-          ),
-          mainAxisExtent: 78,
-          crossAxisSpacing: 0,
-          mainAxisSpacing: 0,
-        ),
+      child: ResponsiveGridView(
         itemCount: leagues.length,
         itemBuilder: (context, index) {
           final league = leagues[index];

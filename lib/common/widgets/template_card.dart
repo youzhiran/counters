@@ -352,6 +352,10 @@ class TemplateCard extends ConsumerWidget {
 
   // 快速体验处理方法
   void _handleQuickStart(BuildContext context, WidgetRef ref) {
+    // 提前获取 Notifier，避免在回调中使用 ref
+    final templatesNotifier = ref.read(templatesProvider.notifier);
+    final scoreNotifier = ref.read(scoreProvider.notifier);
+
     globalState.showCommonDialog(
       child: AlertDialog(
         title: const Text('快速体验'),
@@ -407,7 +411,7 @@ class TemplateCard extends ConsumerWidget {
           ElevatedButton(
             onPressed: () async {
               globalState.navigatorKey.currentState?.pop();
-              await _startQuickGame(context, ref);
+              await _startQuickGame(templatesNotifier, scoreNotifier);
             },
             child: const Text('开始计分'),
           ),
@@ -422,19 +426,22 @@ class TemplateCard extends ConsumerWidget {
   }
 
   // 开始快速计分
-  Future<void> _startQuickGame(BuildContext context, WidgetRef ref) async {
+  Future<void> _startQuickGame(
+    Templates templatesNotifier,
+    Score scoreNotifier,
+  ) async {
     try {
       // 创建临时模板副本，使用默认玩家信息
       final tempTemplate = _createTempTemplate();
 
       // 将临时模板添加到模板提供者中（仅在内存中）
-      await ref.read(templatesProvider.notifier).addTempTemplate(tempTemplate);
+      await templatesNotifier.addTempTemplate(tempTemplate);
 
       // 开始临时计分会话
-      ref.read(scoreProvider.notifier).startTempGame(tempTemplate);
+      scoreNotifier.startTempGame(tempTemplate);
 
-      if (!context.mounted) return;
-      Navigator.of(context).push(
+      // 使用全局 navigator key 进行导航，避免使用可能已失效的 context
+      globalState.navigatorKey.currentState?.push(
         CustomPageTransitions.slideFromRight(
           HomePage.buildSessionPage(tempTemplate),
           duration: const Duration(milliseconds: 300),

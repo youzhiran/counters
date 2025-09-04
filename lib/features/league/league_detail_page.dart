@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
@@ -12,6 +10,7 @@ import 'package:counters/common/utils/league_helper.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/outline_card.dart';
+import 'package:counters/common/widgets/responsive_grid_view.dart';
 import 'package:counters/features/league/widgets/tournament_bracket_view.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/score/score_provider.dart';
@@ -338,18 +337,7 @@ class _RoundRobinMatchesList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 78),
-      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: max(
-          400.0,
-          MediaQuery.of(context).size.width /
-              (MediaQuery.of(context).size.width ~/ 450),
-        ),
-        mainAxisExtent: 78,
-        crossAxisSpacing: 0,
-        mainAxisSpacing: 0,
-      ),
+    return ResponsiveGridView(
       itemCount: league.matches.length,
       itemBuilder: (context, index) {
         final match = league.matches[index];

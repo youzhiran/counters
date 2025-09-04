@@ -1,4 +1,5 @@
 import 'package:counters/app/state.dart';
+import 'package:counters/common/widgets/responsive_grid_view.dart';
 import 'package:counters/common/widgets/template_card.dart';
 import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
@@ -86,15 +87,13 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
             return RefreshIndicator(
               key: const ValueKey('grid'),
               onRefresh: () async => ref.invalidate(templatesProvider),
-              child: GridView.builder(
-                key: const PageStorageKey('template_grid'),
+              child: ResponsiveGridView(
+                minItemWidth: 200,
+                idealItemWidth: 150,
+                itemHeight: 150,
                 padding: const EdgeInsets.all(12),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 200,
-                  mainAxisExtent: 150,
-                  crossAxisSpacing: 6,
-                  mainAxisSpacing: 6,
-                ),
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
                 itemCount: templates.length,
                 itemBuilder: (context, index) => TemplateCard(
                   template: templates[index],
