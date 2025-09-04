@@ -261,8 +261,14 @@ class Templates extends _$Templates {
   /// 清理指定模板 other_set 中的冗余数据
   Future<void> cleanRedundantDataForTemplate(String tid) async {
     await _templateDao.cleanRedundantDataForTemplate(tid);
+
     // 清理后刷新模板列表
     await refreshTemplates();
+  }
+
+  /// 获取使用指定模板的所有联赛名称
+  Future<List<String>> getLeaguesUsingTemplate(String templateId) async {
+    return await _templateDao.getLeaguesUsingTemplate(templateId);
   }
 }
 

@@ -4,7 +4,6 @@ import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
-import 'package:counters/common/dao/game_session_dao.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
 import 'package:counters/common/model/player_info.dart';
@@ -17,6 +16,7 @@ import 'package:counters/common/widgets/message_overlay.dart';
 // 引入 LAN Provider 和 消息 Payload 类
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/player/player_provider.dart';
+import 'package:counters/features/score/game_session_dao.dart';
 import 'package:counters/features/score/game_session_dao_provider.dart';
 import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:counters/features/template/template_provider.dart';

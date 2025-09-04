@@ -1,10 +1,10 @@
-import 'package:counters/common/dao/game_session_dao.dart';
-import 'package:counters/common/dao/league_dao.dart';
 import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/league.dart';
 import 'package:counters/common/model/league_enums.dart';
 import 'package:counters/common/model/match.dart';
 import 'package:counters/common/utils/error_handler.dart';
+import 'package:counters/features/league/league_dao.dart';
+import 'package:counters/features/score/game_session_dao.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'league_provider.g.dart';

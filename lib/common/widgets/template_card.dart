@@ -264,30 +264,33 @@ class TemplateCard extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final scoreNotifier = ref.read(scoreProvider.notifier);
     final scoreState = await ref.read(scoreProvider.future);
+    final templateNotifier = ref.read(templatesProvider.notifier);
 
-    if (template.tid == scoreState.currentSession?.templateId) {
+    // 检查是否被联赛引用
+    final leaguesUsingTemplate =
+        await templateNotifier.getLeaguesUsingTemplate(template.tid);
+    if (leaguesUsingTemplate.isNotEmpty) {
       if (!context.mounted) return;
-      globalState.showCommonDialog(
-        child: AlertDialog(
-          title: const Text('无法删除该模板'),
-          content: const Text('该模板正在计分，请结束计分后删除。'),
-          actions: [
-            TextButton(
-              onPressed: () => globalState.navigatorKey.currentState?.pop(),
-              child: const Text('确认'),
-            ),
-          ],
-        ),
-      );
+      final leagueList = leaguesUsingTemplate.join('、');
+      _showErrorDialog(
+          context, '无法删除该模板', '该模板正在被以下联赛使用，请先结束联赛并删除：\n\n$leagueList');
       return;
     }
 
+    // 检查是否正在计分
+    if (template.tid == scoreState.currentSession?.templateId) {
+      if (!context.mounted) return;
+      _showErrorDialog(context, '无法删除该模板', '该模板正在计分，请结束计分后删除。');
+      return;
+    }
+
+    // 检查是否有历史记录
     if (await scoreNotifier.checkSessionExists(template.tid)) {
       if (!context.mounted) return;
       globalState.showCommonDialog(
         child: AlertDialog(
           title: const Text('删除模板'),
-          content: const Text('当前模板已有关联计分记录，会同步清除所有关联记录。\n是否继续删除？'),
+          content: const Text('当前模板已有关联计分记录，会同步清除所有关联记录.\n是否继续删除？'),
           actions: [
             TextButton(
               onPressed: () => globalState.navigatorKey.currentState?.pop(),
@@ -295,9 +298,7 @@ class TemplateCard extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(templatesProvider.notifier)
-                    .deleteTemplate(template.tid);
+                await templateNotifier.deleteTemplate(template.tid);
                 await scoreNotifier.clearSessionsByTemplate(template.tid);
                 if (!context.mounted) return;
                 globalState.navigatorKey.currentState?.pop();
@@ -321,9 +322,7 @@ class TemplateCard extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(templatesProvider.notifier)
-                    .deleteTemplate(template.tid);
+                await templateNotifier.deleteTemplate(template.tid);
                 if (!context.mounted) return;
                 globalState.navigatorKey.currentState?.pop();
               },
@@ -333,6 +332,22 @@ class TemplateCard extends ConsumerWidget {
         ),
       );
     }
+  }
+
+  // 显示错误对话框的辅助方法
+  void _showErrorDialog(BuildContext context, String title, String content) {
+    globalState.showCommonDialog(
+      child: AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => globalState.navigatorKey.currentState?.pop(),
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
   }
 
   // 快速体验处理方法

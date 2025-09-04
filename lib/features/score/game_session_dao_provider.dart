@@ -1,5 +1,5 @@
-import 'package:counters/common/dao/game_session_dao.dart';
 import 'package:counters/common/db/db_helper.dart';
+import 'package:counters/features/score/game_session_dao.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
