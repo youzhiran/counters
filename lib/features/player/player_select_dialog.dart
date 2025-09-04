@@ -5,7 +5,6 @@ import 'package:counters/features/player/player_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
 class PlayerSelectDialog extends ConsumerStatefulWidget {
   final List<PlayerInfo> selectedPlayers;
   final int maxCount;
@@ -21,7 +20,13 @@ class PlayerSelectDialog extends ConsumerStatefulWidget {
 }
 
 class _PlayerSelectDialogState extends ConsumerState<PlayerSelectDialog> {
-  final List<PlayerInfo> _selectedPlayers = [];
+  late final List<PlayerInfo> _selectedPlayers;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPlayers = List.from(widget.selectedPlayers);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,12 +68,8 @@ class _PlayerSelectDialogState extends ConsumerState<PlayerSelectDialog> {
                     itemCount: players.length,
                     itemBuilder: (context, index) {
                       final player = players[index];
-                      final isAvailable = !widget.selectedPlayers
-                          .any((sp) => sp.pid == player.pid);
                       final isSelected =
                           _selectedPlayers.any((p) => p.pid == player.pid);
-
-                      if (!isAvailable) return const SizedBox.shrink();
 
                       return CheckboxListTile(
                         title: Text(player.name),
@@ -101,9 +102,7 @@ class _PlayerSelectDialogState extends ConsumerState<PlayerSelectDialog> {
           child: const Text('取消'),
         ),
         TextButton(
-          onPressed: _selectedPlayers.isEmpty
-              ? null
-              : () => Navigator.pop(context, _selectedPlayers),
+          onPressed: () => Navigator.pop(context, _selectedPlayers),
           child: const Text('确定'),
         ),
       ],

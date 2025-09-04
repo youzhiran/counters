@@ -287,7 +287,7 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
           onPressed: () async {
             final result = await globalState.showCommonDialog<List<PlayerInfo>>(
               child: PlayerSelectDialog(
-                selectedPlayers: [], // In create mode, none are pre-selected
+                selectedPlayers: _selectedPlayers,
                 maxCount: 20, // Allow up to 20 players
               ),
             );

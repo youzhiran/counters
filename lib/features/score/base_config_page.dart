@@ -570,26 +570,20 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                       return;
                     }
 
-                    final result = await globalState.showCommonDialog(
+                    final result =
+                        await globalState.showCommonDialog<List<PlayerInfo>>(
                       child: PlayerSelectDialog(
                         selectedPlayers: players,
-                        maxCount: (currentEnteredPlayerCount - players.length)
-                            .clamp(0, 20),
+                        maxCount: currentEnteredPlayerCount,
                       ),
                     );
 
                     if (result != null) {
                       setState(() {
-                        for (var player in result) {
-                          if (players.length < currentEnteredPlayerCount) {
-                            players.add(player);
-                            nameControllers
-                                .add(TextEditingController(text: player.name));
-                          } else {
-                            ref.showMessage('已达到玩家数量上限，部分玩家未添加');
-                            break;
-                          }
-                        }
+                        players = result;
+                        nameControllers = result
+                            .map((p) => TextEditingController(text: p.name))
+                            .toList();
                       });
                     }
                   }
