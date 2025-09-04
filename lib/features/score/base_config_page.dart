@@ -490,7 +490,7 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
         SizedBox(
           child: SwitchListTile(
             title: const Text('不检查胜利分数'),
-            subtitle: const Text('开启后不计分胜利条件，仅记录分数'),
+            subtitle: const Text('开启后不计算胜利条件，仅记录分数'),
             value: _disableVictoryScoreCheck,
             onChanged: widget.isReadOnly
                 ? null
@@ -501,24 +501,23 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
                   },
           ),
         ),
-        // 胜利规则设置（仅在检查胜利分数时显示）
-        if (!_disableVictoryScoreCheck)
-          SizedBox(
-            child: SwitchListTile(
-              title: const Text('反转胜利规则'),
-              subtitle:
-                  Text(_reverseWinRule ? '先达到目标分数的玩家获胜' : '先达到目标分数的玩家失败（默认）'),
-              value: _reverseWinRule,
-              onChanged: widget.isReadOnly
-                  ? null
-                  : (value) {
-                      setState(() {
-                        _reverseWinRule = value;
-                      });
-                    },
-              // contentPadding: EdgeInsets.zero,
-            ),
+        // 胜利规则设置
+        SizedBox(
+          child: SwitchListTile(
+            title: const Text('反转胜利规则'),
+            subtitle:
+                Text(_reverseWinRule ? '先达到目标分数的玩家获胜' : '先达到目标分数的玩家失败（默认）'),
+            value: _reverseWinRule,
+            onChanged: widget.isReadOnly
+                ? null
+                : (value) {
+                    setState(() {
+                      _reverseWinRule = value;
+                    });
+                  },
+            // contentPadding: EdgeInsets.zero,
           ),
+        ),
       ],
     );
   }

@@ -1106,84 +1106,98 @@ class Score extends _$Score {
     // 可以在这里添加广播逻辑，如果需要的话
   }
 
-  GameResult calculateGameResult(BaseTemplate template) {
+  // 提取出来的私有方法，用于获取并排序分数
+  List<PlayerScore> _getSortedScores() {
     final scores = state.valueOrNull?.currentSession?.scores ?? [];
     if (scores.isEmpty ||
         scores.every((s) => s.roundScores.every((score) => score == null))) {
+      return [];
+    }
+    // 按总分升序排序
+    return scores.sorted((a, b) => a.totalScore.compareTo(b.totalScore));
+  }
+
+  // 提取出来的私有方法，用于计算游戏未结束时的当前排名
+  GameResult _calculateCurrentRanking(
+      List<PlayerScore> sortedScores, bool reverseWinRule) {
+    if (sortedScores.isEmpty) {
       return const GameResult(winners: [], losers: [], havTargetScore: false);
     }
 
-    final disableVictoryScoreCheck = template.disableVictoryScoreCheck;
+    final minScore = sortedScores.first.totalScore;
+    final maxScore = sortedScores.last.totalScore;
 
-    // 如果不检查胜利分数，直接返回空结果（不判断胜负）
-    if (disableVictoryScoreCheck) {
-      return const GameResult(winners: [], losers: [], havTargetScore: false);
+    if (minScore == maxScore) {
+      return GameResult(
+          winners: List.from(sortedScores), losers: [], havTargetScore: false);
     }
-
-    final targetScore = template.targetScore;
-    final reverseWinRule = template.reverseWinRule;
-
-    final failScores =
-        scores.where((s) => s.totalScore >= targetScore).toList();
-    final hasFailures = failScores.isNotEmpty;
 
     final List<PlayerScore> winners;
     final List<PlayerScore> losers;
 
-    if (hasFailures) {
-      if (reverseWinRule) {
-        // 反转规则：先达到目标分数的获胜
-        failScores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
-        final minFailScore = failScores.first.totalScore;
-        winners =
-            failScores.where((s) => s.totalScore == minFailScore).toList();
-        losers = scores.where((s) => s.totalScore < targetScore).toList();
-        losers.sort((a, b) => b.totalScore.compareTo(a.totalScore));
-      } else {
-        // 默认规则：先达到目标分数的失败
-        final potentialWins =
-            scores.where((s) => s.totalScore < targetScore).toList();
-        if (potentialWins.isEmpty) {
-          winners = [];
-          losers =
-              scores.sorted((a, b) => b.totalScore.compareTo(a.totalScore));
-        } else {
-          potentialWins.sort((a, b) => a.totalScore.compareTo(b.totalScore));
-          final minWinScore = potentialWins.first.totalScore;
-          winners =
-              potentialWins.where((s) => s.totalScore == minWinScore).toList();
-          losers = scores.where((s) => s.totalScore >= targetScore).toList();
-          losers.sort((a, b) => b.totalScore.compareTo(a.totalScore));
-        }
-      }
+    if (reverseWinRule) {
+      // 反转规则：分数高者为优
+      winners = sortedScores.where((s) => s.totalScore == maxScore).toList();
+      losers = sortedScores.where((s) => s.totalScore == minScore).toList();
     } else {
-      final sortedScores = List<PlayerScore>.from(scores);
-      sortedScores.sort((a, b) => a.totalScore.compareTo(b.totalScore));
-      final minScore = sortedScores.first.totalScore;
-      final maxScore = sortedScores.last.totalScore;
+      // 默认规则：分数低者为优
+      winners = sortedScores.where((s) => s.totalScore == minScore).toList();
+      losers = sortedScores.where((s) => s.totalScore == maxScore).toList();
+    }
+    return GameResult(winners: winners, losers: losers, havTargetScore: false);
+  }
 
-      if (minScore == maxScore) {
-        winners = List.from(sortedScores);
-        losers = [];
+  GameResult calculateGameResult(BaseTemplate template) {
+    final sortedScores = _getSortedScores();
+    if (sortedScores.isEmpty) {
+      return const GameResult(winners: [], losers: [], havTargetScore: false);
+    }
+
+    final reverseWinRule = template.reverseWinRule;
+    final targetScore = template.targetScore;
+
+    final failScores =
+        sortedScores.where((s) => s.totalScore >= targetScore).toList();
+
+    // 如果“不检查胜利分数”或无人达到目标分，则仅显示当前排名
+    if (template.disableVictoryScoreCheck || failScores.isEmpty) {
+      return _calculateCurrentRanking(sortedScores, reverseWinRule);
+    }
+
+    // 有人达到目标分数，决出最终胜负
+    final List<PlayerScore> winners;
+    final List<PlayerScore> losers;
+
+    if (reverseWinRule) {
+      // 反转规则：先达到目标分数者获胜
+      // 获胜者是达标者中分数最低的
+      final minFailScore = failScores.first.totalScore;
+      winners = failScores.where((s) => s.totalScore == minFailScore).toList();
+      // 失败者是所有未达标的玩家
+      losers = sortedScores.where((s) => s.totalScore < targetScore).toList();
+    } else {
+      // 默认规则：先达到目标分数者失败
+      // 失败者是所有达标的玩家
+      losers = failScores;
+
+      final potentialWins =
+          sortedScores.where((s) => s.totalScore < targetScore).toList();
+
+      if (potentialWins.isEmpty) {
+        // 所有人都失败了，没有获胜者
+        winners = [];
       } else {
-        if (reverseWinRule) {
-          // 反转规则：分数高者暂时领先
-          winners =
-              sortedScores.where((s) => s.totalScore == maxScore).toList();
-          losers = sortedScores.where((s) => s.totalScore == minScore).toList();
-        } else {
-          // 默认规则：分数低者暂时领先
-          winners =
-              sortedScores.where((s) => s.totalScore == minScore).toList();
-          losers = sortedScores.where((s) => s.totalScore == maxScore).toList();
-        }
+        // 获胜者是未达标者中分数最低的
+        final minWinScore = potentialWins.first.totalScore;
+        winners =
+            potentialWins.where((s) => s.totalScore == minWinScore).toList();
       }
     }
 
     return GameResult(
       winners: winners,
       losers: losers,
-      havTargetScore: hasFailures,
+      havTargetScore: true,
     );
   }
 
