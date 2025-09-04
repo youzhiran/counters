@@ -265,9 +265,9 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    Log.i("Upgrading database from version $oldVersion to $newVersion");
+    Log.i("数据库升级，从版本 $oldVersion 到 $newVersion");
     if (oldVersion < 2) {
-      Log.i("Applying version 2 schema changes...");
+      Log.i("应用 v2 版本的数据库结构变更...");
       final batch = db.batch();
       // 创建V2相关的表
       _createV2Tables(batch);
@@ -285,7 +285,7 @@ class DatabaseHelper {
         ALTER TABLE templates ADD COLUMN reverse_win_rule INTEGER NOT NULL DEFAULT 0
       ''');
       await batch.commit(noResult: true);
-      Log.i("Version 2 schema changes applied.");
+      Log.i("v2 版本的数据库结构变更应用完成。");
 
       // 从 other_set 迁移数据到新列
       await _migrateTemplateData(db);
@@ -293,7 +293,7 @@ class DatabaseHelper {
   }
 
   Future<void> _migrateTemplateData(Database db) async {
-    Log.i("Starting data migration for templates table...");
+    Log.i("开始迁移 templates 表的数据...");
     try {
       final templates =
           await db.query('templates', columns: ['tid', 'other_set']);
@@ -313,27 +313,31 @@ class DatabaseHelper {
               final updates = <String, dynamic>{};
               if (disableCheck != null) {
                 updates['disable_victory_score_check'] = disableCheck ? 1 : 0;
+                otherSet.remove('disableVictoryScoreCheck');
               }
               if (reverseRule != null) {
                 updates['reverse_win_rule'] = reverseRule ? 1 : 0;
+                otherSet.remove('reverseWinRule');
               }
 
-              if (updates.isNotEmpty) {
-                batch.update('templates', updates,
-                    where: 'tid = ?', whereArgs: [tid]);
-                Log.v("Migrating data for template $tid: $updates");
-              }
+              // 更新 other_set
+              updates['other_set'] =
+                  otherSet.isEmpty ? null : jsonEncode(otherSet);
+
+              batch.update('templates', updates,
+                  where: 'tid = ?', whereArgs: [tid]);
+              Log.v("正在迁移模板 $tid 的数据: $updates");
             }
           } catch (e) {
-            Log.w("Failed to parse or migrate other_set for template $tid: $e");
+            Log.w("解析或迁移模板 $tid 的 other_set 失败: $e");
           }
         }
       }
 
       await batch.commit(noResult: true);
-      Log.i("Data migration for templates table completed successfully.");
+      Log.i("templates 表数据迁移成功完成。");
     } catch (e) {
-      Log.e("An error occurred during template data migration: $e");
+      Log.e("模板数据迁移过程中发生错误: $e");
       // 如果迁移失败，不应阻塞整个升级过程，但需要记录错误
     }
   }
