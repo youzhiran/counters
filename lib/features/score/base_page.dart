@@ -439,6 +439,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
   }
 
   void showResetConfirmation(BuildContext context) {
+    final scoreState = ref.read(scoreProvider).value;
+    // 增加联赛模式检查
+    if (scoreState?.currentSession?.leagueMatchId != null) {
+      ref.showWarning('联赛模式下不允许重置计分');
+      return;
+    }
+
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('重置计分'),
@@ -1085,7 +1092,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                       value: 'reset_game',
                       icon: Icons.restart_alt_rounded,
                       label: '重置计分',
-                      enabled: !scoreState.isTempMode,
+                      enabled: !scoreState.isTempMode &&
+                          scoreState.currentSession?.leagueMatchId == null,
                     ),
                     buildGridItem(
                       value: 'Template_set',
