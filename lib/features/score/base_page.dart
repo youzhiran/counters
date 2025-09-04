@@ -293,10 +293,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       return;
     }
 
-    final disableVictoryScoreCheck = template.getOtherSet<bool>(
-            'disableVictoryScoreCheck',
-            defaultValue: false) ??
-        false;
+    final disableVictoryScoreCheck = template.disableVictoryScoreCheck;
 
     // 如果不检查胜利分数，显示特殊提示
     if (disableVictoryScoreCheck) {

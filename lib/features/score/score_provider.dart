@@ -626,10 +626,7 @@ class Score extends _$Score {
             roundJustCompleted || (template.checkVictoryOnScoreChange);
 
         if (shouldCheckVictory) {
-          final disableVictoryScoreCheck = template.getOtherSet<bool>(
-                  'disableVictoryScoreCheck',
-                  defaultValue: false) ??
-              false;
+          final disableVictoryScoreCheck = template.disableVictoryScoreCheck;
           if (!disableVictoryScoreCheck) {
             final gameResult = calculateGameResult(template);
             if (gameResult.havTargetScore) {
@@ -1116,10 +1113,7 @@ class Score extends _$Score {
       return const GameResult(winners: [], losers: [], havTargetScore: false);
     }
 
-    final disableVictoryScoreCheck = template.getOtherSet<bool>(
-            'disableVictoryScoreCheck',
-            defaultValue: false) ??
-        false;
+    final disableVictoryScoreCheck = template.disableVictoryScoreCheck;
 
     // 如果不检查胜利分数，直接返回空结果（不判断胜负）
     if (disableVictoryScoreCheck) {

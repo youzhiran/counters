@@ -110,26 +110,4 @@ class MahjongTemplate extends BaseTemplate {
 
     return template;
   }
-
-  factory MahjongTemplate.fromJson(Map<String, dynamic> json) {
-    final template = MahjongTemplate(
-      tid: json['tid'] as String,
-      templateName: json['templateName'] as String,
-      playerCount: json['playerCount'] as int,
-      targetScore: json['targetScore'] as int,
-      players: (json['players'] as List)
-          .map((e) => PlayerInfo.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      isSystemTemplate: json['isSystemTemplate'] as bool,
-      baseTemplateId: json['baseTemplateId'] as String?,
-      disableVictoryScoreCheck:
-          json['disableVictoryScoreCheck'] as bool? ?? false,
-      reverseWinRule: json['reverseWinRule'] as bool? ?? false,
-      baseScore: json['baseScore'] as int? ?? 1,
-      checkMultiplier: json['checkMultiplier'] as bool? ?? false,
-      bombMultiplyMode: json['bombMultiplyMode'] as bool? ?? false,
-    );
-
-    return template;
-  }
 }
