@@ -287,20 +287,30 @@ class _AnimatedExpansionPanelState extends State<_AnimatedExpansionPanel>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withAlpha(80),
-        ),
+    const borderRadiusValue = 8.0; // Match OutlineCard
+
+    // 卡片的形状现在是固定的，始终保持四个角都是圆角
+    final cardShape = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(borderRadiusValue),
+      borderSide: BorderSide(
+        color: Theme.of(context)
+            .colorScheme
+            .outline
+            .withAlpha((0.2 * 255).toInt()),
       ),
+    );
+
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).scaffoldBackgroundColor,
+      clipBehavior: Clip.hardEdge,
+      margin: const EdgeInsets.symmetric(vertical: 6.0),
+      shape: cardShape, // 使用固定的形状
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           InkWell(
             onTap: _handleTap,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(12.0)),
             child: Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -429,7 +439,7 @@ class _MatchTile extends ConsumerWidget {
       buttonText = '进入比赛';
     }
 
-    return ElevatedButton(
+    return TextButton(
       onPressed: () => _navigateToGame(context, ref, match, templates, league),
       child: Text(buttonText),
     );
@@ -482,13 +492,46 @@ class _MatchTile extends ConsumerWidget {
 // =============================================
 // 排名视图 (_RankingsTable)
 // =============================================
-class _RankingsTable extends ConsumerWidget {
+class _RankingsTable extends ConsumerStatefulWidget {
   final League league;
 
   const _RankingsTable({required this.league});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_RankingsTable> createState() => _RankingsTableState();
+}
+
+class _RankingsTableState extends ConsumerState<_RankingsTable> {
+  final ScrollController _headerScrollController = ScrollController();
+  final ScrollController _bodyScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // 同步滚动
+    _bodyScrollController.addListener(() {
+      if (_headerScrollController.hasClients &&
+          _headerScrollController.offset != _bodyScrollController.offset) {
+        _headerScrollController.jumpTo(_bodyScrollController.offset);
+      }
+    });
+    _headerScrollController.addListener(() {
+      if (_bodyScrollController.hasClients &&
+          _bodyScrollController.offset != _headerScrollController.offset) {
+        _bodyScrollController.jumpTo(_headerScrollController.offset);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _headerScrollController.dispose();
+    _bodyScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final playerAsync = ref.watch(playerProvider);
     return playerAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -497,36 +540,184 @@ class _RankingsTable extends ConsumerWidget {
         final players = playerState.players;
         final rankings = _calculateRankings(players);
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text('排名')),
-              DataColumn(label: Text('玩家')),
-              DataColumn(label: Text('场次')),
-              DataColumn(label: Text('胜')),
-              DataColumn(label: Text('平')),
-              DataColumn(label: Text('负')),
-              DataColumn(label: Text('积分')),
-            ],
-            rows: rankings.map((r) {
-              return DataRow(cells: [
-                DataCell(Text(r.rank.toString())),
-                DataCell(Text(r.player.name)),
-                DataCell(Text(r.played.toString())),
-                DataCell(Text(r.wins.toString())),
-                DataCell(Text(r.draws.toString())),
-                DataCell(Text(r.losses.toString())),
-                DataCell(Text(r.points.toString())),
-              ]);
-            }).toList(),
-          ),
+        final headerStyle = Theme.of(context)
+            .textTheme
+            .titleSmall
+            ?.copyWith(fontWeight: FontWeight.bold);
+        const cellPadding =
+            EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0);
+
+        // 自动计算玩家列宽度以包裹内容
+        // 1. 计算所有玩家名字所需的最大宽度
+        double maxPlayerNameWidth = 0;
+        final cellTextStyle = Theme.of(context).textTheme.bodyMedium;
+        if (rankings.isNotEmpty && cellTextStyle != null) {
+          final textPainter = TextPainter(
+            maxLines: 1,
+            textDirection: TextDirection.ltr,
+          );
+          for (final r in rankings) {
+            textPainter.text =
+                TextSpan(text: r.player.name, style: cellTextStyle);
+            textPainter.layout(minWidth: 0, maxWidth: double.infinity);
+            if (textPainter.size.width > maxPlayerNameWidth) {
+              maxPlayerNameWidth = textPainter.size.width;
+            }
+          }
+        }
+
+        // 2. 计算表头 "玩家" 所需的宽度
+        double headerWidth = 0;
+        if (headerStyle != null) {
+          final headerPainter = TextPainter(
+            text: TextSpan(text: '玩家', style: headerStyle),
+            maxLines: 1,
+            textDirection: TextDirection.ltr,
+          )..layout(minWidth: 0, maxWidth: double.infinity);
+          headerWidth = headerPainter.size.width;
+        }
+
+        // 3. 确定最终的玩家列宽度
+        // 取名字和表头中的最大值，设置一个最小宽度，并增加一些内边距
+        final double playerWidth = [maxPlayerNameWidth, headerWidth, 40.0]
+                .reduce((a, b) => a > b ? a : b) +
+            16.0; // 左右各8px内边距
+
+        // 定义其他列宽
+        const double rankWidth = 50;
+        const double statWidth = 50;
+        // 计算内容总宽度
+        final contentWidth = rankWidth + playerWidth + (statWidth * 5);
+        // 加上表格的水平内边距
+        final totalWidth = contentWidth + 16.0; // 整个表格行的左右内边距
+
+        // 构建表头
+        Widget buildHeader() {
+          return Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                  width: 1.0,
+                ),
+              ),
+            ),
+            child: SingleChildScrollView(
+              controller: _headerScrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              child: Container(
+                width: totalWidth,
+                padding: cellPadding,
+                child: Row(
+                  children: [
+                    SizedBox(
+                        width: rankWidth,
+                        child: Text('排名',
+                            style: headerStyle, textAlign: TextAlign.center)),
+                    SizedBox(
+                        width: playerWidth,
+                        child: Text('玩家', style: headerStyle)),
+                    SizedBox(
+                        width: statWidth,
+                        child: Text('场次',
+                            style: headerStyle, textAlign: TextAlign.center)),
+                    SizedBox(
+                        width: statWidth,
+                        child: Text('胜',
+                            style: headerStyle, textAlign: TextAlign.center)),
+                    SizedBox(
+                        width: statWidth,
+                        child: Text('平',
+                            style: headerStyle, textAlign: TextAlign.center)),
+                    SizedBox(
+                        width: statWidth,
+                        child: Text('负',
+                            style: headerStyle, textAlign: TextAlign.center)),
+                    SizedBox(
+                        width: statWidth,
+                        child: Text('积分',
+                            style: headerStyle, textAlign: TextAlign.center)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        // 构建表格主体
+        Widget buildBody() {
+          return Expanded(
+            child: Scrollbar(
+              controller: _bodyScrollController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _bodyScrollController,
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: totalWidth,
+                  child: ListView.separated(
+                    itemCount: rankings.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final r = rankings[index];
+                      return Container(
+                        padding: cellPadding,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                                width: rankWidth,
+                                child: Text(r.rank.toString(),
+                                    textAlign: TextAlign.center)),
+                            SizedBox(
+                                width: playerWidth,
+                                child: Text(r.player.name,
+                                    overflow: TextOverflow.ellipsis)),
+                            SizedBox(
+                                width: statWidth,
+                                child: Text(r.played.toString(),
+                                    textAlign: TextAlign.center)),
+                            SizedBox(
+                                width: statWidth,
+                                child: Text(r.wins.toString(),
+                                    textAlign: TextAlign.center)),
+                            SizedBox(
+                                width: statWidth,
+                                child: Text(r.draws.toString(),
+                                    textAlign: TextAlign.center)),
+                            SizedBox(
+                                width: statWidth,
+                                child: Text(r.losses.toString(),
+                                    textAlign: TextAlign.center)),
+                            SizedBox(
+                                width: statWidth,
+                                child: Text(r.points.toString(),
+                                    textAlign: TextAlign.center)),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            buildHeader(),
+            buildBody(),
+          ],
         );
       },
     );
   }
 
   List<_RankingInfo> _calculateRankings(List<PlayerInfo> allPlayers) {
+    final league = widget.league;
     final playerRankings = {
       for (var p in league.playerIds)
         p: _RankingInfo(player: allPlayers.firstWhere((ap) => ap.pid == p))
@@ -535,8 +726,13 @@ class _RankingsTable extends ConsumerWidget {
     for (final match in league.matches) {
       if (match.status != MatchStatus.completed) continue;
 
-      final p1Stats = playerRankings[match.player1Id]!;
-      final p2Stats = playerRankings[match.player2Id]!;
+      // 轮空比赛不计入统计
+      if (match.player2Id == 'bye') continue;
+
+      final p1Stats = playerRankings[match.player1Id];
+      final p2Stats = playerRankings[match.player2Id];
+
+      if (p1Stats == null || p2Stats == null) continue;
 
       p1Stats.played++;
       p2Stats.played++;
@@ -563,10 +759,21 @@ class _RankingsTable extends ConsumerWidget {
     }
 
     final sortedRankings = playerRankings.values.toList();
-    sortedRankings.sort((a, b) => b.points.compareTo(a.points));
+    sortedRankings.sort((a, b) {
+      int pointCompare = b.points.compareTo(a.points);
+      if (pointCompare != 0) return pointCompare;
+      // 如果积分相同，可以添加次要排序规则，例如净胜分等
+      return a.player.name.compareTo(b.player.name); // 默认按名字排序
+    });
 
     for (int i = 0; i < sortedRankings.length; i++) {
-      sortedRankings[i].rank = i + 1;
+      if (i > 0 && sortedRankings[i].points == sortedRankings[i - 1].points) {
+        // 如果积分与前一名相同，则排名相同
+        sortedRankings[i].rank = sortedRankings[i - 1].rank;
+      } else {
+        // 否则，排名为当前索引 + 1
+        sortedRankings[i].rank = i + 1;
+      }
     }
 
     return sortedRankings;

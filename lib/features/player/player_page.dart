@@ -113,6 +113,7 @@ class _PlayerManagementPageState extends ConsumerState<PlayerManagementPage>
               return RefreshIndicator(
                 onRefresh: () => ref.refresh(playerProvider.future),
                 child: ResponsiveGridView(
+                  key: const PageStorageKey('player_list'),
                   minItemWidth: 250.0,
                   idealItemWidth: 300.0,
                   itemHeight: 80,

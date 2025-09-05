@@ -960,7 +960,7 @@ class Score extends _$Score {
       Log.i('胜负方未改变，无需重新生成后续比赛。');
     }
 
-    GlobalMsgManager.showSuccess('比赛结果已更新');
+    Log.i('比赛结果已更新');
     return returnMessage;
   }
 

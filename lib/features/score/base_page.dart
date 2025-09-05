@@ -405,8 +405,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       }
     }
 
-    // 在 await 之前获取 Navigator
-    final navigator = Navigator.of(context);
+    // 使用全局 navigatorKey，避免 BuildContext 跨越异步边界
+    final navigator = globalState.navigatorKey.currentState;
+    if (navigator == null) return;
     // 先关闭计分结果对话框
     navigator.pop();
 
@@ -719,42 +720,25 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         }
       }
 
-      // 在 await 之前获取 Navigator
-      final navigator = Navigator.of(context);
+      // 调用异步任务
       final message = await ref
           .read(scoreProvider.notifier)
           .updateCompletedLeagueMatchResult(_initialSession!);
 
+      // 异步任务结束后，检查 widget 是否还存在
       if (!mounted) return;
 
+      // 使用 globalState.navigatorKey，因为它在异步调用后依然安全
+      final navigator = globalState.navigatorKey.currentState;
+      if (navigator == null) return;
+
       if (message != null && message.isNotEmpty) {
-        // 如果有消息返回，说明有后续比赛被修改，弹窗提示用户
-        await globalState.showCommonDialog(
-          dismissible: false,
-          child: AlertDialog(
-            title: const Text('后续比赛已更新'),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  globalState.navigatorKey.currentState?.pop();
-                  // 关闭计分页面
-                  // 延迟pop以避免渲染错误
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) navigator.pop();
-                  });
-                },
-                child: const Text('好的'),
-              ),
-            ],
-          ),
-        );
+        // 如果有消息返回，说明有后续比赛被修改，提示用户
+        GlobalMsgManager.showSuccess(message);
+        navigator.pop();
       } else {
         // 如果没有影响，直接退出
-        // 延迟pop以避免渲染错误
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) navigator.pop();
-        });
+        navigator.pop();
       }
     } else if (result == 'discard') {
       // 恢复到初始状态

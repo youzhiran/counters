@@ -88,6 +88,7 @@ class _TemplatePageState extends ConsumerState<TemplatePage> {
               key: const ValueKey('grid'),
               onRefresh: () async => ref.invalidate(templatesProvider),
               child: ResponsiveGridView(
+                key: const PageStorageKey<String>('template_list'),
                 minItemWidth: 200,
                 idealItemWidth: 150,
                 itemHeight: 150,

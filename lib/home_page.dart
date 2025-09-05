@@ -133,41 +133,40 @@ class HomePage extends ConsumerWidget {
 
   Widget _buildHomeWithHistory(BuildContext context, WidgetRef ref,
       LanState lanState, ScoreState scoreState) {
-    return Column(
-      children: [
-        _buildEmptyState(context, ref, lanState, scoreState),
-      ],
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref,
-      LanState lanState, ScoreState scoreState) {
     final text = '选择模板开始新计分\n或从历史记录中继续';
-
-    return Expanded(
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(text,
-                style: TextStyle(fontSize: 18), textAlign: TextAlign.center),
-            SizedBox(height: 20),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTemplateButton(context),
-                SizedBox(height: 12),
-                _buildHistoryButton(ref),
-                SizedBox(height: 12),
-                _buildLeagueButton(context),
-                SizedBox(height: 12),
-                _buildLanButton(ref, lanState),
-              ],
-            )
-          ],
+    return LayoutBuilder(builder: (context, constraints) {
+      return SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(text,
+                      style: const TextStyle(fontSize: 18),
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 20),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildTemplateButton(context),
+                      const SizedBox(height: 12),
+                      _buildHistoryButton(ref),
+                      const SizedBox(height: 12),
+                      _buildLeagueButton(context),
+                      const SizedBox(height: 12),
+                      _buildLanButton(ref, lanState),
+                    ],
+                  )
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildTemplateButton(BuildContext context) {
