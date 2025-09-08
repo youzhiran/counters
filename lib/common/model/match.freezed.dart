@@ -26,6 +26,7 @@ mixin _$Match {
   String? get templateId; // 本场比赛使用的计分模板
   DateTime? get startTime;
   DateTime? get endTime;
+  BracketType? get bracketType;
 
   /// Create a copy of Match
   /// with the given fields replaced by the non-null parameter values.
@@ -61,7 +62,9 @@ mixin _$Match {
                 other.templateId == templateId) &&
             (identical(other.startTime, startTime) ||
                 other.startTime == startTime) &&
-            (identical(other.endTime, endTime) || other.endTime == endTime));
+            (identical(other.endTime, endTime) || other.endTime == endTime) &&
+            (identical(other.bracketType, bracketType) ||
+                other.bracketType == bracketType));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -79,11 +82,12 @@ mixin _$Match {
       winnerId,
       templateId,
       startTime,
-      endTime);
+      endTime,
+      bracketType);
 
   @override
   String toString() {
-    return 'Match(mid: $mid, leagueId: $leagueId, round: $round, player1Id: $player1Id, player2Id: $player2Id, status: $status, player1Score: $player1Score, player2Score: $player2Score, winnerId: $winnerId, templateId: $templateId, startTime: $startTime, endTime: $endTime)';
+    return 'Match(mid: $mid, leagueId: $leagueId, round: $round, player1Id: $player1Id, player2Id: $player2Id, status: $status, player1Score: $player1Score, player2Score: $player2Score, winnerId: $winnerId, templateId: $templateId, startTime: $startTime, endTime: $endTime, bracketType: $bracketType)';
   }
 }
 
@@ -104,7 +108,8 @@ abstract mixin class $MatchCopyWith<$Res> {
       String? winnerId,
       String? templateId,
       DateTime? startTime,
-      DateTime? endTime});
+      DateTime? endTime,
+      BracketType? bracketType});
 }
 
 /// @nodoc
@@ -131,6 +136,7 @@ class _$MatchCopyWithImpl<$Res> implements $MatchCopyWith<$Res> {
     Object? templateId = freezed,
     Object? startTime = freezed,
     Object? endTime = freezed,
+    Object? bracketType = freezed,
   }) {
     return _then(_self.copyWith(
       mid: null == mid
@@ -181,6 +187,10 @@ class _$MatchCopyWithImpl<$Res> implements $MatchCopyWith<$Res> {
           ? _self.endTime
           : endTime // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      bracketType: freezed == bracketType
+          ? _self.bracketType
+          : bracketType // ignore: cast_nullable_to_non_nullable
+              as BracketType?,
     ));
   }
 }
@@ -290,7 +300,8 @@ extension MatchPatterns on Match {
             String? winnerId,
             String? templateId,
             DateTime? startTime,
-            DateTime? endTime)?
+            DateTime? endTime,
+            BracketType? bracketType)?
         internal,
     required TResult orElse(),
   }) {
@@ -309,7 +320,8 @@ extension MatchPatterns on Match {
             _that.winnerId,
             _that.templateId,
             _that.startTime,
-            _that.endTime);
+            _that.endTime,
+            _that.bracketType);
       case _:
         return orElse();
     }
@@ -342,7 +354,8 @@ extension MatchPatterns on Match {
             String? winnerId,
             String? templateId,
             DateTime? startTime,
-            DateTime? endTime)
+            DateTime? endTime,
+            BracketType? bracketType)
         internal,
   }) {
     final _that = this;
@@ -360,7 +373,8 @@ extension MatchPatterns on Match {
             _that.winnerId,
             _that.templateId,
             _that.startTime,
-            _that.endTime);
+            _that.endTime,
+            _that.bracketType);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -392,7 +406,8 @@ extension MatchPatterns on Match {
             String? winnerId,
             String? templateId,
             DateTime? startTime,
-            DateTime? endTime)?
+            DateTime? endTime,
+            BracketType? bracketType)?
         internal,
   }) {
     final _that = this;
@@ -410,7 +425,8 @@ extension MatchPatterns on Match {
             _that.winnerId,
             _that.templateId,
             _that.startTime,
-            _that.endTime);
+            _that.endTime,
+            _that.bracketType);
       case _:
         return null;
     }
@@ -432,7 +448,8 @@ class _Match implements Match {
       this.winnerId,
       this.templateId,
       this.startTime,
-      this.endTime});
+      this.endTime,
+      this.bracketType});
   factory _Match.fromJson(Map<String, dynamic> json) => _$MatchFromJson(json);
 
   @override
@@ -462,6 +479,8 @@ class _Match implements Match {
   final DateTime? startTime;
   @override
   final DateTime? endTime;
+  @override
+  final BracketType? bracketType;
 
   /// Create a copy of Match
   /// with the given fields replaced by the non-null parameter values.
@@ -502,7 +521,9 @@ class _Match implements Match {
                 other.templateId == templateId) &&
             (identical(other.startTime, startTime) ||
                 other.startTime == startTime) &&
-            (identical(other.endTime, endTime) || other.endTime == endTime));
+            (identical(other.endTime, endTime) || other.endTime == endTime) &&
+            (identical(other.bracketType, bracketType) ||
+                other.bracketType == bracketType));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -520,11 +541,12 @@ class _Match implements Match {
       winnerId,
       templateId,
       startTime,
-      endTime);
+      endTime,
+      bracketType);
 
   @override
   String toString() {
-    return 'Match.internal(mid: $mid, leagueId: $leagueId, round: $round, player1Id: $player1Id, player2Id: $player2Id, status: $status, player1Score: $player1Score, player2Score: $player2Score, winnerId: $winnerId, templateId: $templateId, startTime: $startTime, endTime: $endTime)';
+    return 'Match.internal(mid: $mid, leagueId: $leagueId, round: $round, player1Id: $player1Id, player2Id: $player2Id, status: $status, player1Score: $player1Score, player2Score: $player2Score, winnerId: $winnerId, templateId: $templateId, startTime: $startTime, endTime: $endTime, bracketType: $bracketType)';
   }
 }
 
@@ -546,7 +568,8 @@ abstract mixin class _$MatchCopyWith<$Res> implements $MatchCopyWith<$Res> {
       String? winnerId,
       String? templateId,
       DateTime? startTime,
-      DateTime? endTime});
+      DateTime? endTime,
+      BracketType? bracketType});
 }
 
 /// @nodoc
@@ -573,6 +596,7 @@ class __$MatchCopyWithImpl<$Res> implements _$MatchCopyWith<$Res> {
     Object? templateId = freezed,
     Object? startTime = freezed,
     Object? endTime = freezed,
+    Object? bracketType = freezed,
   }) {
     return _then(_Match(
       mid: null == mid
@@ -623,6 +647,10 @@ class __$MatchCopyWithImpl<$Res> implements _$MatchCopyWith<$Res> {
           ? _self.endTime
           : endTime // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      bracketType: freezed == bracketType
+          ? _self.bracketType
+          : bracketType // ignore: cast_nullable_to_non_nullable
+              as BracketType?,
     ));
   }
 }

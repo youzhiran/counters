@@ -20,6 +20,7 @@ abstract class Match with _$Match {
     String? templateId, // 本场比赛使用的计分模板
     DateTime? startTime,
     DateTime? endTime,
+    BracketType? bracketType,
   }) = _Match;
 
   factory Match({
@@ -35,6 +36,7 @@ abstract class Match with _$Match {
     String? templateId,
     DateTime? startTime,
     DateTime? endTime,
+    BracketType? bracketType,
   }) {
     return Match.internal(
       mid: mid ?? const Uuid().v4(),
@@ -49,8 +51,16 @@ abstract class Match with _$Match {
       templateId: templateId,
       startTime: startTime,
       endTime: endTime,
+      bracketType: bracketType,
     );
   }
 
   factory Match.fromJson(Map<String, dynamic> json) => _$MatchFromJson(json);
+
+  static Match empty = const Match.internal(
+    mid: '',
+    leagueId: '',
+    round: 0,
+    player1Id: '',
+  );
 }

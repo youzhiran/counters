@@ -181,6 +181,7 @@ class LeagueDao {
       'template_id': match.templateId,
       'start_time': match.startTime?.millisecondsSinceEpoch,
       'end_time': match.endTime?.millisecondsSinceEpoch,
+      'bracket_type': match.bracketType?.name,
     };
   }
 
@@ -205,6 +206,7 @@ class LeagueDao {
           ? DateTime.fromMillisecondsSinceEpoch(dbMap['end_time'] as int)
               .toIso8601String()
           : null,
+      'bracketType': dbMap['bracket_type'],
     };
     return Match.fromJson(json);
   }

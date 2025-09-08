@@ -395,7 +395,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         ?.leagues
         .firstWhereOrNull((l) => l.matches
             .any((m) => m.mid == scoreState?.currentSession?.leagueMatchId));
-    if (league != null && league.type == LeagueType.knockout) {
+    if (league != null &&
+        (league.type == LeagueType.knockout ||
+            league.type == LeagueType.doubleElimination)) {
       final scores = scoreState?.currentSession?.scores;
       if (scores != null && scores.length == 2) {
         if (scores[0].totalScore == scores[1].totalScore) {
@@ -710,7 +712,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           ?.leagues
           .firstWhereOrNull((l) => l.matches
               .any((m) => m.mid == scoreState?.currentSession?.leagueMatchId));
-      if (league != null && league.type == LeagueType.knockout) {
+      if (league != null &&
+          (league.type == LeagueType.knockout ||
+              league.type == LeagueType.doubleElimination)) {
         final scores = scoreState?.currentSession?.scores;
         if (scores != null && scores.length == 2) {
           if (scores[0].totalScore == scores[1].totalScore) {

@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
+import 'package:counters/common/model/league_enums.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/model/player_score.dart';
 import 'package:counters/common/model/sync_messages.dart';
@@ -745,16 +746,8 @@ class Score extends _$Score {
 
       // 检查是否为联赛对局，并更新联赛提供者
       if (completedSession.leagueMatchId != null) {
-        final template = ref
-            .read(templatesProvider)
-            .valueOrNull
-            ?.firstWhereOrNull((t) => t.tid == completedSession.templateId);
-        if (template != null) {
-          final gameResult = calculateGameResult(template);
-          // 修复平局判定：只有当胜利者唯一时才设置winnerId
-          final winnerId = gameResult.winners.length == 1
-              ? gameResult.winners.first.playerId
-              : null;
+        try {
+          final winnerId = await _getWinnerForLeagueMatch(completedSession);
           final scores = Map.fromEntries(completedSession.scores
               .map((s) => MapEntry(s.playerId, s.totalScore)));
 
@@ -765,6 +758,10 @@ class Score extends _$Score {
               );
           Log.i(
               'League match result updated for match ID: ${completedSession.leagueMatchId}');
+        } catch (e) {
+          GlobalMsgManager.showError(e.toString());
+          // 重新抛出异常，以阻止游戏重置，让用户有机会重新选择
+          rethrow;
         }
       }
     } else if (saveToHistory && _isClientMode()) {
@@ -816,7 +813,6 @@ class Score extends _$Score {
     }
 
     final sessionToEnd = currentState!.currentSession!;
-    final template = currentState.template!;
     final leagueMatchId = sessionToEnd.leagueMatchId!;
 
     // 1. 获取原始胜负方
@@ -837,11 +833,15 @@ class Score extends _$Score {
     Log.d('联赛比赛会话 ${sessionToEnd.sid} 已标记为完成');
 
     // 3. 计算新的比赛结果并更新联赛数据
-    final gameResult = calculateGameResult(template);
-    // 修复平局判定：只有当胜利者唯一时才设置winnerId
-    final newWinnerId = gameResult.winners.length == 1
-        ? gameResult.winners.first.playerId
-        : null;
+    final String? newWinnerId;
+    try {
+      newWinnerId = await _getWinnerForLeagueMatch(completedSession);
+    } catch (e) {
+      GlobalMsgManager.showError(e.toString());
+      // 如果用户取消选择，则不继续执行
+      return null;
+    }
+
     final scores = Map.fromEntries(
         completedSession.scores.map((s) => MapEntry(s.playerId, s.totalScore)));
 
@@ -854,8 +854,9 @@ class Score extends _$Score {
 
     // 4. 比较胜负方是否变化，并决定是否重新生成比赛
     String? returnMessage;
-    // 只有当旧的胜者和新的胜者不同时，才触发重新生成
-    if (originalWinnerId != newWinnerId) {
+    // 关键修复：只有在非双败淘汰赛中，才执行这个破坏性的“重新生成”逻辑
+    if (league.type != LeagueType.doubleElimination &&
+        originalWinnerId != newWinnerId) {
       Log.i('胜负方发生变化 (from $originalWinnerId to $newWinnerId)，正在重新生成后续比赛...');
       try {
         await ref
@@ -868,9 +869,8 @@ class Score extends _$Score {
         returnMessage = '比赛结果已记录，但更新后续赛程时出错。';
       }
     } else {
-      // 即使胜负方没变，也可能有下一轮比赛生成（例如，这是本轮最后一场比赛）
-      // updateMatchResult 内部会处理这个逻辑，所以这里不需要额外操作
-      // 但我们可以给一个通用提示
+      // 对于双败淘汰赛，所有逻辑都在 league_provider 内部处理，这里只需显示成功消息
+      // 对于胜负方未变的非双败淘汰赛，也只需显示成功消息
       GlobalMsgManager.showSuccess('比赛结果已记录');
     }
 
@@ -910,7 +910,6 @@ class Score extends _$Score {
     }
 
     final sessionToUpdate = currentState!.currentSession!;
-    final template = currentState.template!;
     final leagueMatchId = sessionToUpdate.leagueMatchId!;
 
     // 1. 获取原始胜负方
@@ -927,10 +926,13 @@ class Score extends _$Score {
     Log.d('已完成的联赛比赛会话 ${sessionToUpdate.sid} 的分数已更新');
 
     // 3. 重新计算新的比赛结果并更新联赛数据
-    final newResult = calculateGameResult(template);
-    // 修复平局判定：只有当胜利者唯一时才设置winnerId
-    final newWinnerId =
-        newResult.winners.length == 1 ? newResult.winners.first.playerId : null;
+    final String? newWinnerId;
+    try {
+      newWinnerId = await _getWinnerForLeagueMatch(updatedSession);
+    } catch (e) {
+      GlobalMsgManager.showError(e.toString());
+      return null; // Abort on cancel
+    }
     final scores = Map.fromEntries(
         updatedSession.scores.map((s) => MapEntry(s.playerId, s.totalScore)));
 
@@ -1199,6 +1201,39 @@ class Score extends _$Score {
       losers: losers,
       havTargetScore: true,
     );
+  }
+
+  Future<String?> _getWinnerForLeagueMatch(GameSession completedSession) async {
+    // 1. Get template and calculate result
+    final template = ref
+        .read(templatesProvider)
+        .valueOrNull
+        ?.firstWhereOrNull((t) => t.tid == completedSession.templateId);
+    if (template == null) {
+      Log.w(
+          'Cannot update league match: template not found for session ${completedSession.sid}');
+      throw Exception('找不到用于计算比赛结果的模板。');
+    }
+    final gameResult = calculateGameResult(template);
+    var winnerId = gameResult.winners.length == 1
+        ? gameResult.winners.first.playerId
+        : null;
+
+    // 2. Check league type for draw condition
+    final leagueState = await ref.read(leagueNotifierProvider.future);
+    final league = leagueState.leagues.firstWhereOrNull(
+        (l) => l.matches.any((m) => m.mid == completedSession.leagueMatchId));
+
+    if (league != null &&
+        (league.type == LeagueType.knockout ||
+            league.type == LeagueType.doubleElimination)) {
+      // 3. If it's a knockout and a draw, throw an error
+      if (winnerId == null) {
+        Log.w('Knockout match is a draw. Aborting match update.');
+        throw Exception('淘汰赛不允许平局，请修改分数决出胜负。');
+      }
+    }
+    return winnerId;
   }
 
   void _broadcastSyncState(GameSession session) {

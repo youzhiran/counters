@@ -80,7 +80,7 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
@@ -258,6 +258,7 @@ class DatabaseHelper {
         template_id TEXT, -- 该场比赛使用的计分器模板ID
         start_time INTEGER, -- 开始时间 (Unix时间戳)
         end_time INTEGER, -- 结束时间 (Unix时间戳)
+        bracket_type TEXT, -- 比赛类型 (胜者组/败者组, V3新增)
         FOREIGN KEY (league_id) REFERENCES leagues (lid) ON DELETE CASCADE
       )
     ''');
@@ -288,6 +289,15 @@ class DatabaseHelper {
 
       // 从 other_set 迁移数据到新列
       await _migrateTemplateData(db);
+    }
+    if (oldVersion < 3) {
+      Log.i("应用 v3 版本的数据库结构变更...");
+      final batch = db.batch();
+      batch.execute('''
+        ALTER TABLE matches ADD COLUMN bracket_type TEXT
+      ''');
+      await batch.commit(noResult: true);
+      Log.i("v3 版本的数据库结构变更应用完成。");
     }
   }
 

@@ -29,14 +29,16 @@ class LeagueDetailPage extends ConsumerStatefulWidget {
 }
 
 class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
-  int _selectedIndex = 0;
   bool _isBracketFullscreen = false;
   late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    // 从 Provider 初始化 PageController 的初始页面
+    final initialIndex =
+        ref.read(leagueDetailPageTabIndexProvider(widget.leagueId));
+    _pageController = PageController(initialPage: initialIndex);
   }
 
   @override
@@ -48,6 +50,9 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
   @override
   Widget build(BuildContext context) {
     final leagueAsync = ref.watch(leagueNotifierProvider);
+    // 监听 Provider 的变化
+    final selectedIndex =
+        ref.watch(leagueDetailPageTabIndexProvider(widget.leagueId));
 
     return leagueAsync.when(
       loading: () => Scaffold(
@@ -92,7 +97,46 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
               label: '排名',
             ),
           ];
+        } else if (league.type == LeagueType.doubleElimination) {
+          pages = [
+            _BracketMatchesList(
+                league: league, bracketType: BracketType.winner),
+            _BracketMatchesList(league: league, bracketType: BracketType.loser),
+            _BracketMatchesList(
+                league: league, bracketType: BracketType.finals),
+            TournamentBracketView(
+              league: league,
+              onFullscreenToggle: (isFullscreen) {
+                setState(() {
+                  _isBracketFullscreen = isFullscreen;
+                });
+              },
+            ),
+          ];
+          destinations = [
+            const NavigationDestination(
+              icon: Icon(Icons.looks_one_outlined),
+              selectedIcon: Icon(Icons.looks_one),
+              label: '胜者组',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.looks_two_outlined),
+              selectedIcon: Icon(Icons.looks_two),
+              label: '败者组',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.star_border_outlined),
+              selectedIcon: Icon(Icons.star),
+              label: '总决赛',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.emoji_events_outlined),
+              selectedIcon: Icon(Icons.emoji_events),
+              label: '对阵图',
+            ),
+          ];
         } else {
+          // Knockout
           pages = [
             _KnockoutMatchesList(league: league),
             TournamentBracketView(
@@ -128,12 +172,14 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
                   foregroundColor: Theme.of(context).colorScheme.onSurface,
                 ),
           body: PageView(
-            physics: const NeverScrollableScrollPhysics(),
+            // physics: const NeverScrollableScrollPhysics(), // Allow swiping for DE
             controller: _pageController,
             onPageChanged: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
+              // 更新 Provider 的值
+              ref
+                  .read(leagueDetailPageTabIndexProvider(widget.leagueId)
+                      .notifier)
+                  .state = index;
             },
             children: pages,
           ),
@@ -141,13 +187,18 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
               ? null
               : NavigationBar(
                   destinations: destinations,
-                  selectedIndex: _selectedIndex,
+                  selectedIndex: selectedIndex, // 使用 Provider 的值
                   onDestinationSelected: (index) {
                     _pageController.animateToPage(
                       index,
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeInOut,
                     );
+                    // 更新 Provider 的值
+                    ref
+                        .read(leagueDetailPageTabIndexProvider(widget.leagueId)
+                            .notifier)
+                        .state = index;
                   },
                 ),
         );
@@ -157,8 +208,9 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
 }
 
 // =============================================
-// 淘汰赛视图 (_KnockoutMatchesList)
+// 淘汰赛视图 (Knockout & Double Elimination)
 // =============================================
+
 class _KnockoutMatchesList extends ConsumerWidget {
   final League league;
 
@@ -166,11 +218,8 @@ class _KnockoutMatchesList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 按轮次分组比赛
     final groupedMatches =
         groupBy<Match, int>(league.matches, (match) => match.round);
-
-    // 按轮次升序排序
     final sortedRounds = groupedMatches.keys.toList()..sort();
 
     return ListView.builder(
@@ -186,43 +235,8 @@ class _KnockoutMatchesList extends ConsumerWidget {
             roundName,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          deleteButton: Builder(
-              builder: (context) => IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: '重置此轮次',
-                    onPressed: () async {
-                      final confirmed = await globalState.showCommonDialog(
-                        child: AlertDialog(
-                          title: const Text('确认重置'),
-                          content: Text('确定要重置 "$roundName" 吗？\n\n'
-                              '此操作将删除此轮次及其所有后续轮次的比赛，并根据前一轮的结果重新生成 "$roundName" 的对阵，且玩家对阵结果可能被改变。此操作不可撤销。'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('取消'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: const Text('重置',
-                                  style: TextStyle(color: Colors.orange)),
-                            ),
-                          ],
-                        ),
-                      );
-
-                      if (confirmed == true) {
-                        try {
-                          await ref
-                              .read(leagueNotifierProvider.notifier)
-                              .resetRound(league.lid, round);
-                        } catch (e) {
-                          if (context.mounted) {
-                            GlobalMsgManager.showWarn('重置失败');
-                          }
-                        }
-                      }
-                    },
-                  )),
+          resetButton:
+              _buildResetButton(context, ref, league, roundName, round),
           children: matchesInRound
               .map((match) => _MatchTile(match: match, league: league))
               .toList(),
@@ -232,13 +246,192 @@ class _KnockoutMatchesList extends ConsumerWidget {
   }
 }
 
+class _BracketMatchesList extends ConsumerWidget {
+  final League league;
+  final BracketType bracketType;
+
+  const _BracketMatchesList({required this.league, required this.bracketType});
+
+  /// 检查特定轮次是否已全部完成
+  bool _isRoundCompleted(int round, BracketType type) {
+    final roundMatches =
+        league.matches.where((m) => m.round == round && m.bracketType == type);
+    if (roundMatches.isEmpty) return false;
+    return roundMatches.every((m) => m.status == MatchStatus.completed);
+  }
+
+  /// 根据完成的轮次生成提示信息
+  Widget? _buildCompletionInfo(BuildContext context) {
+    final roundsInBracket = league.matches
+        .where((m) => m.bracketType == bracketType)
+        .map((m) => m.round)
+        .toSet();
+    if (roundsInBracket.isEmpty) return null;
+
+    final lastRound = roundsInBracket.reduce((a, b) => a > b ? a : b);
+
+    // 仅当最后一轮完成时，才继续
+    if (!_isRoundCompleted(lastRound, bracketType)) {
+      return null;
+    }
+
+    String message;
+    if (bracketType == BracketType.winner || bracketType == BracketType.loser) {
+      final finalsExist =
+          league.matches.any((m) => m.bracketType == BracketType.finals);
+      if (finalsExist) {
+        final championAdjective =
+            bracketType == BracketType.winner ? '胜者组' : '败者组';
+        message = '$championAdjective冠军已决出，请切换下方导航进入总决赛继续比赛。';
+      } else {
+        final championAdjective =
+            bracketType == BracketType.winner ? '胜者组' : '败者组';
+        message = '$championAdjective胜者已晋级，请切换下方导航进入另一组比赛以继续比赛。';
+      }
+    } else {
+      // 总决赛
+      message = '总决赛已完成，联赛冠军已决出！';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .primary
+            .withAlpha((0.1 * 255).toInt()),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context)
+              .colorScheme
+              .primary
+              .withAlpha((0.3 * 255).toInt()),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline,
+              color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matches =
+        league.matches.where((m) => m.bracketType == bracketType).toList();
+    if (matches.isEmpty) {
+      String emptyMessage;
+      switch (bracketType) {
+        case BracketType.winner:
+          emptyMessage = '暂无胜者组比赛';
+          break;
+        case BracketType.loser:
+          emptyMessage = '暂无败者组比赛';
+          break;
+        case BracketType.finals:
+          emptyMessage = '暂无总决赛';
+          break;
+      }
+      return Center(child: Text(emptyMessage));
+    }
+
+    final groupedMatches = groupBy<Match, int>(matches, (match) => match.round);
+    final sortedRounds = groupedMatches.keys.toList()..sort();
+    final completionInfo = _buildCompletionInfo(context);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        children: [
+          if (completionInfo != null) completionInfo,
+          ...sortedRounds.map((round) {
+            final matchesInRound = groupedMatches[round]!;
+            final roundName = getRoundName(
+              league.playerIds.length,
+              round,
+              bracketType: bracketType,
+            );
+            return _AnimatedExpansionPanel(
+              title: Text(
+                roundName,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              resetButton: bracketType == BracketType.winner
+                  ? _buildResetButton(context, ref, league, roundName, round)
+                  : null,
+              children: matchesInRound
+                  .map((match) => _MatchTile(match: match, league: league))
+                  .toList(),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _buildResetButton(BuildContext context, WidgetRef ref, League league,
+    String roundName, int round) {
+  return Builder(
+      builder: (context) => IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: '重置此轮次',
+            onPressed: () async {
+              final confirmed = await globalState.showCommonDialog(
+                child: AlertDialog(
+                  title: const Text('确认重置'),
+                  content: Text(
+                      '确定要重置 "$roundName" 吗？\n\n' // Corrected escaping for newline and quotes
+                      '此操作将删除此轮次及其所有后续轮次的比赛，并根据前一轮的结果重新生成 "$roundName" 的对阵，且玩家对阵结果可能被改变。此操作不可撤销。'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('取消'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('重置',
+                          style: TextStyle(color: Colors.orange)),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmed == true) {
+                try {
+                  await ref
+                      .read(leagueNotifierProvider.notifier)
+                      .resetRound(league.lid, round);
+                } catch (e) {
+                  if (context.mounted) {
+                    GlobalMsgManager.showWarn('重置失败');
+                  }
+                }
+              }
+            },
+          ));
+}
+
 class _AnimatedExpansionPanel extends StatefulWidget {
   final Widget title;
   final List<Widget> children;
-  final Widget? deleteButton; // 新增删除按钮参数
+  final Widget? resetButton;
 
   const _AnimatedExpansionPanel(
-      {required this.title, required this.children, this.deleteButton});
+      {required this.title, required this.children, this.resetButton});
 
   @override
   _AnimatedExpansionPanelState createState() => _AnimatedExpansionPanelState();
@@ -318,7 +511,7 @@ class _AnimatedExpansionPanelState extends State<_AnimatedExpansionPanel>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(child: widget.title),
-                  if (widget.deleteButton != null) widget.deleteButton!,
+                  if (widget.resetButton != null) widget.resetButton!,
                   RotationTransition(
                     turns: _iconTurns,
                     child: const Icon(Icons.expand_more),
@@ -401,6 +594,72 @@ class _MatchTile extends ConsumerWidget {
     );
   }
 
+  /// 判断比赛是否可进行，并返回提示信息
+  ({bool isAvailable, String? message}) _getMatchAvailability(
+      League league, Match match) {
+    // 已经开始或完成的比赛总是可访问的
+    if (match.status != MatchStatus.pending) {
+      return (isAvailable: true, message: null);
+    }
+
+    // 对于非双败淘汰赛，所有未开始的比赛都可以进行
+    if (league.type != LeagueType.doubleElimination) {
+      return (isAvailable: true, message: null);
+    }
+
+    // --- 双败淘汰赛流程检查 ---
+
+    // 1. 找出胜者组和败者组各自完成到的最高轮次
+    final completedWinnerRounds = league.matches
+        .where((m) =>
+            m.bracketType == BracketType.winner &&
+            m.status == MatchStatus.completed)
+        .map((m) => m.round)
+        .toSet();
+    final maxCompletedWinnerRound = completedWinnerRounds.isEmpty
+        ? 0
+        : completedWinnerRounds.reduce((a, b) => a > b ? a : b);
+
+    final completedLoserRounds = league.matches
+        .where((m) =>
+            m.bracketType == BracketType.loser &&
+            m.status == MatchStatus.completed)
+        .map((m) => m.round)
+        .toSet();
+    final maxCompletedLoserRound = completedLoserRounds.isEmpty
+        ? 0
+        : completedLoserRounds.reduce((a, b) => a > b ? a : b);
+
+    // 规则A: 对于一场未开始的胜者组比赛
+    if (match.bracketType == BracketType.winner) {
+      // 修复：第一轮比赛 (match.round == 1) 应该总是可以进行的
+      if (match.round == 1) return (isAvailable: true, message: null);
+
+      // 对于后续轮次，要求前一轮的败者组比赛完成
+      // 例如，要打 WB R2 (match.round=2)，要求 LB R1 完成 (maxCompletedLoserRound >= 1)
+      if (maxCompletedLoserRound < match.round - 1) {
+        return (
+          isAvailable: false,
+          message: '胜者组第 ${match.round} 轮需要等待败者组第 ${match.round - 1} 轮完成后才能开始。'
+        );
+      }
+    }
+
+    // 规则B: 对于一场未开始的败者组比赛
+    if (match.bracketType == BracketType.loser) {
+      // 检查生成这场比赛所依赖的胜者组比赛是否已完成
+      // 例如，要打 LB R1 (match.round=1)，要求 WB R1 完成 (maxCompletedWinnerRound >= 1)
+      if (maxCompletedWinnerRound < match.round) {
+        return (
+          isAvailable: false,
+          message: '败者组第 ${match.round} 轮需要等待胜者组第 ${match.round} 轮完成后才能开始。'
+        );
+      }
+    }
+
+    return (isAvailable: true, message: null);
+  }
+
   Widget _buildSubtitle(Match match) {
     String statusText;
     switch (match.status) {
@@ -450,6 +709,14 @@ class _MatchTile extends ConsumerWidget {
     // 关键修复：增加安全检查，防止导航到轮空比赛
     if (match.player2Id == 'bye') {
       Log.d('尝试导航到轮空比赛，操作被阻止。');
+      return;
+    }
+
+    // 核心修改：在进入比赛前，检查比赛是否符合流程要求
+    final availability = _getMatchAvailability(league, match);
+    if (!availability.isAvailable) {
+      // 可选：在这里添加一个 SnackBar 提示
+      GlobalMsgManager.showWarn(availability.message ?? '比赛暂不能进行');
       return;
     }
 

@@ -13,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 const _cardWidth = 180.0;
 const _cardHeight = 70.0;
 const _roundSpacing = 50.0;
-const _verticalCardSpacing = 32.0; // Spacing between cards in the same round
+const _verticalCardSpacing = 32.0;
 const _maxScale = 2.5;
 
 class TournamentBracketView extends ConsumerStatefulWidget {
@@ -30,11 +30,14 @@ class TournamentBracketView extends ConsumerStatefulWidget {
 
 class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
     with AutomaticKeepAliveClientMixin {
-  double _minScale = 0.2; // Default value, will be updated dynamically.
+  double _minScale = 0.2;
   bool _isFullscreen = false;
   final TransformationController _transformationController =
       TransformationController();
   final GlobalKey _interactiveViewerKey = GlobalKey();
+
+  // Cache for calculated positions to avoid recalculation
+  Map<String, Offset> _matchPositions = {};
 
   @override
   bool get wantKeepAlive => true;
@@ -42,44 +45,48 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
   @override
   void initState() {
     super.initState();
-    // 保证在第一帧渲染完成后，只执行一次居中操作
+    _matchPositions = _calculateAllMatchPositions(widget.league.matches);
     WidgetsBinding.instance.addPostFrameCallback((_) => _centerView());
   }
 
   @override
+  void didUpdateWidget(covariant TournamentBracketView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.league != widget.league) {
+      _matchPositions = _calculateAllMatchPositions(widget.league.matches);
+    }
+  }
+
+  @override
   void dispose() {
-    // Ensure we exit fullscreen when the widget is disposed.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _transformationController.dispose();
     super.dispose();
   }
 
   void _centerView() {
-    if (!mounted || _interactiveViewerKey.currentContext == null) return;
+    if (!mounted ||
+        _interactiveViewerKey.currentContext == null ||
+        _matchPositions.isEmpty) {
+      return;
+    }
 
     final RenderBox renderBox =
         _interactiveViewerKey.currentContext!.findRenderObject() as RenderBox;
     final viewSize = renderBox.size;
 
-    final groupedMatches =
-        groupBy<Match, int>(widget.league.matches, (match) => match.round);
-    final sortedRounds = groupedMatches.keys.toList()..sort();
-    if (sortedRounds.isEmpty) return;
-
-    final matchPositions =
-        _calculateMatchPositions(groupedMatches, sortedRounds);
-    if (matchPositions.isEmpty) return;
-
-    final totalWidth = sortedRounds.length * _cardWidth +
-        (sortedRounds.length - 1) * _roundSpacing;
-    final totalHeight = matchPositions.values
+    final totalWidth = _matchPositions.values
+            .map((p) => p.dx)
+            .reduce((max, x) => x > max ? x : x) +
+        _cardWidth;
+    final totalHeight = _matchPositions.values
             .map((p) => p.dy)
             .reduce((max, y) => y > max ? y : max) +
         _cardHeight;
 
     final scaleX = viewSize.width / (totalWidth + 32);
     final scaleY = viewSize.height / (totalHeight + 32);
-    final initialScale = (min(scaleX, scaleY) * 0.8).clamp(0.1, 1.0);
+    final initialScale = (min(scaleX, scaleY) * 0.9).clamp(0.1, 1.0);
 
     if (mounted) {
       setState(() {
@@ -109,6 +116,164 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
     widget.onFullscreenToggle(_isFullscreen);
   }
 
+  Map<String, Offset> _calculateAllMatchPositions(List<Match> allMatches) {
+    final positions = <String, Offset>{};
+    if (allMatches.isEmpty) return positions;
+
+    // Separate matches by bracket
+    // 关键修复：将 bracketType == null (普通淘汰赛) 的比赛也视作胜者组进行布局
+    final winnerMatches = allMatches
+        .where(
+            (m) => m.bracketType == BracketType.winner || m.bracketType == null)
+        .toList();
+    final loserMatches =
+        allMatches.where((m) => m.bracketType == BracketType.loser).toList();
+    final finalMatches =
+        allMatches.where((m) => m.bracketType == BracketType.finals).toList();
+
+    final groupedWinner = groupBy(winnerMatches, (m) => m.round);
+    final sortedWinnerRounds = groupedWinner.keys.toList()..sort();
+
+    final groupedLoser = groupBy(loserMatches, (m) => m.round);
+    final sortedLoserRounds = groupedLoser.keys.toList()..sort();
+
+    // 1. Position Winner Bracket
+    double winnerMaxY = 0;
+    final Map<int, List<Offset>> winnerConnectorPoints = {};
+
+    for (int i = 0; i < sortedWinnerRounds.length; i++) {
+      final round = sortedWinnerRounds[i];
+      final matchesInRound = groupedWinner[round]!;
+      matchesInRound.sort((a, b) => a.mid.compareTo(b.mid));
+      final double x = i * (_cardWidth + _roundSpacing);
+
+      if (i == 0) {
+        for (int j = 0; j < matchesInRound.length; j++) {
+          final match = matchesInRound[j];
+          final double y = j * (_cardHeight + _verticalCardSpacing);
+          positions[match.mid] = Offset(x, y);
+          if (y > winnerMaxY) winnerMaxY = y;
+        }
+      } else {
+        final previousConnectors = winnerConnectorPoints[round - 1] ?? [];
+        for (int j = 0; j < matchesInRound.length; j++) {
+          if (j >= previousConnectors.length) continue;
+          final match = matchesInRound[j];
+          final double y = previousConnectors[j].dy - (_cardHeight / 2);
+          positions[match.mid] = Offset(x, y);
+          if (y > winnerMaxY) winnerMaxY = y;
+        }
+      }
+      winnerConnectorPoints[round] =
+          _calculateNextConnectorPoints(matchesInRound, positions, x);
+    }
+
+    // 2. Position Loser Bracket
+    double loserMaxY = 0;
+    final Map<int, List<Offset>> loserConnectorPoints = {};
+    final double loserYOffset = winnerMaxY + _cardHeight + 100;
+
+    for (int i = 0; i < sortedLoserRounds.length; i++) {
+      final round = sortedLoserRounds[i];
+      final matchesInRound = groupedLoser[round]!;
+      matchesInRound.sort((a, b) => a.mid.compareTo(b.mid));
+
+      // Align loser bracket rounds with winner bracket rounds
+      final wbRoundIndex = (round / 2).floor();
+      final double x = wbRoundIndex * (_cardWidth + _roundSpacing);
+
+      if (i == 0) {
+        for (int j = 0; j < matchesInRound.length; j++) {
+          final match = matchesInRound[j];
+          final double y =
+              j * (_cardHeight + _verticalCardSpacing) + loserYOffset;
+          positions[match.mid] = Offset(x, y);
+          if (y > loserMaxY) loserMaxY = y;
+        }
+      } else {
+        final previousConnectors = loserConnectorPoints[round - 1] ?? [];
+        for (int j = 0; j < matchesInRound.length; j++) {
+          if (j >= previousConnectors.length) continue;
+          final match = matchesInRound[j];
+          final double y = previousConnectors[j].dy - (_cardHeight / 2);
+          positions[match.mid] = Offset(x, y);
+          if (y > loserMaxY) loserMaxY = y;
+        }
+      }
+      loserConnectorPoints[round] = _calculateNextConnectorPoints(
+          matchesInRound, positions, x,
+          round: round);
+    }
+
+    // 3. Position Final Bracket
+    if (finalMatches.isNotEmpty) {
+      final wbFinal = winnerMatches.last;
+      final lbFinal = loserMatches.last;
+      final wbFinalPos = positions[wbFinal.mid];
+      final lbFinalPos = positions[lbFinal.mid];
+
+      if (wbFinalPos != null && lbFinalPos != null) {
+        final double x =
+            (sortedWinnerRounds.length) * (_cardWidth + _roundSpacing);
+        final double y = (wbFinalPos.dy + lbFinalPos.dy) / 2;
+        positions[finalMatches.first.mid] = Offset(x, y);
+
+        // Position for potential bracket reset match
+        if (finalMatches.length > 1) {
+          positions[finalMatches.last.mid] =
+              Offset(x + _cardWidth + _roundSpacing, y);
+        }
+      }
+    }
+
+    return positions;
+  }
+
+  List<Offset> _calculateNextConnectorPoints(
+      List<Match> matchesInRound, Map<String, Offset> positions, double x,
+      {int round = 0}) {
+    final List<Offset> nextConnectors = [];
+    final isPaired = round == 0 || round % 2 != 0; // WB or LB odd rounds
+
+    for (int j = 0; j < matchesInRound.length; j += (isPaired ? 2 : 1)) {
+      final topMatch = matchesInRound[j];
+      final bottomMatch = (isPaired && j + 1 < matchesInRound.length)
+          ? matchesInRound[j + 1]
+          : null;
+
+      final topMatchPos = positions[topMatch.mid];
+      if (topMatchPos == null) continue;
+
+      final topWinnerOffset = _getWinnerYOffset(topMatch, positions);
+
+      if (bottomMatch != null) {
+        final bottomMatchPos = positions[bottomMatch.mid];
+        if (bottomMatchPos == null) continue;
+        final bottomWinnerOffset = _getWinnerYOffset(bottomMatch, positions);
+        final midY = (topWinnerOffset + bottomWinnerOffset) / 2;
+        nextConnectors.add(Offset(x + _cardWidth, midY));
+      } else {
+        nextConnectors.add(Offset(x + _cardWidth, topWinnerOffset));
+      }
+    }
+    return nextConnectors;
+  }
+
+  double _getWinnerYOffset(Match match, Map<String, Offset> positions) {
+    final pos = positions[match.mid];
+    if (pos == null) return 0;
+    if (match.status != MatchStatus.completed || match.winnerId == null) {
+      return pos.dy + _cardHeight / 2;
+    }
+    if (match.winnerId == match.player1Id) {
+      return pos.dy + _cardHeight * 0.25;
+    }
+    if (match.winnerId == match.player2Id) {
+      return pos.dy + _cardHeight * 0.75;
+    }
+    return pos.dy + _cardHeight / 2;
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -117,20 +282,16 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
       return const Center(child: CircularProgressIndicator());
     }
 
-    final groupedMatches =
-        groupBy<Match, int>(widget.league.matches, (match) => match.round);
-    final sortedRounds = groupedMatches.keys.toList()..sort();
-
-    final matchPositions =
-        _calculateMatchPositions(groupedMatches, sortedRounds);
-
-    if (matchPositions.isEmpty) {
+    final allMatches = widget.league.matches;
+    if (allMatches.isEmpty || _matchPositions.isEmpty) {
       return const Center(child: Text('没有比赛信息可供显示'));
     }
 
-    final totalWidth = sortedRounds.length * _cardWidth +
-        (sortedRounds.length - 1) * _roundSpacing;
-    final totalHeight = matchPositions.values
+    final totalWidth = _matchPositions.values
+            .map((p) => p.dx)
+            .reduce((max, x) => x > max ? x : x) +
+        _cardWidth;
+    final totalHeight = _matchPositions.values
             .map((p) => p.dy)
             .reduce((max, y) => y > max ? y : max) +
         _cardHeight;
@@ -150,8 +311,26 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
               width: totalWidth,
               height: totalHeight,
               child: Stack(
-                children: _buildBracketWidgets(context, groupedMatches,
-                    sortedRounds, playerState.players, matchPositions),
+                children: [
+                  CustomPaint(
+                    size: Size(totalWidth, totalHeight),
+                    painter: _BracketLinePainter(
+                      league: widget.league,
+                      matchPositions: _matchPositions,
+                      lineColor: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                  ...allMatches.map((match) {
+                    final position = _matchPositions[match.mid];
+                    if (position == null) return const SizedBox.shrink();
+                    return Positioned(
+                      left: position.dx,
+                      top: position.dy,
+                      child: _MatchCard(
+                          match: match, players: playerState.players),
+                    );
+                  }),
+                ],
               ),
             ),
           ),
@@ -182,116 +361,6 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
         ),
       ],
     );
-  }
-
-  Map<String, Offset> _calculateMatchPositions(
-      Map<int, List<Match>> groupedMatches, List<int> sortedRounds) {
-    final Map<String, Offset> positions = {};
-    final Map<int, List<Offset>> roundConnectorPoints = {};
-
-    for (int i = 0; i < sortedRounds.length; i++) {
-      final round = sortedRounds[i];
-      final matchesInRound = groupedMatches[round]!;
-      // 关键改动：根据 mid 对当前轮次的比赛进行排序，确保布局稳定性
-      matchesInRound.sort((a, b) => a.mid.compareTo(b.mid));
-      final double x = i * (_cardWidth + _roundSpacing);
-
-      if (i == 0) {
-        // First round positions are fixed
-        for (int j = 0; j < matchesInRound.length; j++) {
-          final match = matchesInRound[j];
-          final double y = j * (_cardHeight + _verticalCardSpacing);
-          positions[match.mid] = Offset(x, y);
-        }
-      } else {
-        // Subsequent rounds are positioned based on the previous round's connectors
-        final previousConnectors = roundConnectorPoints[round - 1] ?? [];
-        for (int j = 0; j < matchesInRound.length; j++) {
-          if (j >= previousConnectors.length) continue; // Avoid range errors
-          final match = matchesInRound[j];
-          // Align the center of the card with the incoming connector line
-          final double y = previousConnectors[j].dy - (_cardHeight / 2);
-          positions[match.mid] = Offset(x, y);
-        }
-      }
-
-      // Calculate connector points for the *next* round
-      final List<Offset> nextConnectors = [];
-      for (int j = 0; j < matchesInRound.length; j += 2) {
-        final topMatch = matchesInRound[j];
-        final bottomMatch =
-            (j + 1 < matchesInRound.length) ? matchesInRound[j + 1] : null;
-
-        final topMatchPos = positions[topMatch.mid];
-        if (topMatchPos == null) continue;
-
-        final topWinnerOffset = _getWinnerOffset(topMatch);
-
-        if (bottomMatch != null) {
-          final bottomMatchPos = positions[bottomMatch.mid];
-          if (bottomMatchPos == null) continue;
-
-          final bottomWinnerOffset = _getWinnerOffset(bottomMatch);
-          final midY = (topMatchPos.dy +
-                  topWinnerOffset +
-                  bottomMatchPos.dy +
-                  bottomWinnerOffset) /
-              2;
-          nextConnectors.add(Offset(x + _cardWidth, midY));
-        } else {
-          nextConnectors
-              .add(Offset(x + _cardWidth, topMatchPos.dy + topWinnerOffset));
-        }
-      }
-      roundConnectorPoints[round] = nextConnectors;
-    }
-    return positions;
-  }
-
-  List<Widget> _buildBracketWidgets(
-    BuildContext context,
-    Map<int, List<Match>> groupedMatches,
-    List<int> sortedRounds,
-    List<PlayerInfo> players,
-    Map<String, Offset> matchPositions,
-  ) {
-    final List<Widget> widgets = [];
-
-    for (int i = 0; i < sortedRounds.length; i++) {
-      final round = sortedRounds[i];
-      final matchesInRound = groupedMatches[round]!;
-
-      // Add connectors first so they are drawn behind the cards
-      if (i < sortedRounds.length - 1) {
-        widgets.add(
-          _RoundConnector(
-            matches: matchesInRound,
-            matchPositions: matchPositions,
-          ),
-        );
-      }
-
-      // Add match cards
-      for (final match in matchesInRound) {
-        final position = matchPositions[match.mid];
-        if (position == null) continue;
-        widgets.add(
-          Positioned(
-            left: position.dx,
-            top: position.dy,
-            child: _MatchCard(match: match, players: players),
-          ),
-        );
-      }
-    }
-    return widgets;
-  }
-
-  double _getWinnerOffset(Match match) {
-    if (match.status != MatchStatus.completed) return _cardHeight / 2;
-    if (match.winnerId == match.player1Id) return _cardHeight * 0.25;
-    if (match.winnerId == match.player2Id) return _cardHeight * 0.75;
-    return _cardHeight / 2; // Bye or draw
   }
 }
 
@@ -418,39 +487,28 @@ class _PlayerRow extends StatelessWidget {
   }
 }
 
-class _RoundConnector extends StatelessWidget {
-  final List<Match> matches;
-  final Map<String, Offset> matchPositions;
-
-  const _RoundConnector({required this.matches, required this.matchPositions});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _BracketLinePainter(
-        matches: matches,
-        matchPositions: matchPositions,
-        lineColor: Theme.of(context).colorScheme.outline,
-      ),
-    );
-  }
-}
-
 class _BracketLinePainter extends CustomPainter {
-  final List<Match> matches;
+  final League league;
   final Map<String, Offset> matchPositions;
   final Color lineColor;
 
-  _BracketLinePainter(
-      {required this.matches,
+  _BracketLinePainter({required this.league,
       required this.matchPositions,
       required this.lineColor});
 
-  double _getWinnerOffset(Match match) {
-    if (match.status != MatchStatus.completed) return _cardHeight / 2;
-    if (match.winnerId == match.player1Id) return _cardHeight * 0.25;
-    if (match.winnerId == match.player2Id) return _cardHeight * 0.75;
-    return _cardHeight / 2; // Bye or draw
+  double _getWinnerYOffset(Match match) {
+    final pos = matchPositions[match.mid];
+    if (pos == null) return 0;
+    if (match.status != MatchStatus.completed || match.winnerId == null) {
+      return pos.dy + _cardHeight / 2;
+    }
+    if (match.winnerId == match.player1Id) {
+      return pos.dy + _cardHeight * 0.25;
+    }
+    if (match.winnerId == match.player2Id) {
+      return pos.dy + _cardHeight * 0.75;
+    }
+    return pos.dy + _cardHeight / 2;
   }
 
   @override
@@ -459,39 +517,124 @@ class _BracketLinePainter extends CustomPainter {
       ..color = lineColor
       ..strokeWidth = 1.5;
 
-    for (int i = 0; i < matches.length; i += 2) {
-      final topMatch = matches[i];
-      final bottomMatch = (i + 1 < matches.length) ? matches[i + 1] : null;
+    final matchesById = {for (var m in league.matches) m.mid: m};
 
-      final topMatchPos = matchPositions[topMatch.mid];
-      if (topMatchPos == null) continue;
+    // A simplified drawing logic based on rounds, as we can't build a true graph
+    final groupedMatches = groupBy(league.matches, (m) => m.bracketType);
 
-      final topWinnerY = topMatchPos.dy + _getWinnerOffset(topMatch);
-      final startX = topMatchPos.dx + _cardWidth;
+    // 关键修复：将 bracketType == null (普通淘汰赛) 的比赛也视作胜者组进行绘制
+    final List<Match> winnerMatches = [
+      ...(groupedMatches[BracketType.winner] ?? []),
+      ...(groupedMatches[null] ?? []),
+    ];
 
-      // 1. Draw horizontal line from the top card
-      canvas.drawLine(Offset(startX, topWinnerY),
-          Offset(startX + _roundSpacing / 2, topWinnerY), paint);
+    _drawConnectorsForBracket(canvas, paint, winnerMatches, matchesById);
+    _drawConnectorsForBracket(
+        canvas, paint, groupedMatches[BracketType.loser] ?? [], matchesById,
+        isLoserBracket: true);
+    _drawFinalsConnector(canvas, paint, groupedMatches, matchesById);
+  }
 
-      if (bottomMatch != null) {
-        final bottomMatchPos = matchPositions[bottomMatch.mid];
-        if (bottomMatchPos == null) continue;
+  void _drawConnectorsForBracket(Canvas canvas, Paint paint,
+      List<Match> bracketMatches, Map<String, Match> allMatches,
+      {bool isLoserBracket = false}) {
+    final grouped = groupBy(bracketMatches, (m) => m.round);
+    final sortedRounds = grouped.keys.toList()..sort();
 
-        final bottomWinnerY = bottomMatchPos.dy + _getWinnerOffset(bottomMatch);
-        final midY = (topWinnerY + bottomWinnerY) / 2;
+    for (int i = 0; i < sortedRounds.length - 1; i++) {
+      final round = sortedRounds[i];
+      final nextRound = sortedRounds[i + 1];
+      final matchesInRound = grouped[round]!;
+      final matchesInNextRound = grouped[nextRound]!;
 
-        // 2. Draw horizontal line from the bottom card
-        canvas.drawLine(Offset(startX, bottomWinnerY),
-            Offset(startX + _roundSpacing / 2, bottomWinnerY), paint);
+      final isPaired = !isLoserBracket || round % 2 != 0;
 
-        // 3. Draw the vertical line connecting them
-        canvas.drawLine(Offset(startX + _roundSpacing / 2, topWinnerY),
-            Offset(startX + _roundSpacing / 2, bottomWinnerY), paint);
+      if (isPaired) {
+        for (int j = 0; j < matchesInRound.length; j += 2) {
+          final topMatch = matchesInRound[j];
+          final bottomMatch =
+              (j + 1 < matchesInRound.length) ? matchesInRound[j + 1] : null;
+          final targetMatch = matchesInNextRound.length > (j / 2).floor()
+              ? matchesInNextRound[(j / 2).floor()]
+              : null;
+          if (targetMatch == null) continue;
 
-        // 4. Draw the final horizontal line to the next round's card
-        canvas.drawLine(Offset(startX + _roundSpacing / 2, midY),
-            Offset(startX + _roundSpacing, midY), paint);
+          _drawConnector(canvas, paint, topMatch, bottomMatch, targetMatch);
+        }
+      } else {
+        // Loser bracket even rounds, one-to-one connection + one from winner bracket
+        for (int j = 0; j < matchesInRound.length; j++) {
+          final sourceMatch = matchesInRound[j];
+          // This is where it gets tricky. We need to know which WB match drops down.
+          // This info is not in the data model. We can only assume a one-to-one connection for now.
+          final targetMatch =
+              matchesInNextRound.length > j ? matchesInNextRound[j] : null;
+          if (targetMatch == null) continue;
+          _drawConnector(canvas, paint, sourceMatch, null, targetMatch);
+        }
       }
+    }
+  }
+
+  void _drawFinalsConnector(
+      Canvas canvas,
+      Paint paint,
+      Map<BracketType?, List<Match>> groupedMatches,
+      Map<String, Match> allMatches) {
+    final winnerFinal = (groupedMatches[BracketType.winner] ?? []).lastOrNull;
+    final loserFinal = (groupedMatches[BracketType.loser] ?? []).lastOrNull;
+    final grandFinal = (groupedMatches[BracketType.finals] ?? []).firstOrNull;
+
+    if (winnerFinal != null && loserFinal != null && grandFinal != null) {
+      _drawConnector(canvas, paint, winnerFinal, loserFinal, grandFinal);
+    }
+
+    // Connector for bracket reset
+    final bracketResetMatch =
+        (groupedMatches[BracketType.finals] ?? []).length > 1
+            ? (groupedMatches[BracketType.finals] ?? [])[1]
+            : null;
+    if (grandFinal != null && bracketResetMatch != null) {
+      _drawConnector(canvas, paint, grandFinal, null, bracketResetMatch);
+    }
+  }
+
+  void _drawConnector(
+      Canvas canvas, Paint paint, Match? top, Match? bottom, Match target) {
+    final targetPos = matchPositions[target.mid];
+    if (targetPos == null) return;
+    final targetY = targetPos.dy + _cardHeight / 2;
+    final targetX = targetPos.dx;
+
+    if (top != null && bottom != null) {
+      final topPos = matchPositions[top.mid];
+      if (topPos == null) return;
+      final bottomPos = matchPositions[bottom.mid];
+      if (bottomPos == null) return;
+
+      final topWinnerY = _getWinnerYOffset(top);
+      final bottomWinnerY = _getWinnerYOffset(bottom);
+      final startX = topPos.dx + _cardWidth;
+      final midX = startX + _roundSpacing / 2;
+
+      canvas.drawLine(
+          Offset(startX, topWinnerY), Offset(midX, topWinnerY), paint);
+      canvas.drawLine(
+          Offset(startX, bottomWinnerY), Offset(midX, bottomWinnerY), paint);
+      canvas.drawLine(
+          Offset(midX, topWinnerY), Offset(midX, bottomWinnerY), paint);
+      canvas.drawLine(Offset(midX, targetY), Offset(targetX, targetY), paint);
+    } else if (top != null) {
+      final topPos = matchPositions[top.mid];
+      if (topPos == null) return;
+      final topWinnerY = _getWinnerYOffset(top);
+      final startX = topPos.dx + _cardWidth;
+      final midX = startX + _roundSpacing / 2;
+
+      canvas.drawLine(
+          Offset(startX, topWinnerY), Offset(midX, topWinnerY), paint);
+      canvas.drawLine(Offset(midX, topWinnerY), Offset(midX, targetY), paint);
+      canvas.drawLine(Offset(midX, targetY), Offset(targetX, targetY), paint);
     }
   }
 

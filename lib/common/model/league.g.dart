@@ -38,4 +38,5 @@ Map<String, dynamic> _$LeagueToJson(_League instance) => <String, dynamic>{
 const _$LeagueTypeEnumMap = {
   LeagueType.roundRobin: 'roundRobin',
   LeagueType.knockout: 'knockout',
+  LeagueType.doubleElimination: 'doubleElimination',
 };

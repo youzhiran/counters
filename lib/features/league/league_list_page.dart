@@ -47,9 +47,11 @@ class LeagueListPage extends ConsumerWidget {
   String _getLeagueTypeDesc(LeagueType type) {
     switch (type) {
       case LeagueType.knockout:
-        return '淘汰赛';
+        return '单败淘汰赛';
       case LeagueType.roundRobin:
         return '循环赛';
+      case LeagueType.doubleElimination:
+        return '双败淘汰赛';
     }
   }
 

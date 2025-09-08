@@ -24,6 +24,8 @@ _Match _$MatchFromJson(Map<String, dynamic> json) => _Match(
       endTime: json['endTime'] == null
           ? null
           : DateTime.parse(json['endTime'] as String),
+      bracketType:
+          $enumDecodeNullable(_$BracketTypeEnumMap, json['bracketType']),
     );
 
 Map<String, dynamic> _$MatchToJson(_Match instance) => <String, dynamic>{
@@ -39,10 +41,17 @@ Map<String, dynamic> _$MatchToJson(_Match instance) => <String, dynamic>{
       'templateId': instance.templateId,
       'startTime': instance.startTime?.toIso8601String(),
       'endTime': instance.endTime?.toIso8601String(),
+      'bracketType': _$BracketTypeEnumMap[instance.bracketType],
     };
 
 const _$MatchStatusEnumMap = {
   MatchStatus.pending: 'pending',
   MatchStatus.inProgress: 'inProgress',
   MatchStatus.completed: 'completed',
+};
+
+const _$BracketTypeEnumMap = {
+  BracketType.winner: 'winner',
+  BracketType.loser: 'loser',
+  BracketType.finals: 'finals',
 };

@@ -132,7 +132,11 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
                     ),
                     DropdownMenuItem(
                       value: LeagueType.knockout,
-                      child: Text('淘汰赛'),
+                      child: Text('单败淘汰赛'),
+                    ),
+                    DropdownMenuItem(
+                      value: LeagueType.doubleElimination,
+                      child: Text('双败淘汰赛'),
                     ),
                   ],
                   onChanged: (value) {
