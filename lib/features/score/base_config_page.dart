@@ -504,9 +504,8 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
         // 胜利规则设置
         SizedBox(
           child: SwitchListTile(
-            title: const Text('反转胜利规则'),
-            subtitle:
-                Text(_reverseWinRule ? '先达到目标分数的玩家获胜' : '先达到目标分数的玩家失败（默认）'),
+            title: const Text('胜利规则设置'),
+            subtitle: Text(_reverseWinRule ? '先达到目标分数的玩家获胜' : '先达到目标分数的玩家失败'),
             value: _reverseWinRule,
             onChanged: widget.isReadOnly
                 ? null

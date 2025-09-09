@@ -58,7 +58,7 @@ class DatabaseHelper {
       'base_template_id': null,
       'template_type': 'counter',
       'disable_victory_score_check': 0,
-      'reverse_win_rule': 0,
+      'reverse_win_rule': 1,
       'other_set': null
     }
     // 如果有新的系统模板，在这里添加
@@ -80,7 +80,7 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 3,
+        version: 4,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
@@ -298,6 +298,16 @@ class DatabaseHelper {
       ''');
       await batch.commit(noResult: true);
       Log.i("v3 版本的数据库结构变更应用完成。");
+    }
+    if (oldVersion < 4) {
+      Log.i("应用 v4 版本的数据库结构变更...");
+      await db.update(
+        'templates',
+        {'reverse_win_rule': 1},
+        where: 'tid = ?',
+        whereArgs: ['counter'],
+      );
+      Log.i("v4 版本的数据库结构变更应用完成。");
     }
   }
 
