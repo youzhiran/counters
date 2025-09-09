@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:counters/common/db/migrations.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/platform_utils.dart';
 import 'package:counters/features/setting/data_manager.dart';
@@ -82,7 +82,7 @@ class DatabaseHelper {
       options: OpenDatabaseOptions(
         version: 4,
         onCreate: _onCreate,
-        onUpgrade: _onUpgrade,
+        onUpgrade: Migrations.onUpgrade,
         onOpen: _onOpen,
       ),
     );
@@ -262,103 +262,6 @@ class DatabaseHelper {
         FOREIGN KEY (league_id) REFERENCES leagues (lid) ON DELETE CASCADE
       )
     ''');
-  }
-
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    Log.i("数据库升级，从版本 $oldVersion 到 $newVersion");
-    if (oldVersion < 2) {
-      Log.i("应用 v2 版本的数据库结构变更...");
-      final batch = db.batch();
-      // 创建V2相关的表
-      _createV2Tables(batch);
-
-      // 为 game_sessions 表添加列
-      batch.execute('''
-        ALTER TABLE game_sessions ADD COLUMN league_match_id TEXT
-      ''');
-
-      // 为 templates 表添加新列
-      batch.execute('''
-        ALTER TABLE templates ADD COLUMN disable_victory_score_check INTEGER NOT NULL DEFAULT 0
-      ''');
-      batch.execute('''
-        ALTER TABLE templates ADD COLUMN reverse_win_rule INTEGER NOT NULL DEFAULT 0
-      ''');
-      await batch.commit(noResult: true);
-      Log.i("v2 版本的数据库结构变更应用完成。");
-
-      // 从 other_set 迁移数据到新列
-      await _migrateTemplateData(db);
-    }
-    if (oldVersion < 3) {
-      Log.i("应用 v3 版本的数据库结构变更...");
-      final batch = db.batch();
-      batch.execute('''
-        ALTER TABLE matches ADD COLUMN bracket_type TEXT
-      ''');
-      await batch.commit(noResult: true);
-      Log.i("v3 版本的数据库结构变更应用完成。");
-    }
-    if (oldVersion < 4) {
-      Log.i("应用 v4 版本的数据库结构变更...");
-      await db.update(
-        'templates',
-        {'reverse_win_rule': 1},
-        where: 'tid = ?',
-        whereArgs: ['counter'],
-      );
-      Log.i("v4 版本的数据库结构变更应用完成。");
-    }
-  }
-
-  Future<void> _migrateTemplateData(Database db) async {
-    Log.i("开始迁移 templates 表的数据...");
-    try {
-      final templates =
-          await db.query('templates', columns: ['tid', 'other_set']);
-      final batch = db.batch();
-
-      for (final template in templates) {
-        final tid = template['tid'] as String;
-        final otherSetJson = template['other_set'] as String?;
-
-        if (otherSetJson != null && otherSetJson.isNotEmpty) {
-          try {
-            final otherSet = jsonDecode(otherSetJson) as Map<String, dynamic>;
-            final disableCheck = otherSet['disableVictoryScoreCheck'] as bool?;
-            final reverseRule = otherSet['reverseWinRule'] as bool?;
-
-            if (disableCheck != null || reverseRule != null) {
-              final updates = <String, dynamic>{};
-              if (disableCheck != null) {
-                updates['disable_victory_score_check'] = disableCheck ? 1 : 0;
-                otherSet.remove('disableVictoryScoreCheck');
-              }
-              if (reverseRule != null) {
-                updates['reverse_win_rule'] = reverseRule ? 1 : 0;
-                otherSet.remove('reverseWinRule');
-              }
-
-              // 更新 other_set
-              updates['other_set'] =
-                  otherSet.isEmpty ? null : jsonEncode(otherSet);
-
-              batch.update('templates', updates,
-                  where: 'tid = ?', whereArgs: [tid]);
-              Log.v("正在迁移模板 $tid 的数据: $updates");
-            }
-          } catch (e) {
-            Log.w("解析或迁移模板 $tid 的 other_set 失败: $e");
-          }
-        }
-      }
-
-      await batch.commit(noResult: true);
-      Log.i("templates 表数据迁移成功完成。");
-    } catch (e) {
-      Log.e("模板数据迁移过程中发生错误: $e");
-      // 如果迁移失败，不应阻塞整个升级过程，但需要记录错误
-    }
   }
 
   Future<void> _onOpen(Database db) async {
