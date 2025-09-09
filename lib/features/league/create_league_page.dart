@@ -41,6 +41,16 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
         ref.showWarning('请至少选择2名玩家');
         return;
       }
+
+      // 双败淘汰赛，限制玩家数为2的次方数(如4、8、16)
+      if (_selectedType == LeagueType.doubleElimination) {
+        final playerCount = _selectedPlayers.length;
+        if (playerCount < 4 || (playerCount & (playerCount - 1)) != 0) {
+          ref.showWarning('双败淘汰赛的玩家数量必须是2的次方数(如4, 8, 16)');
+          return;
+        }
+      }
+
       if (_selectedTemplate == null) {
         ref.showWarning('请选择一个计分模板');
         return;
