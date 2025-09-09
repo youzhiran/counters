@@ -58,17 +58,30 @@ class Log {
   /// 辅助方法：获取调用者的位置信息
   /// 返回格式如 "(package:counters/features/lan/lan_provider.dart:131:9)"
   static String _getCallerLocation() {
+    // 定义需要从堆栈跟踪中忽略的文件路径
+    const List<String> ignoredPaths = [
+      'package:counters/common/utils/log.dart',
+      'package:counters/common/widgets/message_overlay.dart',
+    ];
+
     final stackTrace = StackTrace.current;
     final lines = stackTrace.toString().split('\n');
 
     // 从堆栈的第二帧开始查找 (索引 1)，因为第零帧是 Log 方法本身
-    // 找到第一个不包含 log.dart 的帧
+    // 找到第一个不包含在 ignoredPaths 列表中的帧
     String callerLine = '';
     for (int i = 1; i < lines.length; i++) {
-      if (!lines[i].contains('package:counters/common/utils/log.dart')) {
-        callerLine = lines[i];
+      final line = lines[i];
+      if (!ignoredPaths.any((path) => line.contains(path))) {
+        callerLine = line;
         break;
       }
+    }
+
+    // 如果循环结束后仍然没有找到，可能是因为调用链条比预想的要深
+    // 作为备用方案，我们取最后一个非空的行
+    if (callerLine.isEmpty) {
+      callerLine = lines.lastWhere((line) => line.isNotEmpty, orElse: () => '');
     }
 
     // 解析调用行以提取括号内的部分

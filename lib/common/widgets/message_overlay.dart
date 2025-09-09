@@ -837,33 +837,33 @@ class GlobalMsgManager {
             _container!
                 .read(messageManagerProvider.notifier)
                 .showSuccess(content);
-            Log.i('GlobalMsgManager: 显示$typeName消息 - $content');
+            Log.i('[GMM]: 显示$typeName消息 - $content');
             break;
           case MessageType.error:
             _container!
                 .read(messageManagerProvider.notifier)
                 .showError(content);
-            Log.e('GlobalMsgManager: 显示$typeName消息 - $content');
+            Log.e('[GMM]: 显示$typeName消息 - $content');
             break;
           case MessageType.warning:
             _container!
                 .read(messageManagerProvider.notifier)
                 .showWarning(content);
-            Log.w('GlobalMsgManager: 显示$typeName消息 - $content');
+            Log.w('[GMM]: 显示$typeName消息 - $content');
             break;
           case MessageType.info:
             _container!
                 .read(messageManagerProvider.notifier)
                 .showMessage(content, type: type);
-            Log.i('GlobalMsgManager: 显示$typeName消息 - $content');
+            Log.i('[GMM]: 显示$typeName消息 - $content');
             break;
         }
       } else {
-        Log.w('GlobalMsgManager: 无法显示$typeName消息 - $content');
-        Log.w('GlobalMsgManager: 容器未设置，无法显示消息');
+        Log.w('[GMM]: 无法显示$typeName消息 - $content');
+        Log.w('[GMM]: 容器未设置，无法显示消息');
       }
     } catch (e, stackTrace) {
-      Log.e('GlobalMsgManager: 显示消息失败 - $e');
+      Log.e('[GMM]: 显示消息失败 - $e');
       Log.e('StackTrace: $stackTrace');
     }
   }
@@ -899,16 +899,16 @@ extension MessageManagerExtension on WidgetRef {
       // 根据消息类型使用相应的日志级别
       switch (type) {
         case MessageType.success:
-          Log.i('Extension: 显示$typeName消息 - $content');
+          Log.i('[GMM]: 显示$typeName消息 - $content');
           break;
         case MessageType.error:
-          Log.e('Extension: 显示$typeName消息 - $content');
+          Log.e('[GMM]: 显示$typeName消息 - $content');
           break;
         case MessageType.warning:
-          Log.w('Extension: 显示$typeName消息 - $content');
+          Log.w('[GMM]: 显示$typeName消息 - $content');
           break;
         case MessageType.info:
-          Log.i('Extension: 显示$typeName消息 - $content');
+          Log.i('[GMM]: 显示$typeName消息 - $content');
           break;
       }
     } catch (e) {
