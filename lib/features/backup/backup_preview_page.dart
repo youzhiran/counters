@@ -528,12 +528,19 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
   }
 
   Widget _buildActionButtons(PreviewState state) {
-    final canImport = state.previewInfo != null && state.error == null;
-    final hasIntegrityIssue = state.previewInfo?.hashValid == false;
     final compatibilityInfo = state.previewInfo?.compatibilityInfo;
-    final hasCompatibilityIssue =
-        compatibilityInfo?.level == CompatibilityLevel.warning ||
-            compatibilityInfo?.level == CompatibilityLevel.incompatible;
+
+    // 默认可导入
+    bool canImport = state.previewInfo != null && state.error == null;
+
+    // 如果兼容性检查结果为 "incompatible"，则禁止导入
+    if (compatibilityInfo?.level == CompatibilityLevel.incompatible) {
+      canImport = false;
+    }
+
+    final hasIntegrityIssue = state.previewInfo?.hashValid == false;
+    final hasCompatibilityWarning =
+        compatibilityInfo?.level == CompatibilityLevel.warning;
 
     return Row(
       children: [
@@ -551,7 +558,7 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
           child: ElevatedButton(
             onPressed: canImport
                 ? () {
-                    if (hasIntegrityIssue || hasCompatibilityIssue) {
+                    if (hasIntegrityIssue || hasCompatibilityWarning) {
                       // 显示综合警告对话框
                       _showRiskWarningDialog(
                           hasIntegrityIssue, compatibilityInfo);

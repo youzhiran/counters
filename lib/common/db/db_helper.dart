@@ -8,6 +8,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
+  static const int dbVersion = 4;
   static final DatabaseHelper instance = DatabaseHelper._();
   static Database? _database;
 
@@ -80,7 +81,7 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 4,
+        version: dbVersion,
         onCreate: _onCreate,
         onUpgrade: Migrations.onUpgrade,
         onOpen: _onOpen,

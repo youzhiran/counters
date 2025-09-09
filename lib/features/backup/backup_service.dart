@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/platform_utils.dart';
@@ -21,7 +22,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 备份服务类
 class BackupService {
-  static const int _backupCode = 1;
   static const String _metadataFileName = 'backup_metadata.json';
   static const String _preferencesFileName = 'shared_preferences.json';
   static const String _hashFileName = 'backup_hash.json';
@@ -170,6 +170,16 @@ class BackupService {
       onProgress('检查版本兼容性...', 0.3);
       final compatibility = await _checkCompatibility(metadata);
 
+      // 强制检查：备份版本号不能高于当前应用支持的版本号
+      final zipBackupCode = metadata.backupCode;
+      final currentBackupCode = getBackupVersion();
+      if (zipBackupCode > currentBackupCode) {
+        throw Exception(
+          '备份文件版本过高 (文件版本: $zipBackupCode, 应用支持版本: $currentBackupCode)，无法导入。请先升级应用。',
+        );
+      }
+
+      // 可选检查：其他不兼容情况，可通过强制导入绕过
       if (compatibility.level == CompatibilityLevel.incompatible &&
           !options.forceImport) {
         throw Exception('版本不兼容: ${compatibility.message}');
@@ -263,7 +273,7 @@ class BackupService {
       buildNumber: packageInfo.buildNumber,
       timestamp: DateTime.now().millisecondsSinceEpoch,
       platform: Platform.operatingSystem,
-      backupCode: _backupCode,
+      backupCode: getBackupVersion(),
     );
   }
 
@@ -645,13 +655,14 @@ class BackupService {
     final currentVersion = currentPackageInfo.version;
     final zipAppVersion = metadata.appVersion;
     final zipBackupCode = metadata.backupCode;
+    final currentBackupCode = getBackupVersion();
 
     // 检查备份版本
-    if (zipBackupCode > _backupCode) {
+    if (zipBackupCode > currentBackupCode) {
       return CompatibilityInfo(
         level: CompatibilityLevel.incompatible,
-        message: '备份版本不匹配（当前: $_backupCode，备份: $zipBackupCode）',
-        errors: ['备份文件版本更高，可能导致数据不兼容'],
+        message: '备份版本不匹配（当前: $currentBackupCode，备份: $zipBackupCode）',
+        errors: ['备份文件版本更高，数据不兼容，不允许导入'],
       );
     }
 
@@ -686,5 +697,10 @@ class BackupService {
   static String _getMajorVersion(String version) {
     final parts = version.split('.');
     return parts.isNotEmpty ? parts[0] : '0';
+  }
+
+  /// 获取备份版本号
+  static int getBackupVersion() {
+    return DatabaseHelper.dbVersion;
   }
 }

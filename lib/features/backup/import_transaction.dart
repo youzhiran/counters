@@ -360,6 +360,11 @@ class ImportTransaction {
       // 重置数据库连接以确保使用新的数据库文件
       await _resetDatabaseConnection();
 
+      // 导入成功后，立即重新打开数据库以触发迁移（如果需要）
+      Log.i('ImportTransaction: 检查并执行数据库迁移...');
+      await DatabaseHelper.instance.database;
+      Log.i('ImportTransaction: 数据库迁移检查完成');
+
       // 清理临时备份文件
       await _cleanupTempBackups();
 
