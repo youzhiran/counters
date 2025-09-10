@@ -172,7 +172,7 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
                   foregroundColor: Theme.of(context).colorScheme.onSurface,
                 ),
           body: PageView(
-            // physics: const NeverScrollableScrollPhysics(), // Allow swiping for DE
+            physics: const NeverScrollableScrollPhysics(),
             controller: _pageController,
             onPageChanged: (index) {
               // 更新 Provider 的值
