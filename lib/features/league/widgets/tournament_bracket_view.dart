@@ -5,6 +5,9 @@ import 'package:counters/common/model/league.dart';
 import 'package:counters/common/model/league_enums.dart';
 import 'package:counters/common/model/match.dart';
 import 'package:counters/common/model/player_info.dart';
+import 'package:counters/common/utils/log.dart';
+import 'package:counters/features/league/model/bracket_models.dart';
+import 'package:counters/features/league/services/bracket_generator.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,8 +23,11 @@ class TournamentBracketView extends ConsumerStatefulWidget {
   final League league;
   final ValueChanged<bool> onFullscreenToggle;
 
-  const TournamentBracketView(
-      {super.key, required this.league, required this.onFullscreenToggle});
+  const TournamentBracketView({
+    super.key,
+    required this.league,
+    required this.onFullscreenToggle,
+  });
 
   @override
   ConsumerState<TournamentBracketView> createState() =>
@@ -36,8 +42,8 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
       TransformationController();
   final GlobalKey _interactiveViewerKey = GlobalKey();
 
-  // Cache for calculated positions to avoid recalculation
-  Map<String, Offset> _matchPositions = {};
+  // The new structured bracket data
+  TournamentBracket? _bracket;
 
   @override
   bool get wantKeepAlive => true;
@@ -45,7 +51,7 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
   @override
   void initState() {
     super.initState();
-    _matchPositions = _calculateAllMatchPositions(widget.league.matches);
+    _generateAndPositionBracket();
     WidgetsBinding.instance.addPostFrameCallback((_) => _centerView());
   }
 
@@ -53,7 +59,7 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
   void didUpdateWidget(covariant TournamentBracketView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.league != widget.league) {
-      _matchPositions = _calculateAllMatchPositions(widget.league.matches);
+      _generateAndPositionBracket();
     }
   }
 
@@ -64,10 +70,363 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
     super.dispose();
   }
 
+  /// Generates the bracket structure and calculates node positions.
+  void _generateAndPositionBracket() {
+    final generator = BracketGenerator();
+    final bracket = generator.generate(widget.league.matches);
+    final players = ref.read(playerProvider).value?.players ?? [];
+    _calculateAllMatchPositions(bracket, players);
+    setState(() {
+      _bracket = bracket;
+    });
+  }
+
+  /// Final, correct layout algorithm with separate vertical zones for brackets.
+  void _calculateAllMatchPositions(
+      TournamentBracket bracket, List<PlayerInfo> players) {
+    if (bracket.allNodes.isEmpty) return;
+
+    // Helper to get player names for logging
+    String getPlayerNames(Match match) {
+      final p1 = players.firstWhere((p) => p.pid == match.player1Id,
+          orElse: () => PlayerInfo(name: 'TBD', avatar: ''));
+      final p2 = players.firstWhere((p) => p.pid == match.player2Id,
+          orElse: () => PlayerInfo(name: 'TBD', avatar: ''));
+      return '${p1.name} vs ${p2.name}';
+    }
+
+    // Helper to format offset for logging
+    String formatOffset(Offset offset) {
+      return '(${offset.dx.toStringAsFixed(1)}, ${offset.dy.toStringAsFixed(1)})';
+    }
+
+    Log.v('开始计算对阵图节点位置 (最终分区布局)...');
+    final nodesByDepth = groupBy(bracket.allNodes, (n) => n.depth);
+    final sortedDepths = nodesByDepth.keys.toList()..sort();
+
+    final wbNodes = bracket.allNodes
+        .where((n) =>
+            n.match.bracketType != BracketType.loser &&
+            n.match.bracketType != BracketType.finals)
+        .toList();
+    final lbNodes = bracket.allNodes
+        .where((n) => n.match.bracketType == BracketType.loser)
+        .toList();
+    final finalNodes = bracket.allNodes
+        .where((n) => n.match.bracketType == BracketType.finals)
+        .toList();
+
+    // --- Pre-computation Step 1: Correct all source node links in the winner bracket ---
+    // This is the critical fix: The BracketGenerator may link nodes incorrectly.
+    // We rebuild the links based on the actual winners of the previous round.
+    for (final node in wbNodes) {
+      if (node.depth > 1) {
+        final prevRoundNodes = wbNodes.where((n) => n.depth == node.depth - 1);
+        final p1 = node.match.player1Id;
+        final p2 = node.match.player2Id;
+
+        BracketNode? source1;
+        BracketNode? source2;
+
+        if (p1 != 'bye' && p1 != 'TBD') {
+          source1 = prevRoundNodes.firstWhereOrNull((prev) =>
+              prev.match.winnerId == p1 ||
+              (prev.match.player1Id == p1 && prev.match.player2Id == 'bye'));
+        }
+        if (p2 != null && p2 != 'bye' && p2 != 'TBD') {
+          source2 = prevRoundNodes.firstWhereOrNull((prev) =>
+              prev.match.winnerId == p2 ||
+              (prev.match.player1Id == p2 && prev.match.player2Id == 'bye'));
+        }
+
+        // Assign the corrected sources back to the node.
+        if (source1 != null && source2 != null) {
+          // Ensure source1 is the one that is visually higher up based on original order.
+          if (source1.verticalOrder > source2.verticalOrder) {
+            final temp = source1;
+            source1 = source2;
+            source2 = temp;
+          }
+          node.sourceNode1 = source1;
+          node.sourceNode2 = source2;
+        }
+      }
+    }
+
+    // --- Pre-computation Step 1.5: Correct all source node links in the loser bracket ---
+    String? getLoserId(Match match) {
+      if (match.status != MatchStatus.completed ||
+          match.winnerId == null ||
+          match.player2Id == 'bye') {
+        return null;
+      }
+      if (match.winnerId == match.player1Id) return match.player2Id;
+      if (match.winnerId == match.player2Id) return match.player1Id;
+      return null;
+    }
+
+    for (final node in lbNodes) {
+      final p1 = node.match.player1Id;
+      final p2 = node.match.player2Id;
+
+      BracketNode? source1;
+      BracketNode? source2;
+
+      if (p1 != 'bye' && p1 != 'TBD') {
+        source1 = lbNodes
+            .where(
+                (prev) => prev.match.winnerId == p1 && prev.depth < node.depth)
+            .sorted((a, b) => b.depth.compareTo(a.depth))
+            .firstOrNull;
+        source1 ??=
+            wbNodes.firstWhereOrNull((prev) => getLoserId(prev.match) == p1);
+      }
+
+      if (p2 != null && p2 != 'bye' && p2 != 'TBD') {
+        source2 = lbNodes
+            .where(
+                (prev) => prev.match.winnerId == p2 && prev.depth < node.depth)
+            .sorted((a, b) => b.depth.compareTo(a.depth))
+            .firstOrNull;
+        source2 ??=
+            wbNodes.firstWhereOrNull((prev) => getLoserId(prev.match) == p2);
+      }
+
+      // The positioning logic expects source1 to be from the loser bracket if possible.
+      if (source1 != null &&
+          source2 != null &&
+          source1.match.bracketType != BracketType.loser &&
+          source2.match.bracketType == BracketType.loser) {
+        final temp = source1;
+        source1 = source2;
+        source2 = temp;
+      }
+
+      node.sourceNode1 = source1;
+      node.sourceNode2 = source2;
+    }
+
+    // --- Pre-computation Step 2: Create an optimally ordered list for Round 1 ---
+    // Now that the links are correct, we can re-order Round 1 for a clean layout.
+    final round1Nodes = wbNodes.where((n) => n.depth == 1).toList();
+    final round2Nodes = wbNodes.where((n) => n.depth == 2).toList();
+    List<BracketNode> orderedRound1Nodes = round1Nodes
+      ..sort((a, b) => a.verticalOrder.compareTo(b.verticalOrder));
+
+    if (round1Nodes.isNotEmpty && round2Nodes.isNotEmpty) {
+      final List<BracketNode> reorderedList = [];
+      final Set<String> processedRound1Ids = {};
+
+      final sortedRound2Nodes = List.of(round2Nodes)
+        ..sort((a, b) {
+          final aMinOrder = (a.sourceNode1 != null && a.sourceNode2 != null)
+              ? min(a.sourceNode1!.verticalOrder, a.sourceNode2!.verticalOrder)
+              : 0;
+          final bMinOrder = (b.sourceNode1 != null && b.sourceNode2 != null)
+              ? min(b.sourceNode1!.verticalOrder, b.sourceNode2!.verticalOrder)
+              : 0;
+          return aMinOrder.compareTo(bMinOrder);
+        });
+
+      for (final r2Node in sortedRound2Nodes) {
+        final sources = [r2Node.sourceNode1, r2Node.sourceNode2]
+            .nonNulls
+            .toList()
+          ..sort((a, b) => a.verticalOrder.compareTo(b.verticalOrder));
+
+        for (final source in sources) {
+          if (!processedRound1Ids.contains(source.id)) {
+            reorderedList.add(source);
+            processedRound1Ids.add(source.id);
+          }
+        }
+      }
+
+      final remaining =
+          round1Nodes.where((n) => !processedRound1Ids.contains(n.id));
+      reorderedList.addAll(remaining);
+
+      if (reorderedList.length == round1Nodes.length) {
+        orderedRound1Nodes = reorderedList;
+      }
+    }
+
+    double winnerMaxY = 0;
+
+    // --- Pass 1: Layout Winner Bracket ---
+    for (final depth in sortedDepths) {
+      final List<BracketNode> nodesInDepth;
+      if (depth == 1) {
+        nodesInDepth = orderedRound1Nodes;
+      } else {
+        nodesInDepth = wbNodes.where((n) => n.depth == depth).toList()
+          ..sort((a, b) {
+            final aMinY = (a.sourceNode1 != null && a.sourceNode2 != null)
+                ? min(a.sourceNode1!.position.dy, a.sourceNode2!.position.dy)
+                : 0.0;
+            final bMinY = (b.sourceNode1 != null && b.sourceNode2 != null)
+                ? min(b.sourceNode1!.position.dy, b.sourceNode2!.position.dy)
+                : 0.0;
+            return aMinY.compareTo(bMinY);
+          });
+      }
+
+      for (int i = 0; i < nodesInDepth.length; i++) {
+        final node = nodesInDepth[i];
+        final double x = (node.depth - 1) * (_cardWidth + _roundSpacing);
+        double y;
+
+        if (node.depth > 1) {
+          if (node.sourceNode1 != null && node.sourceNode2 != null) {
+            y = (node.sourceNode1!.position.dy +
+                    node.sourceNode2!.position.dy) /
+                2;
+          } else {
+            y = i * (_cardHeight + _verticalCardSpacing);
+          }
+        } else {
+          y = i * (_cardHeight + _verticalCardSpacing);
+        }
+
+        if (i > 0) {
+          final prevNode = nodesInDepth[i - 1];
+          final minAllowedY =
+              prevNode.position.dy + _cardHeight + _verticalCardSpacing;
+          if (y < minAllowedY) {
+            y = minAllowedY;
+          }
+        }
+
+        node.position = Offset(x, y);
+        Log.v(
+            '[胜者组] ${getPlayerNames(node.match)} (轮次 ${node.depth}) 位置: ${formatOffset(node.position)}');
+        if (node.sourceNode1 != null) {
+          Log.v(
+              '  └── 连接自: ${getPlayerNames(node.sourceNode1!.match)} @ ${formatOffset(node.sourceNode1!.position)}');
+        }
+        if (node.sourceNode2 != null) {
+          Log.v(
+              '  └── 连接自: ${getPlayerNames(node.sourceNode2!.match)} @ ${formatOffset(node.sourceNode2!.position)}');
+        }
+        if (y > winnerMaxY) winnerMaxY = y;
+      }
+    }
+
+    // --- Pass 2: Layout Loser Bracket Independently ---
+    double loserMaxY = 0;
+    final Map<String, Offset> lbRelativePositions = {};
+
+    for (final depth in sortedDepths) {
+      final nodesInDepth = lbNodes.where((n) => n.depth == depth).toList()
+        ..sort((a, b) {
+          double getSortY(BracketNode node) {
+            // Case 1: Both sources are from the loser bracket. Sort by their midpoint.
+            if (node.sourceNode1?.match.bracketType == BracketType.loser &&
+                node.sourceNode2?.match.bracketType == BracketType.loser) {
+              final y1 = lbRelativePositions[node.sourceNode1!.id]?.dy ?? 0.0;
+              final y2 = lbRelativePositions[node.sourceNode2!.id]?.dy ?? 0.0;
+              return (y1 + y2) / 2;
+            }
+            // Case 2: Only source1 is from the loser bracket. Sort by its position.
+            if (node.sourceNode1?.match.bracketType == BracketType.loser) {
+              return lbRelativePositions[node.sourceNode1!.id]?.dy ?? 0.0;
+            }
+            // Case 3: Only source2 is from the loser bracket. Sort by its position.
+            if (node.sourceNode2?.match.bracketType == BracketType.loser) {
+              return lbRelativePositions[node.sourceNode2!.id]?.dy ?? 0.0;
+            }
+            // Case 4: First round of the loser bracket (sources are from WB).
+            // Sort by the minimum Y position of the players dropping down.
+            final y1 = node.sourceNode1?.position.dy ?? double.infinity;
+            final y2 = node.sourceNode2?.position.dy ?? double.infinity;
+            return min(y1, y2);
+          }
+
+          return getSortY(a).compareTo(getSortY(b));
+        });
+      for (int i = 0; i < nodesInDepth.length; i++) {
+        final node = nodesInDepth[i];
+        // FIX: Remove X-axis offset for loser bracket
+        final double x = (node.depth - 1) * (_cardWidth + _roundSpacing);
+        double y;
+
+        if (node.sourceNode1?.match.bracketType == BracketType.loser &&
+            node.sourceNode2?.match.bracketType == BracketType.loser) {
+          // Both sources are from LB, calculate midpoint in relative space
+          final y1 = lbRelativePositions[node.sourceNode1!.id]!.dy;
+          final y2 = lbRelativePositions[node.sourceNode2!.id]!.dy;
+          y = (y1 + y2) / 2;
+        } else if (node.sourceNode1?.match.bracketType == BracketType.loser) {
+          // One source from LB, one from WB, align with the LB source
+          y = lbRelativePositions[node.sourceNode1!.id]!.dy;
+        } else {
+          // First round of LB, position sequentially
+          y = i * (_cardHeight + _verticalCardSpacing);
+        }
+
+        // Collision avoidance
+        if (i > 0) {
+          final prevNode = nodesInDepth[i - 1];
+          final minAllowedY = lbRelativePositions[prevNode.id]!.dy +
+              _cardHeight +
+              _verticalCardSpacing;
+          if (y < minAllowedY) {
+            y = minAllowedY;
+          }
+        }
+
+        lbRelativePositions[node.id] = Offset(x, y);
+        if (y > loserMaxY) loserMaxY = y;
+      }
+    }
+
+    // --- Pass 3: Shift Entire Loser Bracket Down ---
+    final yShift = winnerMaxY + _cardHeight + (_verticalCardSpacing * 2);
+    Log.v('败者组整体向下平移: ${yShift.toStringAsFixed(1)}');
+    lbNodes.sort((a, b) => a.depth.compareTo(
+        b.depth)); // Sort by depth to ensure sources are processed first
+    for (final node in lbNodes) {
+      final relativePos = lbRelativePositions[node.id]!;
+      node.position = Offset(relativePos.dx, relativePos.dy + yShift);
+      Log.v(
+          '[败者组] ${getPlayerNames(node.match)} (轮次 ${node.depth}) 位置: ${formatOffset(node.position)}');
+      if (node.sourceNode1 != null) {
+        Log.v(
+            '  └── 连接自: ${getPlayerNames(node.sourceNode1!.match)} @ ${formatOffset(node.sourceNode1!.position)}');
+      }
+      if (node.sourceNode2 != null) {
+        Log.v(
+            '  └── 连接自: ${getPlayerNames(node.sourceNode2!.match)} @ ${formatOffset(node.sourceNode2!.position)}');
+      }
+    }
+
+    // --- Pass 4: Position Finals Last ---
+    for (final node in finalNodes) {
+      if (node.sourceNode1 != null && node.sourceNode2 != null) {
+        final double x = (node.depth - 1) * (_cardWidth + _roundSpacing);
+        final y =
+            (node.sourceNode1!.position.dy + node.sourceNode2!.position.dy) / 2;
+        node.position = Offset(x, y);
+        Log.v(
+            '[决赛] ${getPlayerNames(node.match)} 位置修正: ${formatOffset(node.position)}');
+        if (node.sourceNode1 != null) {
+          Log.v(
+              '  └── 连接自: ${getPlayerNames(node.sourceNode1!.match)} @ ${formatOffset(node.sourceNode1!.position)}');
+        }
+        if (node.sourceNode2 != null) {
+          Log.v(
+              '  └── 连接自: ${getPlayerNames(node.sourceNode2!.match)} @ ${formatOffset(node.sourceNode2!.position)}');
+        }
+      }
+    }
+    Log.v('对阵图节点位置计算完毕。');
+  }
+
   void _centerView() {
     if (!mounted ||
         _interactiveViewerKey.currentContext == null ||
-        _matchPositions.isEmpty) {
+        _bracket == null ||
+        _bracket!.allNodes.isEmpty) {
       return;
     }
 
@@ -75,12 +434,12 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
         _interactiveViewerKey.currentContext!.findRenderObject() as RenderBox;
     final viewSize = renderBox.size;
 
-    final totalWidth = _matchPositions.values
-            .map((p) => p.dx)
+    final totalWidth = _bracket!.allNodes
+            .map((n) => n.position.dx)
             .reduce((max, x) => x > max ? x : x) +
         _cardWidth;
-    final totalHeight = _matchPositions.values
-            .map((p) => p.dy)
+    final totalHeight = _bracket!.allNodes
+            .map((n) => n.position.dy)
             .reduce((max, y) => y > max ? y : max) +
         _cardHeight;
 
@@ -116,164 +475,6 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
     widget.onFullscreenToggle(_isFullscreen);
   }
 
-  Map<String, Offset> _calculateAllMatchPositions(List<Match> allMatches) {
-    final positions = <String, Offset>{};
-    if (allMatches.isEmpty) return positions;
-
-    // Separate matches by bracket
-    // 关键修复：将 bracketType == null (普通淘汰赛) 的比赛也视作胜者组进行布局
-    final winnerMatches = allMatches
-        .where(
-            (m) => m.bracketType == BracketType.winner || m.bracketType == null)
-        .toList();
-    final loserMatches =
-        allMatches.where((m) => m.bracketType == BracketType.loser).toList();
-    final finalMatches =
-        allMatches.where((m) => m.bracketType == BracketType.finals).toList();
-
-    final groupedWinner = groupBy(winnerMatches, (m) => m.round);
-    final sortedWinnerRounds = groupedWinner.keys.toList()..sort();
-
-    final groupedLoser = groupBy(loserMatches, (m) => m.round);
-    final sortedLoserRounds = groupedLoser.keys.toList()..sort();
-
-    // 1. Position Winner Bracket
-    double winnerMaxY = 0;
-    final Map<int, List<Offset>> winnerConnectorPoints = {};
-
-    for (int i = 0; i < sortedWinnerRounds.length; i++) {
-      final round = sortedWinnerRounds[i];
-      final matchesInRound = groupedWinner[round]!;
-      matchesInRound.sort((a, b) => a.mid.compareTo(b.mid));
-      final double x = i * (_cardWidth + _roundSpacing);
-
-      if (i == 0) {
-        for (int j = 0; j < matchesInRound.length; j++) {
-          final match = matchesInRound[j];
-          final double y = j * (_cardHeight + _verticalCardSpacing);
-          positions[match.mid] = Offset(x, y);
-          if (y > winnerMaxY) winnerMaxY = y;
-        }
-      } else {
-        final previousConnectors = winnerConnectorPoints[round - 1] ?? [];
-        for (int j = 0; j < matchesInRound.length; j++) {
-          if (j >= previousConnectors.length) continue;
-          final match = matchesInRound[j];
-          final double y = previousConnectors[j].dy - (_cardHeight / 2);
-          positions[match.mid] = Offset(x, y);
-          if (y > winnerMaxY) winnerMaxY = y;
-        }
-      }
-      winnerConnectorPoints[round] =
-          _calculateNextConnectorPoints(matchesInRound, positions, x);
-    }
-
-    // 2. Position Loser Bracket
-    double loserMaxY = 0;
-    final Map<int, List<Offset>> loserConnectorPoints = {};
-    final double loserYOffset = winnerMaxY + _cardHeight + 100;
-
-    for (int i = 0; i < sortedLoserRounds.length; i++) {
-      final round = sortedLoserRounds[i];
-      final matchesInRound = groupedLoser[round]!;
-      matchesInRound.sort((a, b) => a.mid.compareTo(b.mid));
-
-      // Align loser bracket rounds with winner bracket rounds
-      final wbRoundIndex = (round / 2).floor();
-      final double x = wbRoundIndex * (_cardWidth + _roundSpacing);
-
-      if (i == 0) {
-        for (int j = 0; j < matchesInRound.length; j++) {
-          final match = matchesInRound[j];
-          final double y =
-              j * (_cardHeight + _verticalCardSpacing) + loserYOffset;
-          positions[match.mid] = Offset(x, y);
-          if (y > loserMaxY) loserMaxY = y;
-        }
-      } else {
-        final previousConnectors = loserConnectorPoints[round - 1] ?? [];
-        for (int j = 0; j < matchesInRound.length; j++) {
-          if (j >= previousConnectors.length) continue;
-          final match = matchesInRound[j];
-          final double y = previousConnectors[j].dy - (_cardHeight / 2);
-          positions[match.mid] = Offset(x, y);
-          if (y > loserMaxY) loserMaxY = y;
-        }
-      }
-      loserConnectorPoints[round] = _calculateNextConnectorPoints(
-          matchesInRound, positions, x,
-          round: round);
-    }
-
-    // 3. Position Final Bracket
-    if (finalMatches.isNotEmpty) {
-      final wbFinal = winnerMatches.last;
-      final lbFinal = loserMatches.last;
-      final wbFinalPos = positions[wbFinal.mid];
-      final lbFinalPos = positions[lbFinal.mid];
-
-      if (wbFinalPos != null && lbFinalPos != null) {
-        final double x =
-            (sortedWinnerRounds.length) * (_cardWidth + _roundSpacing);
-        final double y = (wbFinalPos.dy + lbFinalPos.dy) / 2;
-        positions[finalMatches.first.mid] = Offset(x, y);
-
-        // Position for potential bracket reset match
-        if (finalMatches.length > 1) {
-          positions[finalMatches.last.mid] =
-              Offset(x + _cardWidth + _roundSpacing, y);
-        }
-      }
-    }
-
-    return positions;
-  }
-
-  List<Offset> _calculateNextConnectorPoints(
-      List<Match> matchesInRound, Map<String, Offset> positions, double x,
-      {int round = 0}) {
-    final List<Offset> nextConnectors = [];
-    final isPaired = round == 0 || round % 2 != 0; // WB or LB odd rounds
-
-    for (int j = 0; j < matchesInRound.length; j += (isPaired ? 2 : 1)) {
-      final topMatch = matchesInRound[j];
-      final bottomMatch = (isPaired && j + 1 < matchesInRound.length)
-          ? matchesInRound[j + 1]
-          : null;
-
-      final topMatchPos = positions[topMatch.mid];
-      if (topMatchPos == null) continue;
-
-      final topWinnerOffset = _getWinnerYOffset(topMatch, positions);
-
-      if (bottomMatch != null) {
-        final bottomMatchPos = positions[bottomMatch.mid];
-        if (bottomMatchPos == null) continue;
-        final bottomWinnerOffset = _getWinnerYOffset(bottomMatch, positions);
-        final midY = (topWinnerOffset + bottomWinnerOffset) / 2;
-        nextConnectors.add(Offset(x + _cardWidth, midY));
-      } else {
-        nextConnectors.add(Offset(x + _cardWidth, topWinnerOffset));
-      }
-    }
-    return nextConnectors;
-  }
-
-  double _getWinnerYOffset(Match match, Map<String, Offset> positions) {
-    final pos = positions[match.mid];
-    if (pos == null) return 0;
-    if (match.status != MatchStatus.completed || match.winnerId == null) {
-      return pos.dy + _cardHeight / 2;
-    }
-    if (match.winnerId == match.player1Id) {
-      return pos.dy + _cardHeight * 0.25;
-    }
-    if (match.winnerId == match.player2Id) {
-      return pos.dy + _cardHeight * 0.75;
-    }
-    return pos.dy + _cardHeight / 2;
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -282,17 +483,16 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
       return const Center(child: CircularProgressIndicator());
     }
 
-    final allMatches = widget.league.matches;
-    if (allMatches.isEmpty || _matchPositions.isEmpty) {
+    if (_bracket == null || _bracket!.allNodes.isEmpty) {
       return const Center(child: Text('没有比赛信息可供显示'));
     }
 
-    final totalWidth = _matchPositions.values
-            .map((p) => p.dx)
+    final totalWidth = _bracket!.allNodes
+            .map((n) => n.position.dx)
             .reduce((max, x) => x > max ? x : x) +
         _cardWidth;
-    final totalHeight = _matchPositions.values
-            .map((p) => p.dy)
+    final totalHeight = _bracket!.allNodes
+            .map((n) => n.position.dy)
             .reduce((max, y) => y > max ? y : max) +
         _cardHeight;
 
@@ -315,19 +515,16 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
                   CustomPaint(
                     size: Size(totalWidth, totalHeight),
                     painter: _BracketLinePainter(
-                      league: widget.league,
-                      matchPositions: _matchPositions,
+                      bracket: _bracket!,
                       lineColor: Theme.of(context).colorScheme.outline,
                     ),
                   ),
-                  ...allMatches.map((match) {
-                    final position = _matchPositions[match.mid];
-                    if (position == null) return const SizedBox.shrink();
+                  ..._bracket!.allNodes.map((node) {
                     return Positioned(
-                      left: position.dx,
-                      top: position.dy,
+                      left: node.position.dx,
+                      top: node.position.dy,
                       child: _MatchCard(
-                          match: match, players: playerState.players),
+                          match: node.match, players: playerState.players),
                     );
                   }),
                 ],
@@ -487,18 +684,74 @@ class _PlayerRow extends StatelessWidget {
   }
 }
 
+/// The new, simplified painter that draws lines based on the bracket tree.
 class _BracketLinePainter extends CustomPainter {
-  final League league;
-  final Map<String, Offset> matchPositions;
+  final TournamentBracket bracket;
   final Color lineColor;
 
-  _BracketLinePainter({required this.league,
-      required this.matchPositions,
-      required this.lineColor});
+  _BracketLinePainter({required this.bracket, required this.lineColor});
 
-  double _getWinnerYOffset(Match match) {
-    final pos = matchPositions[match.mid];
-    if (pos == null) return 0;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 1.5;
+
+    // Iterate through all nodes and draw lines to their sources.
+    for (final node in bracket.allNodes) {
+      // --- Special handling for Loser Bracket connections ---
+      // In the loser bracket, we only want to draw the clean horizontal
+      // progression lines from the winner of the *previous* loser bracket match.
+      // We do NOT draw the jagged lines from the players dropping down from
+      // the winner's bracket, as this creates a messy, overlapping view.
+      if (node.match.bracketType == BracketType.loser) {
+        // A match in the LB can be fed by another LB match (advancing player)
+        // or a WB match (player dropping down). We only draw the former.
+        if (node.sourceNode1?.match.bracketType == BracketType.loser) {
+          _drawConnector(canvas, paint, node, node.sourceNode1!);
+        }
+        if (node.sourceNode2?.match.bracketType == BracketType.loser) {
+          _drawConnector(canvas, paint, node, node.sourceNode2!);
+        }
+      } else {
+        // For Winner Bracket and Finals, draw all connections as normal.
+        if (node.sourceNode1 != null) {
+          _drawConnector(canvas, paint, node, node.sourceNode1!);
+        }
+        if (node.sourceNode2 != null) {
+          _drawConnector(canvas, paint, node, node.sourceNode2!);
+        }
+      }
+    }
+  }
+
+  void _drawConnector(
+      Canvas canvas, Paint paint, BracketNode target, BracketNode source) {
+    final targetPos = target.position;
+    final sourcePos = source.position;
+
+    // Y-position for the line start/end points.
+    final targetY = targetPos.dy + _cardHeight / 2;
+    final sourceWinnerY = _getWinnerYOffset(source);
+
+    final startX = sourcePos.dx + _cardWidth;
+    final endX = targetPos.dx;
+    final midX = startX + _roundSpacing / 2;
+
+    // Horizontal line from source
+    canvas.drawLine(
+        Offset(startX, sourceWinnerY), Offset(midX, sourceWinnerY), paint);
+    // Vertical line connecting the paths
+    canvas.drawLine(Offset(midX, sourceWinnerY), Offset(midX, targetY), paint);
+    // Horizontal line to target
+    canvas.drawLine(Offset(midX, targetY), Offset(endX, targetY), paint);
+  }
+
+  /// Calculates the Y-offset for the line based on the winner.
+  double _getWinnerYOffset(BracketNode node) {
+    final match = node.match;
+    final pos = node.position;
+
     if (match.status != MatchStatus.completed || match.winnerId == null) {
       return pos.dy + _cardHeight / 2;
     }
@@ -509,133 +762,6 @@ class _BracketLinePainter extends CustomPainter {
       return pos.dy + _cardHeight * 0.75;
     }
     return pos.dy + _cardHeight / 2;
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 1.5;
-
-    final matchesById = {for (var m in league.matches) m.mid: m};
-
-    // A simplified drawing logic based on rounds, as we can't build a true graph
-    final groupedMatches = groupBy(league.matches, (m) => m.bracketType);
-
-    // 关键修复：将 bracketType == null (普通淘汰赛) 的比赛也视作胜者组进行绘制
-    final List<Match> winnerMatches = [
-      ...(groupedMatches[BracketType.winner] ?? []),
-      ...(groupedMatches[null] ?? []),
-    ];
-
-    _drawConnectorsForBracket(canvas, paint, winnerMatches, matchesById);
-    _drawConnectorsForBracket(
-        canvas, paint, groupedMatches[BracketType.loser] ?? [], matchesById,
-        isLoserBracket: true);
-    _drawFinalsConnector(canvas, paint, groupedMatches, matchesById);
-  }
-
-  void _drawConnectorsForBracket(Canvas canvas, Paint paint,
-      List<Match> bracketMatches, Map<String, Match> allMatches,
-      {bool isLoserBracket = false}) {
-    final grouped = groupBy(bracketMatches, (m) => m.round);
-    final sortedRounds = grouped.keys.toList()..sort();
-
-    for (int i = 0; i < sortedRounds.length - 1; i++) {
-      final round = sortedRounds[i];
-      final nextRound = sortedRounds[i + 1];
-      final matchesInRound = grouped[round]!;
-      final matchesInNextRound = grouped[nextRound]!;
-
-      final isPaired = !isLoserBracket || round % 2 != 0;
-
-      if (isPaired) {
-        for (int j = 0; j < matchesInRound.length; j += 2) {
-          final topMatch = matchesInRound[j];
-          final bottomMatch =
-              (j + 1 < matchesInRound.length) ? matchesInRound[j + 1] : null;
-          final targetMatch = matchesInNextRound.length > (j / 2).floor()
-              ? matchesInNextRound[(j / 2).floor()]
-              : null;
-          if (targetMatch == null) continue;
-
-          _drawConnector(canvas, paint, topMatch, bottomMatch, targetMatch);
-        }
-      } else {
-        // Loser bracket even rounds, one-to-one connection + one from winner bracket
-        for (int j = 0; j < matchesInRound.length; j++) {
-          final sourceMatch = matchesInRound[j];
-          // This is where it gets tricky. We need to know which WB match drops down.
-          // This info is not in the data model. We can only assume a one-to-one connection for now.
-          final targetMatch =
-              matchesInNextRound.length > j ? matchesInNextRound[j] : null;
-          if (targetMatch == null) continue;
-          _drawConnector(canvas, paint, sourceMatch, null, targetMatch);
-        }
-      }
-    }
-  }
-
-  void _drawFinalsConnector(
-      Canvas canvas,
-      Paint paint,
-      Map<BracketType?, List<Match>> groupedMatches,
-      Map<String, Match> allMatches) {
-    final winnerFinal = (groupedMatches[BracketType.winner] ?? []).lastOrNull;
-    final loserFinal = (groupedMatches[BracketType.loser] ?? []).lastOrNull;
-    final grandFinal = (groupedMatches[BracketType.finals] ?? []).firstOrNull;
-
-    if (winnerFinal != null && loserFinal != null && grandFinal != null) {
-      _drawConnector(canvas, paint, winnerFinal, loserFinal, grandFinal);
-    }
-
-    // Connector for bracket reset
-    final bracketResetMatch =
-        (groupedMatches[BracketType.finals] ?? []).length > 1
-            ? (groupedMatches[BracketType.finals] ?? [])[1]
-            : null;
-    if (grandFinal != null && bracketResetMatch != null) {
-      _drawConnector(canvas, paint, grandFinal, null, bracketResetMatch);
-    }
-  }
-
-  void _drawConnector(
-      Canvas canvas, Paint paint, Match? top, Match? bottom, Match target) {
-    final targetPos = matchPositions[target.mid];
-    if (targetPos == null) return;
-    final targetY = targetPos.dy + _cardHeight / 2;
-    final targetX = targetPos.dx;
-
-    if (top != null && bottom != null) {
-      final topPos = matchPositions[top.mid];
-      if (topPos == null) return;
-      final bottomPos = matchPositions[bottom.mid];
-      if (bottomPos == null) return;
-
-      final topWinnerY = _getWinnerYOffset(top);
-      final bottomWinnerY = _getWinnerYOffset(bottom);
-      final startX = topPos.dx + _cardWidth;
-      final midX = startX + _roundSpacing / 2;
-
-      canvas.drawLine(
-          Offset(startX, topWinnerY), Offset(midX, topWinnerY), paint);
-      canvas.drawLine(
-          Offset(startX, bottomWinnerY), Offset(midX, bottomWinnerY), paint);
-      canvas.drawLine(
-          Offset(midX, topWinnerY), Offset(midX, bottomWinnerY), paint);
-      canvas.drawLine(Offset(midX, targetY), Offset(targetX, targetY), paint);
-    } else if (top != null) {
-      final topPos = matchPositions[top.mid];
-      if (topPos == null) return;
-      final topWinnerY = _getWinnerYOffset(top);
-      final startX = topPos.dx + _cardWidth;
-      final midX = startX + _roundSpacing / 2;
-
-      canvas.drawLine(
-          Offset(startX, topWinnerY), Offset(midX, topWinnerY), paint);
-      canvas.drawLine(Offset(midX, topWinnerY), Offset(midX, targetY), paint);
-      canvas.drawLine(Offset(midX, targetY), Offset(targetX, targetY), paint);
-    }
   }
 
   @override

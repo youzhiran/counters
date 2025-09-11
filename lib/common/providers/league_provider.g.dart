@@ -6,7 +6,7 @@ part of 'league_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$leagueNotifierHash() => r'0a734713870accaddc88458c784ceb053e9f9156';
+String _$leagueNotifierHash() => r'83e506d8968a7a8006729d1c9eb8947b639e8078';
 
 /// See also [LeagueNotifier].
 @ProviderFor(LeagueNotifier)

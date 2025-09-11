@@ -871,7 +871,7 @@ class Score extends _$Score {
     } else {
       // 对于双败淘汰赛，所有逻辑都在 league_provider 内部处理，这里只需显示成功消息
       // 对于胜负方未变的非双败淘汰赛，也只需显示成功消息
-      GlobalMsgManager.showSuccess('比赛结果已记录');
+      // GlobalMsgManager.showSuccess('比赛结果已记录');
     }
 
     // 5. 不重置状态，由UI层负责

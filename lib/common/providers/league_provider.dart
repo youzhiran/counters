@@ -2,6 +2,7 @@ import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/league.dart';
 import 'package:counters/common/model/league_enums.dart';
 import 'package:counters/common/model/match.dart';
+import 'package:counters/common/utils/double_elimination_helper.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/features/league/league_dao.dart';
@@ -415,61 +416,6 @@ class LeagueNotifier extends _$LeagueNotifier {
         bracketType: bracketType);
   }
 
-  List<Match> _generateLoserBracketMatches(League league, int completedRound) {
-    // 1. 获取胜者组当前轮次的败者
-    final winnerBracketLosers = league.matches
-        .where((m) =>
-            m.round == completedRound &&
-            m.bracketType == BracketType.winner &&
-            m.status == MatchStatus.completed &&
-            m.winnerId != null)
-        .map((m) {
-          // 确保 player2Id 不为 null 或 'bye'
-          if (m.player2Id != null && m.player2Id != 'bye') {
-            return m.winnerId == m.player1Id ? m.player2Id! : m.player1Id;
-          }
-          return null;
-        })
-        .whereType<String>()
-        .toList();
-
-    // 2. 获取上一轮败者组的胜者
-    final loserBracketWinners = league.matches
-        .where((m) =>
-            m.bracketType == BracketType.loser &&
-            m.status == MatchStatus.completed &&
-            m.winnerId != null &&
-            // 筛选出那些还没有作为player1或player2参加下一场败者组比赛的胜者
-            !league.matches.any((nextMatch) =>
-                nextMatch.bracketType == BracketType.loser &&
-                (nextMatch.player1Id == m.winnerId ||
-                    nextMatch.player2Id == m.winnerId) &&
-                nextMatch.round > m.round))
-        .map((m) => m.winnerId!)
-        .toList();
-
-    // 3. 合并两组选手
-    final playersForLoserBracket = [
-      ...winnerBracketLosers,
-      ...loserBracketWinners
-    ];
-
-    // 4. 计算新的败者组轮次
-    final existingLoserRounds = league.matches
-        .where((m) => m.bracketType == BracketType.loser)
-        .map((m) => m.round)
-        .toSet();
-    final maxLoserRound = existingLoserRounds.isEmpty
-        ? 0
-        : existingLoserRounds.reduce((a, b) => a > b ? a : b);
-    final nextLoserRound = maxLoserRound + 1;
-
-    // 5. 生成败者组比赛
-    return _generateKnockoutRound(
-        playersForLoserBracket, nextLoserRound, league.lid,
-        bracketType: BracketType.loser);
-  }
-
   List<Match> _generateKnockoutRound(List<String> playerIds, int round,
       String leagueId,
       {BracketType? bracketType}) {
@@ -551,7 +497,7 @@ class LeagueNotifier extends _$LeagueNotifier {
     final currentRound = justCompletedMatch.round;
     final bracketType = justCompletedMatch.bracketType;
     Log.d(
-        '[Progress] Handling completed match ${justCompletedMatch.mid} in round $currentRound of $bracketType bracket.');
+        '[赛程推进] 正在处理已完成的比赛 ${justCompletedMatch.mid} (轮次: $currentRound, 分组: $bracketType)');
 
     // 检查刚刚完成的比赛所在的轮次是否也已经全部完成
     final isRoundCompleted = league.matches
@@ -559,116 +505,56 @@ class LeagueNotifier extends _$LeagueNotifier {
         .every((m) => m.status == MatchStatus.completed);
 
     if (!isRoundCompleted) {
-      Log.d(
-          '[Progress] Round $currentRound ($bracketType) is not fully completed yet. Saving current match and waiting.');
+      Log.d('[赛程推进] $bracketType 第 $currentRound 轮尚未完全结束。保存当前比赛结果并等待。');
       await _leagueDao.saveLeague(league);
       await _reloadLeagues();
       return;
     }
 
-    Log.i(
-        '[Progress] Round $currentRound ($bracketType) is now fully completed. Attempting to advance tournament...');
+    Log.i('[赛程推进] $bracketType 第 $currentRound 轮现已全部完成。尝试推进锦标赛...');
 
-    // 核心修改：调用新的、基于规则的赛程推进方法
-    final advancedLeague = await _advanceTournament(league);
+    // --- 核心重构 ---
+    // 调用新的、确定性的辅助工具来生成下一轮比赛
+    final newMatches = DoubleEliminationHelper.advanceTournament(league);
+
+    // 将新生成的比赛添加到当前联赛状态中，以便进行总决赛检查
+    final leagueWithNewMatches =
+        league.copyWith(matches: [...league.matches, ...newMatches]);
 
     // 检查总决赛是否可以生成
-    final finalMatches = _generateFinalsIfNeeded(advancedLeague);
+    final finalMatches = _generateFinalsIfNeeded(leagueWithNewMatches);
     if (finalMatches.isNotEmpty) {
-      Log.i(
-          '[Progress] Grand final generation conditions were met. Adding ${finalMatches.length} final match(es).');
+      Log.i('[赛程推进] 已满足总决赛生成条件。添加 ${finalMatches.length} 场总决赛。');
     }
 
-    final finalLeagueState = advancedLeague
-        .copyWith(matches: [...advancedLeague.matches, ...finalMatches]);
+    final finalLeagueState = league
+        .copyWith(matches: [...league.matches, ...newMatches, ...finalMatches]);
 
-    Log.d(
-        '[Progress] Saving all updates. Total matches now: ${finalLeagueState.matches.length}.');
+    Log.d('[赛程推进] 保存所有更新。当前总比赛数: ${finalLeagueState.matches.length}。');
     await _leagueDao.saveLeague(finalLeagueState);
     await _reloadLeagues();
   }
 
-  /// 根据严格的交替规则推进双败淘汰赛
-  Future<League> _advanceTournament(League league) async {
-    List<Match> newMatches = [];
-
-    // 1. 找出胜者组和败者组各自完成到的最高轮次
-    final completedWinnerRounds = league.matches
-        .where((m) =>
-            m.bracketType == BracketType.winner &&
-            m.status == MatchStatus.completed)
-        .map((m) => m.round)
-        .toSet();
-    final maxCompletedWinnerRound = completedWinnerRounds.isEmpty
-        ? 0
-        : completedWinnerRounds.reduce((a, b) => a > b ? a : b);
-
-    final completedLoserRounds = league.matches
-        .where((m) =>
-            m.bracketType == BracketType.loser &&
-            m.status == MatchStatus.completed)
-        .map((m) => m.round)
-        .toSet();
-    final maxCompletedLoserRound = completedLoserRounds.isEmpty
-        ? 0
-        : completedLoserRounds.reduce((a, b) => a > b ? a : b);
-
-    Log.d(
-        '[Advance] Max completed rounds: Winner=$maxCompletedWinnerRound, Loser=$maxCompletedLoserRound');
-
-    // 规则A: 如果胜者组进度领先于败者组 (WB n 完成, LB n-1 完成)
-    // 此时应该根据 WB n 的结果，生成 LB 的新比赛
-    if (maxCompletedWinnerRound > maxCompletedLoserRound) {
-      Log.d(
-          '[Advance] Rule A triggered: WB is ahead. Generating next loser bracket matches.');
-      final newLoserMatches =
-          _generateLoserBracketMatches(league, maxCompletedWinnerRound);
-      if (newLoserMatches.isNotEmpty) {
-        Log.i(
-            '[Advance] Generated ${newLoserMatches.length} matches for the loser bracket.');
-        newMatches.addAll(newLoserMatches);
-      }
-    }
-    // 规则B: 如果败者组进度追平了胜者组 (WB n 完成, LB n 完成)
-    // 此时应该生成 WB n+1 的比赛
-    else if (maxCompletedWinnerRound == maxCompletedLoserRound &&
-        maxCompletedWinnerRound > 0) {
-      Log.d(
-          '[Advance] Rule B triggered: Brackets are level. Generating next winner bracket matches.');
-      final nextWinnerMatches = _generateNextRoundMatches(
-          league, maxCompletedWinnerRound,
-          bracketType: BracketType.winner);
-      if (nextWinnerMatches.isNotEmpty) {
-        Log.i(
-            '[Advance] Generated ${nextWinnerMatches.length} matches for the winner bracket.');
-        newMatches.addAll(nextWinnerMatches);
-      }
-    }
-
-    return league.copyWith(matches: [...league.matches, ...newMatches]);
-  }
-
   /// 检查并生成总决赛。这是决定性的检查方法。
   List<Match> _generateFinalsIfNeeded(League league) {
-    Log.d('[Finals] Running check...');
+    Log.d('[总决赛检查] 开始运行...');
     // 1. 如果总决赛已存在，则无需再生成。
     if (league.matches.any((m) => m.bracketType == BracketType.finals)) {
-      Log.d('[Finals] Check failed: Finals already exist.');
+      Log.d('[总决赛检查] 检查失败: 总决赛已存在。');
       return [];
     }
 
     // 2. 检查胜者组是否已决出冠军
     final winnerMatches =
         league.matches.where((m) => m.bracketType == BracketType.winner);
-    Log.d('[Finals] Winner bracket has ${winnerMatches.length} matches.');
+    Log.d('[总决赛检查] 胜者组共有 ${winnerMatches.length} 场比赛。');
     // 如果胜者组没有任何比赛，或者有任何一场未完成，则冠军未决出。
     if (winnerMatches.isEmpty) {
-      Log.d('[Finals] Check failed: Winner bracket is empty.');
+      Log.d('[总决赛检查] 检查失败: 胜者组为空。');
       return [];
     }
     if (winnerMatches.any((m) => m.status != MatchStatus.completed)) {
-      Log.d(
-          '[Finals] Check failed: Not all winner bracket matches are completed.');
+      Log.d('[总决赛检查] 检查失败: 并非所有胜者组比赛都已完成。');
       return [];
     }
     // 确定胜者组的最后一轮
@@ -679,30 +565,28 @@ class LeagueNotifier extends _$LeagueNotifier {
         bracketType: BracketType.winner);
     // 如果能生成下一轮比赛（结果不为空），说明胜者组还没打完。
     if (nextWinnerMatches.isNotEmpty) {
-      Log.d(
-          '[Finals] Check failed: Winner bracket has not concluded yet (next round can be generated).');
+      Log.d('[总决赛检查] 检查失败: 胜者组尚未结束 (仍可生成下一轮)。');
       return [];
     }
     // 至此，可以确认胜者组冠军已产生。
     final winnerChampion =
         winnerMatches.firstWhere((m) => m.round == maxWinnerRound).winnerId;
     if (winnerChampion == null) {
-      Log.w('[Finals] Check failed: Winner champion is null.');
+      Log.w('[总决赛检查] 检查失败: 胜者组冠军ID为空。');
       return [];
     }
-    Log.i('[Finals] Winner bracket champion confirmed: $winnerChampion');
+    Log.i('[总决赛检查] 胜者组冠军已确定: $winnerChampion');
 
     // 3. 检查败者组是否已决出冠军（逻辑同上）
     final loserMatches =
         league.matches.where((m) => m.bracketType == BracketType.loser);
-    Log.d('[Finals] Loser bracket has ${loserMatches.length} matches.');
+    Log.d('[总决赛检查] 败者组共有 ${loserMatches.length} 场比赛。');
     if (loserMatches.isEmpty) {
-      Log.d('[Finals] Check failed: Loser bracket is empty.');
+      Log.d('[总决赛检查] 检查失败: 败者组为空。');
       return [];
     }
     if (loserMatches.any((m) => m.status != MatchStatus.completed)) {
-      Log.d(
-          '[Finals] Check failed: Not all loser bracket matches are completed.');
+      Log.d('[总决赛检查] 检查失败: 并非所有败者组比赛都已完成。');
       return [];
     }
     final maxLoserRound =
@@ -710,22 +594,20 @@ class LeagueNotifier extends _$LeagueNotifier {
     final nextLoserMatches = _generateNextRoundMatches(league, maxLoserRound,
         bracketType: BracketType.loser);
     if (nextLoserMatches.isNotEmpty) {
-      Log.d(
-          '[Finals] Check failed: Loser bracket has not concluded yet (next round can be generated).');
+      Log.d('[总决赛检查] 检查失败: 败者组尚未结束 (仍可生成下一轮)。');
       return [];
     }
     final loserChampion =
         loserMatches.firstWhere((m) => m.round == maxLoserRound).winnerId;
     if (loserChampion == null) {
-      Log.w('[Finals] Check failed: Loser champion is null.');
+      Log.w('[总决赛检查] 检查失败: 败者组冠军ID为空。');
       return [];
     }
-    Log.i('[Finals] Loser bracket champion confirmed: $loserChampion');
+    Log.i('[总决赛检查] 败者组冠军已确定: $loserChampion');
 
     // 4. 两个分支的冠军都已决出，生成总决赛！
     final grandFinalRound = maxWinnerRound + 1;
-    Log.i(
-        '[Finals] All conditions met! Generating grand final between $winnerChampion and $loserChampion.');
+    Log.i('[总决赛检查] 所有条件均满足！正在生成总决赛: $winnerChampion vs $loserChampion。');
     return [
       Match(
         leagueId: league.lid,
