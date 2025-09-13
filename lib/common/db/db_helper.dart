@@ -90,7 +90,12 @@ class DatabaseHelper {
   }
 
   Future<String> getDbPath() async {
-    final appDir = await DataManager.getCurrentDataDir();
+    var appDir = await DataManager.getCurrentDataDir();
+    // 如果是鸿蒙系统，使用内置的数据库目录
+    if (PlatformUtils.isOhosPlatformSync()) {
+      // /data/storage/el2/database/rdb
+      appDir = await getDatabasesPath();
+    }
     final dbPath = join(appDir, 'databases');
     await Directory(dbPath).create(recursive: true);
     String path = join(dbPath, 'counters.db');
@@ -117,11 +122,11 @@ class DatabaseHelper {
     }
     String path = await getDbPath();
 
-    // 如果是鸿蒙系统，清空数据库数据而不是删除文件
-    if (PlatformUtils.isOhosPlatformSync()) {
-      await _clearDatabaseDataForOhos();
-      return;
-    }
+    // // 如果是鸿蒙系统，清空数据库数据而不是删除文件
+    // if (PlatformUtils.isOhosPlatformSync()) {
+    //   await _clearDatabaseDataForOhos();
+    //   return;
+    // }
 
     Log.i('尝试删除数据库：$path');
     if (await databaseExists(path)) {
@@ -147,119 +152,108 @@ class DatabaseHelper {
   Future<void> _onCreate(Database db, int version) async {
     Log.i("_onCreate db:${db.path}");
 
-    final batch = db.batch();
-
-    // 创建玩家表
-    batch.execute('''
-      -- 玩家信息表
+    // 玩家信息表
+    await db.execute('''
       CREATE TABLE players (
-        pid TEXT PRIMARY KEY, -- 玩家唯一ID
-        name TEXT NOT NULL DEFAULT '未知玩家', -- 玩家名称
-        avatar TEXT NOT NULL DEFAULT 'default_avatar.png' -- 玩家头像
+        pid TEXT PRIMARY KEY,
+        name TEXT NOT NULL DEFAULT '未知玩家',
+        avatar TEXT NOT NULL DEFAULT 'default_avatar.png'
       );
     ''');
 
-    // 创建模板基础表
-    batch.execute('''
-      -- 计分器模板表
+    // 计分器模板表
+    await db.execute('''
       CREATE TABLE templates (
-        tid TEXT PRIMARY KEY, -- 模板唯一ID
-        template_name TEXT NOT NULL, -- 模板名称
-        player_count INTEGER NOT NULL, -- 玩家人数
-        target_score INTEGER NOT NULL, -- 目标分数
-        is_system_template INTEGER NOT NULL DEFAULT 0, -- 是否为系统模板 (1:是, 0:否)
-        base_template_id TEXT, -- 自定义模板所基于的系统模板ID
-        template_type TEXT NOT NULL, -- 模板类型 (如: poker50, mahjong)
-        disable_victory_score_check INTEGER NOT NULL DEFAULT 0, -- 不检查胜利分数 (1:是, 0:否)
-        reverse_win_rule INTEGER NOT NULL DEFAULT 0, -- 反转胜利规则 (1:是, 0:否)
-        other_set TEXT -- 其他设置 (JSON格式字符串)
+        tid TEXT PRIMARY KEY,
+        template_name TEXT NOT NULL,
+        player_count INTEGER NOT NULL,
+        target_score INTEGER NOT NULL,
+        is_system_template INTEGER NOT NULL DEFAULT 0,
+        base_template_id TEXT,
+        template_type TEXT NOT NULL,
+        disable_victory_score_check INTEGER NOT NULL DEFAULT 0,
+        reverse_win_rule INTEGER NOT NULL DEFAULT 0,
+        other_set TEXT
       );
       ''');
 
     // 插入初始系统模板
     for (var template in _initialSystemTemplates) {
-      batch.insert('templates', template);
+      await db.insert('templates', template);
     }
 
-    // 创建模板-玩家关联表
-    batch.execute('''
-      -- 模板与玩家常用关联表
+    // 模板与玩家常用关联表
+    await db.execute('''
       CREATE TABLE template_players (
-        template_id TEXT NOT NULL, -- 模板ID
-        player_id TEXT NOT NULL, -- 玩家ID
+        template_id TEXT NOT NULL,
+        player_id TEXT NOT NULL,
         PRIMARY KEY (template_id, player_id)
       );
     ''');
 
-    // 创建计分会话表
-    batch.execute('''
-      -- 计分会话历史表
+    // 计分会话历史表
+    await db.execute('''
       CREATE TABLE game_sessions (
-        sid TEXT PRIMARY KEY, -- 会话唯一ID
-        template_id TEXT NOT NULL, -- 使用的模板ID
-        start_time INTEGER NOT NULL, -- 开始时间 (Unix时间戳)
-        end_time INTEGER, -- 结束时间 (Unix时间戳)
-        is_completed INTEGER NOT NULL DEFAULT 0, -- 是否已完成 (1:是, 0:否)
-        league_match_id TEXT -- 关联的联赛比赛ID (V2新增)
+        sid TEXT PRIMARY KEY,
+        template_id TEXT NOT NULL,
+        start_time INTEGER NOT NULL,
+        end_time INTEGER,
+        is_completed INTEGER NOT NULL DEFAULT 0,
+        league_match_id TEXT
       )
     ''');
 
-    // 创建玩家得分表
-    batch.execute('''
-      -- 玩家具体得分历史表
+    // 玩家具体得分历史表
+    await db.execute('''
       CREATE TABLE player_scores (
-        session_id TEXT NOT NULL, -- 会话ID
-        player_id TEXT NOT NULL, -- 玩家ID
-        round_number INTEGER NOT NULL, -- 回合数
-        score INTEGER, -- 本回合得分
-        extended_field TEXT, -- 扩展字段 (用于特殊计分类型, JSON格式)
+        session_id TEXT NOT NULL,
+        player_id TEXT NOT NULL,
+        round_number INTEGER NOT NULL,
+        score INTEGER,
+        extended_field TEXT,
         PRIMARY KEY (session_id, player_id, round_number)
       )
     ''');
 
     // 创建V2相关的表
-    _createV2Tables(batch);
-
-    await batch.commit(noResult: true);
+    await _createV2Tables(db);
 
     // 创建性能优化索引
     await _createPerformanceIndexes(db);
   }
 
-  void _createV2Tables(Batch batch) {
-    // 创建联赛表
-    batch.execute('''
-      -- 联赛信息表 (V2新增)
+  Future<void> _createV2Tables(Database db) async {
+    // 联赛信息表 (V2新增)
+    await db.execute('''
       CREATE TABLE leagues (
-        lid TEXT PRIMARY KEY, -- 联赛唯一ID
-        name TEXT NOT NULL, -- 联赛名称
-        type TEXT NOT NULL, -- 联赛类型 (如: roundRobin, knockout)
-        player_ids TEXT NOT NULL, -- 参赛者ID列表 (JSON格式)
-        default_template_id TEXT NOT NULL, -- 默认计分器模板ID
-        points_for_win INTEGER NOT NULL, -- 胜场积分
-        points_for_draw INTEGER NOT NULL, -- 平局积分
-        points_for_loss INTEGER NOT NULL, -- 负场积分
-        current_round INTEGER -- 当前进行的轮次 (用于淘汰赛)
+        lid TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        player_ids TEXT NOT NULL,
+        default_template_id TEXT NOT NULL,
+        points_for_win INTEGER NOT NULL,
+        points_for_draw INTEGER NOT NULL,
+        points_for_loss INTEGER NOT NULL,
+        current_round INTEGER
       )
     ''');
 
-    // 创建比赛表
-    batch.execute('''
-      -- 联赛中的比赛记录表 (V2新增)
+    // 联赛中的比赛记录表 (V2新增)
+    await db.execute('''
       CREATE TABLE matches (
-        mid TEXT PRIMARY KEY, -- 比赛唯一ID
-        league_id TEXT NOT NULL, -- 所属联赛ID
-        round INTEGER NOT NULL, -- 比赛轮次
-        player1_id TEXT NOT NULL, -- 选手1的ID
-        player2_id TEXT, -- 选手2的ID (轮空时可为空)
-        status TEXT NOT NULL, -- 比赛状态 (如: pending, in_progress, completed)
-        player1_score INTEGER, -- 选手1的得分
-        player2_score INTEGER, -- 选手2的得分
-        winner_id TEXT, -- 胜利者ID
-        template_id TEXT, -- 该场比赛使用的计分器模板ID
-        start_time INTEGER, -- 开始时间 (Unix时间戳)
-        end_time INTEGER, -- 结束时间 (Unix时间戳)
-        bracket_type TEXT, -- 比赛类型 (胜者组/败者组, V3新增)
+        mid TEXT PRIMARY KEY,
+        league_id TEXT NOT NULL,
+        round INTEGER NOT NULL,
+        player1_id TEXT NOT NULL,
+        player2_id TEXT,
+        status TEXT NOT NULL,
+        player1_score INTEGER,
+        player2_score INTEGER,
+        winner_id TEXT,
+        template_id TEXT,
+        start_time INTEGER,
+        end_time INTEGER,
+        bracket_type TEXT,
         FOREIGN KEY (league_id) REFERENCES leagues (lid) ON DELETE CASCADE
       )
     ''');
@@ -322,7 +316,7 @@ class DatabaseHelper {
     try {
       // 检查索引是否存在，如果不存在则创建
       final indexExists =
-          await _checkIndexExists(db, 'idx_player_scores_player_id');
+      await _checkIndexExists(db, 'idx_player_scores_player_id');
       if (!indexExists) {
         Log.i('检测到缺失的性能索引，正在创建...');
         await _createPerformanceIndexes(db);
@@ -374,37 +368,6 @@ class DatabaseHelper {
       Log.i('默认基础目录文件信息打印完成');
     } catch (e) {
       Log.e('打印默认基础目录文件信息失败: $e');
-    }
-  }
-
-  /// 鸿蒙系统专用：清空数据库数据而不删除文件
-  Future<void> _clearDatabaseDataForOhos() async {
-    try {
-      Log.i('鸿蒙系统：开始清空数据库数据');
-
-      // 确保数据库已初始化
-      final db = await database;
-
-      // 直接清空所有表
-      await db.transaction((txn) async {
-        await txn.delete('player_scores');
-        await txn.delete('game_sessions');
-        await txn.delete('template_players');
-        await txn.delete('players');
-        await txn.delete('templates');
-
-        Log.i('鸿蒙系统：所有表已清空');
-      });
-
-      // 重新初始化数据库（会重新创建系统模板）
-      await _database!.close();
-      _database = null;
-      _database = await _initDatabase();
-
-      Log.i('鸿蒙系统：数据库重新初始化完成');
-    } catch (e) {
-      Log.e('鸿蒙系统：清空数据库数据失败: $e');
-      throw Exception('清空数据库数据失败: $e');
     }
   }
 }

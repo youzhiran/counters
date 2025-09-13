@@ -14,29 +14,27 @@ class Migrations {
 
   static Future<void> _apply1to4Migrations(Database db) async {
     Log.i("应用 v1 到 v4 的数据库结构变更...");
-    final batch = db.batch();
 
     // 步骤 1: 创建联赛相关的表 (原V2)
-    _createLeagueTables(batch);
+    await _createLeagueTables(db);
 
     // 步骤 2: 为旧表添加新列 (原V2)
-    batch.execute('''
+    await db.execute('''
         ALTER TABLE game_sessions ADD COLUMN league_match_id TEXT
       ''');
-    batch.execute('''
+    await db.execute('''
         ALTER TABLE templates ADD COLUMN disable_victory_score_check INTEGER NOT NULL DEFAULT 0
       ''');
-    batch.execute('''
+    await db.execute('''
         ALTER TABLE templates ADD COLUMN reverse_win_rule INTEGER NOT NULL DEFAULT 0
       ''');
 
     // 步骤 3: 为 matches 表添加 bracket_type 列 (原V3)
     // 注意：_createLeagueTables 中已直接包含此字段，此处无需 ALTER
-    // batch.execute('''
+    // await db.execute('''
     //     ALTER TABLE matches ADD COLUMN bracket_type TEXT
     //   ''');
 
-    await batch.commit(noResult: true);
     Log.i("数据库表结构变更应用完成。");
 
     // 步骤 4: 从 other_set 迁移数据到新列 (原V2)
@@ -52,9 +50,9 @@ class Migrations {
     Log.i("数据库数据更新应用完成。");
   }
 
-  static void _createLeagueTables(Batch batch) {
+  static Future<void> _createLeagueTables(Database db) async {
     // 创建联赛表
-    batch.execute('''
+    await db.execute('''
       -- 联赛信息表
       CREATE TABLE leagues (
         lid TEXT PRIMARY KEY, -- 联赛唯一ID
@@ -70,7 +68,7 @@ class Migrations {
     ''');
 
     // 创建比赛表 (已包含 bracket_type 字段)
-    batch.execute('''
+    await db.execute('''
       -- 联赛中的比赛记录表
       CREATE TABLE matches (
         mid TEXT PRIMARY KEY, -- 比赛唯一ID
@@ -95,7 +93,7 @@ class Migrations {
     Log.i("开始迁移 templates 表的数据...");
     try {
       final templates =
-          await db.query('templates', columns: ['tid', 'other_set']);
+      await db.query('templates', columns: ['tid', 'other_set']);
       final batch = db.batch();
 
       for (final template in templates) {
@@ -121,7 +119,7 @@ class Migrations {
 
               // 更新 other_set
               updates['other_set'] =
-                  otherSet.isEmpty ? null : jsonEncode(otherSet);
+              otherSet.isEmpty ? null : jsonEncode(otherSet);
 
               batch.update('templates', updates,
                   where: 'tid = ?', whereArgs: [tid]);
