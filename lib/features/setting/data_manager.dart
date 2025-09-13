@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/utils/platform_utils.dart';
+import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,7 +27,7 @@ class DataManager {
   /// 获取默认数据存储目录的父目录
   static Future<String> getDefaultBaseDir() async {
     // 鸿蒙平台
-    if(PlatformUtils.isOhosPlatformSync()){
+    if (PlatformUtils.isOhosPlatformSync()) {
       return (await getApplicationSupportDirectory()).path;
     }
     return (await getApplicationDocumentsDirectory()).path;
@@ -210,6 +211,81 @@ class DataManager {
     } catch (e, stackTrace) {
       ErrorHandler.handle(e, stackTrace, prefix: '数据管理器初始化失败');
       rethrow;
+    }
+  }
+
+  /// 获取用于调试的目录信息
+  static Future<Map<String, Map<String, dynamic>>>
+      getDebugDirectoryInfo() async {
+    // 存储返回Future的函数，而不是Future本身，以延迟执行
+    final Map<String, Future<Directory?> Function()> dirFunctions = {
+      'Temporary': () => getTemporaryDirectory(),
+      'Application Support': () => getApplicationSupportDirectory(),
+      'Application Documents': () => getApplicationDocumentsDirectory(),
+      'Application Cache': () => getApplicationCacheDirectory(),
+      'External Storage': () => getExternalStorageDirectory(),
+      'Downloads': () => getDownloadsDirectory(),
+    };
+
+    final customDirs = {
+      'Custom Current Data Dir': () =>
+          getCurrentDataDir().then((path) => Directory(path)),
+      'Custom Default Base Dir': () =>
+          getDefaultBaseDir().then((path) => Directory(path)),
+    };
+
+    final results = <String, Map<String, dynamic>>{};
+
+    // 处理 path_provider 的目录
+    for (var entry in dirFunctions.entries) {
+      try {
+        // 在try块内部调用函数以捕获同步错误
+        final dir = await entry.value();
+        if (dir != null) {
+          final contents = await _listDirectoryContents(dir);
+          results[entry.key] = {'path': dir.path, 'contents': contents};
+        } else {
+          results[entry.key] = {'path': 'Not available', 'contents': []};
+        }
+      } catch (e) {
+        results[entry.key] = {
+          'path': e is UnimplementedError
+              ? 'Not implemented on this platform'
+              : 'Error: ${e.toString()}',
+          'contents': []
+        };
+      }
+    }
+
+    // 处理自定义目录
+    for (var entry in customDirs.entries) {
+      try {
+        final dir = await entry.value();
+        final contents = await _listDirectoryContents(dir);
+        results[entry.key] = {'path': dir.path, 'contents': contents};
+      } catch (e) {
+        results[entry.key] = {
+          'path': 'Error: ${e.toString()}',
+          'contents': []
+        };
+      }
+    }
+
+    return results;
+  }
+
+  static Future<List<String>> _listDirectoryContents(Directory dir) async {
+    try {
+      if (await dir.exists()) {
+        return await dir
+            .list()
+            .map((entity) => basename(entity.path))
+            .toList();
+      } else {
+        return ['Directory does not exist'];
+      }
+    } catch (e) {
+      return ['Error listing contents: ${e.toString()}'];
     }
   }
 }

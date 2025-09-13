@@ -20,6 +20,7 @@ import 'package:counters/features/setting/ping_display_provider.dart';
 import 'package:counters/features/setting/port_config_provider.dart';
 import 'package:counters/features/setting/privacy_debug_page.dart';
 import 'package:counters/features/setting/screen_wakelock_provider.dart';
+import 'package:counters/features/setting/storage_explorer_page.dart';
 import 'package:counters/features/setting/theme_provider.dart';
 import 'package:counters/features/setting/update_check_provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -381,6 +382,18 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     subtitle: '清除所有被忽略的更新版本记录',
                     onTap: _clearIgnoredVersions,
                   ),
+                  SettingListTile(
+                    icon: Icons.folder_special,
+                    title: '存储路径调试',
+                    subtitle: '查看各API获取的目录路径和内容',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const StorageExplorerPage(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ],
             ),
@@ -588,9 +601,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
           children: [
             Text('当前位置:\n$_dataStoragePath'),
             SizedBox(height: 16),
-            Text('更改存储位置将进行数据迁移，若新目录含有旧版本数据将会被覆盖，旧目录程序数据不会删除。\n\n'
-                '设置数据(shared_preferences)一般位于 C:\\Users\\{用户名}\\AppData\\Roaming\\com.devyi\\counters\\shared_preferences.json ，其位置不会变动。\n\n'
-                '数据实际存储于选择目录下的 counters-data 目录中。\n\n'
+            Text('更改存储位置将进行数据迁移，若新目录含有旧版本数据将会被覆盖，旧目录程序数据不会删除。\n\n' 
+                '设置数据(shared_preferences)一般位于 C:\Users\{用户名}\AppData\Roaming\com.devyi\counters\shared_preferences.json ，其位置不会变动。\n\n' 
+                '数据实际存储于选择目录下的 counters-data 目录中。\n\n' 
                 '本功能目前仅适用于Windows。'),
           ],
         ),
@@ -623,7 +636,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('重置设置'),
-        content: Text('此操作将重置所有设置项到默认值，包括主题、存储位置等。若更改过存储位置，您的计分数据也将丢失。\n'
+        content: Text('此操作将重置所有设置项到默认值，包括主题、存储位置等。若更改过存储位置，您的计分数据也将丢失。\n' 
             '此操作不可恢复，是否继续？'),
         actions: [
           TextButton(
@@ -761,8 +774,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     globalState.showCommonDialog(
       child: AlertDialog(
         title: Text('重置数据库'),
-        content: Text('此操作将删除所有数据并重新初始化数据库。包括自定义模板、玩家设置、计分历史等。\n'
-            '仅在程序出现问题时使用。\n'
+        content: Text('此操作将删除所有数据并重新初始化数据库。包括自定义模板、玩家设置、计分历史等。\n' 
+            '仅在程序出现问题时使用。\n' 
             '此操作不可恢复，是否继续？'),
         actions: [
           TextButton(
@@ -887,7 +900,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       children: [
                         Text(
                           '主题设置',
-                          style:
+                          style: 
                               Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -902,7 +915,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                             Tooltip(
-                              message: '选择"系统推荐"将在程序推荐的字体列表中自动选择字体。\n'
+                              message: '选择"系统推荐"将在程序推荐的字体列表中自动选择字体。\n' 
                                   '右侧供选择的字体并不代表您的系统安装了该字体，若选择了系统中没有的字体，将自动回滚到其他字体。',
                               child: Icon(
                                 Icons.info_outline,
@@ -1280,8 +1293,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
 
                   const SizedBox(height: 12),
                   Text(
-                    '注意：\n①无特殊情况请不要修改端口设置。\n'
-                    '②修改端口后需重启局域网服务才能生效。\n'
+                    '注意：\n①无特殊情况请不要修改端口设置。\n' 
+                    '②修改端口后需重启局域网服务才能生效。\n' 
                     '③修改端口后主机和客户端端口设置需保持一致方可正常联机。',
                     style: TextStyle(
                       color: Colors.grey.shade600,
@@ -1403,10 +1416,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
       child: AlertDialog(
         title: const Text('关闭匿名统计'),
         content: const Text(
-          '真的要关闭统计吗？\n\n'
-          '我们不收集个人信息，只是想了解用户如何使用应用，从而改进应用使用体验。\n\n'
-          '作为一个开源免费的应用，开发者看到没人使用 ${Config.appName}，可能就没动力更新了......😢😭\n\n'
-          '如果您觉得 ${Config.appName} 好用，希望能给开发者一个 star ⭐。\n\n'
+          '真的要关闭统计吗？\n\n' 
+          '我们不收集个人信息，只是想了解用户如何使用应用，从而改进应用使用体验。\n\n' 
+          '作为一个开源免费的应用，开发者看到没人使用 ${Config.appName}，可能就没动力更新了......😢😭\n\n' 
+          '如果您觉得 ${Config.appName} 好用，希望能给开发者一个 star ⭐。\n\n' 
           '您可以随时在设置中重新开启。',
         ),
         actions: [
