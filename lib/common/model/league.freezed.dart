@@ -20,6 +20,7 @@ mixin _$League {
   List<String> get playerIds;
   List<Match> get matches;
   String get defaultTemplateId; // Round-robin specific settings
+  int get roundRobinRounds;
   int get pointsForWin;
   int get pointsForDraw;
   int get pointsForLoss; // Knockout specific settings
@@ -47,6 +48,8 @@ mixin _$League {
             const DeepCollectionEquality().equals(other.matches, matches) &&
             (identical(other.defaultTemplateId, defaultTemplateId) ||
                 other.defaultTemplateId == defaultTemplateId) &&
+            (identical(other.roundRobinRounds, roundRobinRounds) ||
+                other.roundRobinRounds == roundRobinRounds) &&
             (identical(other.pointsForWin, pointsForWin) ||
                 other.pointsForWin == pointsForWin) &&
             (identical(other.pointsForDraw, pointsForDraw) ||
@@ -67,6 +70,7 @@ mixin _$League {
       const DeepCollectionEquality().hash(playerIds),
       const DeepCollectionEquality().hash(matches),
       defaultTemplateId,
+      roundRobinRounds,
       pointsForWin,
       pointsForDraw,
       pointsForLoss,
@@ -74,7 +78,7 @@ mixin _$League {
 
   @override
   String toString() {
-    return 'League(lid: $lid, name: $name, type: $type, playerIds: $playerIds, matches: $matches, defaultTemplateId: $defaultTemplateId, pointsForWin: $pointsForWin, pointsForDraw: $pointsForDraw, pointsForLoss: $pointsForLoss, currentRound: $currentRound)';
+    return 'League(lid: $lid, name: $name, type: $type, playerIds: $playerIds, matches: $matches, defaultTemplateId: $defaultTemplateId, roundRobinRounds: $roundRobinRounds, pointsForWin: $pointsForWin, pointsForDraw: $pointsForDraw, pointsForLoss: $pointsForLoss, currentRound: $currentRound)';
   }
 }
 
@@ -90,6 +94,7 @@ abstract mixin class $LeagueCopyWith<$Res> {
       List<String> playerIds,
       List<Match> matches,
       String defaultTemplateId,
+      int roundRobinRounds,
       int pointsForWin,
       int pointsForDraw,
       int pointsForLoss,
@@ -114,6 +119,7 @@ class _$LeagueCopyWithImpl<$Res> implements $LeagueCopyWith<$Res> {
     Object? playerIds = null,
     Object? matches = null,
     Object? defaultTemplateId = null,
+    Object? roundRobinRounds = null,
     Object? pointsForWin = null,
     Object? pointsForDraw = null,
     Object? pointsForLoss = null,
@@ -144,6 +150,10 @@ class _$LeagueCopyWithImpl<$Res> implements $LeagueCopyWith<$Res> {
           ? _self.defaultTemplateId
           : defaultTemplateId // ignore: cast_nullable_to_non_nullable
               as String,
+      roundRobinRounds: null == roundRobinRounds
+          ? _self.roundRobinRounds
+          : roundRobinRounds // ignore: cast_nullable_to_non_nullable
+              as int,
       pointsForWin: null == pointsForWin
           ? _self.pointsForWin
           : pointsForWin // ignore: cast_nullable_to_non_nullable
@@ -264,6 +274,7 @@ extension LeaguePatterns on League {
             List<String> playerIds,
             List<Match> matches,
             String defaultTemplateId,
+            int roundRobinRounds,
             int pointsForWin,
             int pointsForDraw,
             int pointsForLoss,
@@ -281,6 +292,7 @@ extension LeaguePatterns on League {
             _that.playerIds,
             _that.matches,
             _that.defaultTemplateId,
+            _that.roundRobinRounds,
             _that.pointsForWin,
             _that.pointsForDraw,
             _that.pointsForLoss,
@@ -312,6 +324,7 @@ extension LeaguePatterns on League {
             List<String> playerIds,
             List<Match> matches,
             String defaultTemplateId,
+            int roundRobinRounds,
             int pointsForWin,
             int pointsForDraw,
             int pointsForLoss,
@@ -328,6 +341,7 @@ extension LeaguePatterns on League {
             _that.playerIds,
             _that.matches,
             _that.defaultTemplateId,
+            _that.roundRobinRounds,
             _that.pointsForWin,
             _that.pointsForDraw,
             _that.pointsForLoss,
@@ -358,6 +372,7 @@ extension LeaguePatterns on League {
             List<String> playerIds,
             List<Match> matches,
             String defaultTemplateId,
+            int roundRobinRounds,
             int pointsForWin,
             int pointsForDraw,
             int pointsForLoss,
@@ -374,6 +389,7 @@ extension LeaguePatterns on League {
             _that.playerIds,
             _that.matches,
             _that.defaultTemplateId,
+            _that.roundRobinRounds,
             _that.pointsForWin,
             _that.pointsForDraw,
             _that.pointsForLoss,
@@ -394,6 +410,7 @@ class _League implements League {
       required final List<String> playerIds,
       required final List<Match> matches,
       required this.defaultTemplateId,
+      this.roundRobinRounds = 1,
       this.pointsForWin = 3,
       this.pointsForDraw = 1,
       this.pointsForLoss = 0,
@@ -427,6 +444,9 @@ class _League implements League {
   @override
   final String defaultTemplateId;
 // Round-robin specific settings
+  @override
+  @JsonKey()
+  final int roundRobinRounds;
   @override
   @JsonKey()
   final int pointsForWin;
@@ -468,6 +488,8 @@ class _League implements League {
             const DeepCollectionEquality().equals(other._matches, _matches) &&
             (identical(other.defaultTemplateId, defaultTemplateId) ||
                 other.defaultTemplateId == defaultTemplateId) &&
+            (identical(other.roundRobinRounds, roundRobinRounds) ||
+                other.roundRobinRounds == roundRobinRounds) &&
             (identical(other.pointsForWin, pointsForWin) ||
                 other.pointsForWin == pointsForWin) &&
             (identical(other.pointsForDraw, pointsForDraw) ||
@@ -488,6 +510,7 @@ class _League implements League {
       const DeepCollectionEquality().hash(_playerIds),
       const DeepCollectionEquality().hash(_matches),
       defaultTemplateId,
+      roundRobinRounds,
       pointsForWin,
       pointsForDraw,
       pointsForLoss,
@@ -495,7 +518,7 @@ class _League implements League {
 
   @override
   String toString() {
-    return 'League.internal(lid: $lid, name: $name, type: $type, playerIds: $playerIds, matches: $matches, defaultTemplateId: $defaultTemplateId, pointsForWin: $pointsForWin, pointsForDraw: $pointsForDraw, pointsForLoss: $pointsForLoss, currentRound: $currentRound)';
+    return 'League.internal(lid: $lid, name: $name, type: $type, playerIds: $playerIds, matches: $matches, defaultTemplateId: $defaultTemplateId, roundRobinRounds: $roundRobinRounds, pointsForWin: $pointsForWin, pointsForDraw: $pointsForDraw, pointsForLoss: $pointsForLoss, currentRound: $currentRound)';
   }
 }
 
@@ -512,6 +535,7 @@ abstract mixin class _$LeagueCopyWith<$Res> implements $LeagueCopyWith<$Res> {
       List<String> playerIds,
       List<Match> matches,
       String defaultTemplateId,
+      int roundRobinRounds,
       int pointsForWin,
       int pointsForDraw,
       int pointsForLoss,
@@ -536,6 +560,7 @@ class __$LeagueCopyWithImpl<$Res> implements _$LeagueCopyWith<$Res> {
     Object? playerIds = null,
     Object? matches = null,
     Object? defaultTemplateId = null,
+    Object? roundRobinRounds = null,
     Object? pointsForWin = null,
     Object? pointsForDraw = null,
     Object? pointsForLoss = null,
@@ -566,6 +591,10 @@ class __$LeagueCopyWithImpl<$Res> implements _$LeagueCopyWith<$Res> {
           ? _self.defaultTemplateId
           : defaultTemplateId // ignore: cast_nullable_to_non_nullable
               as String,
+      roundRobinRounds: null == roundRobinRounds
+          ? _self.roundRobinRounds
+          : roundRobinRounds // ignore: cast_nullable_to_non_nullable
+              as int,
       pointsForWin: null == pointsForWin
           ? _self.pointsForWin
           : pointsForWin // ignore: cast_nullable_to_non_nullable

@@ -10,6 +10,9 @@ class Migrations {
     if (oldVersion < 4) {
       await _apply1to4Migrations(db);
     }
+    if (oldVersion < 5) {
+      await _apply4to5Migrations(db);
+    }
   }
 
   static Future<void> _apply1to4Migrations(Database db) async {
@@ -63,6 +66,7 @@ class Migrations {
         points_for_win INTEGER NOT NULL, -- 胜场积分
         points_for_draw INTEGER NOT NULL, -- 平局积分
         points_for_loss INTEGER NOT NULL, -- 负场积分
+        round_robin_rounds INTEGER NOT NULL DEFAULT 1, -- 循环赛总轮次
         current_round INTEGER -- 当前进行的轮次 (用于淘汰赛)
       )
     ''');
@@ -137,5 +141,13 @@ class Migrations {
       Log.e("模板数据迁移过程中发生错误: $e");
       // 如果迁移失败，不应阻塞整个升级过程，但需要记录错误
     }
+  }
+
+  static Future<void> _apply4to5Migrations(Database db) async {
+    Log.i("应用 v4 到 v5 的数据库结构变更...");
+    await db.execute('''
+        ALTER TABLE leagues ADD COLUMN round_robin_rounds INTEGER NOT NULL DEFAULT 1
+      ''');
+    Log.i("round_robin_rounds 列已添加到 leagues 表。");
   }
 }

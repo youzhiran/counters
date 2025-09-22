@@ -59,18 +59,24 @@ class LeagueNotifier extends _$LeagueNotifier {
     required LeagueType type,
     required List<String> playerIds,
     required String defaultTemplateId,
+    int roundRobinRounds = 1,
     int pointsForWin = 3,
     int pointsForDraw = 1,
     int pointsForLoss = 0,
   }) async {
     try {
-      List<Match> matches = _generateFirstRoundMatches(type, playerIds);
+      final sanitizedRounds =
+          type == LeagueType.roundRobin ? roundRobinRounds : 1;
+
+      List<Match> matches =
+          _generateFirstRoundMatches(type, playerIds, sanitizedRounds);
       final newLeague = League(
         name: name,
         type: type,
         playerIds: playerIds,
         matches: matches,
         defaultTemplateId: defaultTemplateId,
+        roundRobinRounds: sanitizedRounds,
         pointsForWin: pointsForWin,
         pointsForDraw: pointsForDraw,
         pointsForLoss: pointsForLoss,
@@ -86,6 +92,56 @@ class LeagueNotifier extends _$LeagueNotifier {
     } catch (e) {
       // 对于验证性错误（如玩家数量不匹配），不应将整个provider置于错误状态。
       // 而是将异常重新抛出，由调用方（UI层）捕获并以用户友好的方式（如SnackBar）显示。
+      rethrow;
+    }
+  }
+
+  Future<void> addRoundRobinRound(String leagueId) async {
+    if (!state.hasValue) return;
+    try {
+      final league = state.value!.leagues.firstWhere((l) => l.lid == leagueId);
+      if (league.type != LeagueType.roundRobin) {
+        throw Exception('只有循环赛可以增加轮次');
+      }
+
+      // 检查当前最后一轮是否已全部完成
+      final currentRoundNumber = league.roundRobinRounds;
+      final currentRoundMatches =
+          league.matches.where((m) => m.round == currentRoundNumber);
+
+      if (currentRoundMatches.isNotEmpty &&
+          currentRoundMatches.any((m) => m.status != MatchStatus.completed)) {
+        throw Exception('当前轮次尚有未完成的比赛，无法添加新轮次。');
+      }
+
+      final newRoundNumber = league.roundRobinRounds + 1;
+      final playerIds = league.playerIds;
+      final newMatches = <Match>[];
+
+      // 生成新一轮的对阵
+      for (int i = 0; i < playerIds.length; i++) {
+        for (int j = i + 1; j < playerIds.length; j++) {
+          // 为了让每一轮的先后手顺序可能不同，可以根据轮次的奇偶性来交换
+          final player1 = newRoundNumber.isEven ? playerIds[j] : playerIds[i];
+          final player2 = newRoundNumber.isEven ? playerIds[i] : playerIds[j];
+          newMatches.add(Match(
+            leagueId: league.lid,
+            round: newRoundNumber,
+            player1Id: player1,
+            player2Id: player2,
+          ));
+        }
+      }
+
+      final updatedLeague = league.copyWith(
+        roundRobinRounds: newRoundNumber,
+        matches: [...league.matches, ...newMatches],
+      );
+
+      await _leagueDao.saveLeague(updatedLeague);
+      await _reloadLeagues();
+    } catch (e) {
+      // 重新抛出异常，由UI层处理
       rethrow;
     }
   }
@@ -305,6 +361,13 @@ class LeagueNotifier extends _$LeagueNotifier {
     try {
       final league = state.value!.leagues
           .firstWhere((l) => l.matches.any((m) => m.mid == leagueMatchId));
+
+      // 循环赛与双败淘汰赛不需要重新生成后续赛程，否则会误删比赛
+      if (league.type != LeagueType.knockout) {
+        Log.i('联赛 ${league.lid} 类型为 ${league.type}，跳过赛程重建。');
+        return;
+      }
+
       final anchorMatch =
           league.matches.firstWhere((m) => m.mid == leagueMatchId);
       final anchorRound = anchorMatch.round;
@@ -315,19 +378,17 @@ class LeagueNotifier extends _$LeagueNotifier {
       var updatedLeague = league.copyWith(matches: preservedMatches);
 
       // 2. 检查锚点轮次是否已全部完成，如果完成则生成下一轮
-      if (league.type == LeagueType.knockout) {
-        final anchorRoundMatches =
-            preservedMatches.where((m) => m.round == anchorRound);
-        final isAnchorRoundCompleted =
-            anchorRoundMatches.every((m) => m.status == MatchStatus.completed);
+      final anchorRoundMatches =
+          preservedMatches.where((m) => m.round == anchorRound);
+      final isAnchorRoundCompleted =
+          anchorRoundMatches.every((m) => m.status == MatchStatus.completed);
 
-        if (isAnchorRoundCompleted) {
-          final nextRoundMatches =
-              _generateNextRoundMatches(updatedLeague, anchorRound);
-          if (nextRoundMatches.isNotEmpty) {
-            final finalMatches = [...preservedMatches, ...nextRoundMatches];
-            updatedLeague = updatedLeague.copyWith(matches: finalMatches);
-          }
+      if (isAnchorRoundCompleted) {
+        final nextRoundMatches =
+            _generateNextRoundMatches(updatedLeague, anchorRound);
+        if (nextRoundMatches.isNotEmpty) {
+          final finalMatches = [...preservedMatches, ...nextRoundMatches];
+          updatedLeague = updatedLeague.copyWith(matches: finalMatches);
         }
       }
 
@@ -379,20 +440,31 @@ class LeagueNotifier extends _$LeagueNotifier {
     state = AsyncData(state.value!.copyWith(leagues: updatedLeagues));
   }
 
-  List<Match> _generateFirstRoundMatches(
-      LeagueType type, List<String> playerIds) {
+  List<Match> _generateFirstRoundMatches(LeagueType type,
+      List<String> playerIds, int roundRobinRounds) {
     if (type == LeagueType.roundRobin) {
-      List<Match> matches = [];
-      for (int i = 0; i < playerIds.length; i++) {
-        for (int j = i + 1; j < playerIds.length; j++) {
-          matches.add(Match(
-            leagueId: '',
-            round: 1,
-            player1Id: playerIds[i],
-            player2Id: playerIds[j],
-          ));
+      if (playerIds.length < 2) {
+        return [];
+      }
+
+      final matches = <Match>[];
+      for (var cycle = 0; cycle < roundRobinRounds; cycle++) {
+        final roundNumber = cycle + 1;
+        final reverseOrder = cycle.isOdd;
+        for (int i = 0; i < playerIds.length; i++) {
+          for (int j = i + 1; j < playerIds.length; j++) {
+            final player1 = reverseOrder ? playerIds[j] : playerIds[i];
+            final player2 = reverseOrder ? playerIds[i] : playerIds[j];
+            matches.add(Match(
+              leagueId: '',
+              round: roundNumber,
+              player1Id: player1,
+              player2Id: player2,
+            ));
+          }
         }
       }
+
       return matches;
     } else if (type == LeagueType.knockout) {
       return _generateKnockoutRound(playerIds, 1, '');

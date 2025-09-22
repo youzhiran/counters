@@ -16,6 +16,7 @@ _League _$LeagueFromJson(Map<String, dynamic> json) => _League(
           .map((e) => Match.fromJson(e as Map<String, dynamic>))
           .toList(),
       defaultTemplateId: json['defaultTemplateId'] as String,
+      roundRobinRounds: (json['roundRobinRounds'] as num?)?.toInt() ?? 1,
       pointsForWin: (json['pointsForWin'] as num?)?.toInt() ?? 3,
       pointsForDraw: (json['pointsForDraw'] as num?)?.toInt() ?? 1,
       pointsForLoss: (json['pointsForLoss'] as num?)?.toInt() ?? 0,
@@ -29,6 +30,7 @@ Map<String, dynamic> _$LeagueToJson(_League instance) => <String, dynamic>{
       'playerIds': instance.playerIds,
       'matches': instance.matches,
       'defaultTemplateId': instance.defaultTemplateId,
+      'roundRobinRounds': instance.roundRobinRounds,
       'pointsForWin': instance.pointsForWin,
       'pointsForDraw': instance.pointsForDraw,
       'pointsForLoss': instance.pointsForLoss,

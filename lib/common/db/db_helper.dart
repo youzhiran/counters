@@ -8,7 +8,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
-  static const int dbVersion = 4;
+  static const int dbVersion = 5;
   static final DatabaseHelper instance = DatabaseHelper._();
   static Database? _database;
 

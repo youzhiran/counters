@@ -170,6 +170,47 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
                   elevation: 0,
                   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                   foregroundColor: Theme.of(context).colorScheme.onSurface,
+                  actions: [
+                    if (league.type == LeagueType.roundRobin)
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        tooltip: '增加一轮循环',
+                        onPressed: () async {
+                          final confirmed = await globalState.showCommonDialog(
+                            child: AlertDialog(
+                              title: const Text('确认增加轮次'),
+                              content: const Text(
+                                  '确定要为这个联赛增加一轮新的循环吗？系统将为所有玩家生成新一轮的对阵。'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
+                                  child: const Text('取消'),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
+                                  child: const Text('确认'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirmed == true) {
+                            try {
+                              await ref
+                                  .read(leagueNotifierProvider.notifier)
+                                  .addRoundRobinRound(league.lid);
+                              ref.showSuccess('已成功增加一轮');
+                            } catch (e) {
+                              // 使用 showWarning 并提供简洁的用户提示
+                              ref.showWarning(
+                                  e.toString().replaceFirst('Exception: ', ''));
+                            }
+                          }
+                        },
+                      ),
+                  ],
                 ),
           body: PageView(
             physics: const NeverScrollableScrollPhysics(),
@@ -203,6 +244,37 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
                 ),
         );
       },
+    );
+  }
+}
+
+class _RoundBadge extends StatelessWidget {
+  final int roundNumber;
+  final Color color;
+
+  const _RoundBadge({required this.roundNumber, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    final blendedColor = Color.alphaBlend(color.withOpacity(0.85), surface);
+
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: blendedColor,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          child: Text(
+            'R$roundNumber',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Colors.white, // 强制浅色文字
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -252,34 +324,34 @@ class _BracketMatchesList extends ConsumerWidget {
 
   const _BracketMatchesList({required this.league, required this.bracketType});
 
-  Widget? _buildLoserBracketGuide(BuildContext context) {
-    if (bracketType != BracketType.loser) {
-      return null;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline,
-              color: Theme.of(context).colorScheme.secondary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '败者组的每一轮都会分为两个阶段：阶段一是幸存者之间的内部对决；阶段二会迎来刚从胜者组掉入败者组的选手。完成阶段二的胜者才会进入下一轮。',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget? _buildLoserBracketGuide(BuildContext context) {
+  //   if (bracketType != BracketType.loser) {
+  //     return null;
+  //   }
+  //
+  //   return Container(
+  //     margin: const EdgeInsets.only(bottom: 8),
+  //     padding: const EdgeInsets.all(12),
+  //     decoration: BoxDecoration(
+  //       color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35),
+  //       borderRadius: BorderRadius.circular(8),
+  //     ),
+  //     child: Row(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Icon(Icons.info_outline,
+  //             color: Theme.of(context).colorScheme.secondary),
+  //         const SizedBox(width: 12),
+  //         Expanded(
+  //           child: Text(
+  //             '败者组的每一轮都会分为两个阶段：阶段一是幸存者之间的内部对决；阶段二会迎来刚从胜者组掉入败者组的选手。完成阶段二的胜者才会进入下一轮。',
+  //             style: Theme.of(context).textTheme.bodyMedium,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   /// 检查特定轮次是否已全部完成
   bool _isRoundCompleted(int round, BracketType type) {
@@ -379,13 +451,11 @@ class _BracketMatchesList extends ConsumerWidget {
     final groupedMatches = groupBy<Match, int>(matches, (match) => match.round);
     final sortedRounds = groupedMatches.keys.toList()..sort();
     final completionInfo = _buildCompletionInfo(context);
-    final loserGuide = _buildLoserBracketGuide(context);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
-          if (loserGuide != null) loserGuide,
           if (completionInfo != null) completionInfo,
           ...sortedRounds.map((round) {
             final matchesInRound = groupedMatches[round]!;
@@ -529,7 +599,8 @@ class _AnimatedExpansionPanelState extends State<_AnimatedExpansionPanel>
       color: Theme.of(context).scaffoldBackgroundColor,
       clipBehavior: Clip.hardEdge,
       margin: const EdgeInsets.symmetric(vertical: 6.0),
-      shape: cardShape, // 使用固定的形状
+      shape: cardShape,
+      // 使用固定的形状
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -569,13 +640,36 @@ class _RoundRobinMatchesList extends ConsumerWidget {
 
   const _RoundRobinMatchesList({required this.league});
 
+  Color _colorForRound(BuildContext context, int round) {
+    final palette = Colors.primaries;
+    final m = palette[(round - 1) % palette.length];
+    final base = m.shade500;
+    final surface = Theme.of(context).colorScheme.surface;
+    return Color.alphaBlend(base.withOpacity(0.80), surface); // 进一步柔和
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final matches = List<Match>.from(league.matches)
+      ..sort((a, b) {
+        final roundCompare = a.round.compareTo(b.round);
+        if (roundCompare != 0) {
+          return roundCompare;
+        }
+        return a.mid.compareTo(b.mid);
+      });
+
     return ResponsiveGridView(
-      itemCount: league.matches.length,
+      itemCount: matches.length,
+      itemHeight: 96,
       itemBuilder: (context, index) {
-        final match = league.matches[index];
-        return _MatchTile(match: match, league: league);
+        final match = matches[index];
+        return _MatchTile(
+          match: match,
+          league: league,
+          roundColor: _colorForRound(context, match.round),
+          roundNumber: match.round,
+        );
       },
     );
   }
@@ -587,8 +681,15 @@ class _RoundRobinMatchesList extends ConsumerWidget {
 class _MatchTile extends ConsumerWidget {
   final Match match;
   final League league;
+  final Color? roundColor;
+  final int? roundNumber;
 
-  const _MatchTile({required this.match, required this.league});
+  const _MatchTile({
+    required this.match,
+    required this.league,
+    this.roundColor,
+    this.roundNumber,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -603,25 +704,30 @@ class _MatchTile extends ConsumerWidget {
         (p) => p.pid == match.player1Id,
         orElse: () => PlayerInfo(name: '未知', avatar: ''));
 
-    // 关键修复：处理轮空情况
-    if (match.player2Id == 'bye') {
-      return OutlineCard(
-        leading: Icon(Icons.airline_stops_rounded,
-            color: Theme.of(context).colorScheme.primary),
-        title: Text('${player1.name} - 轮空'),
-        subtitle: const Text('自动晋级'),
-      );
-    }
-
-    final player2 = playerState.players.firstWhere(
-        (p) => p.pid == match.player2Id,
-        orElse: () => PlayerInfo(name: '未知', avatar: ''));
+    final bool isBye = match.player2Id == 'bye';
+    final PlayerInfo? player2 = isBye
+        ? null
+        : playerState.players.firstWhere(
+            (p) => p.pid == match.player2Id,
+            orElse: () => PlayerInfo(name: '未知', avatar: ''),
+          );
 
     return OutlineCard(
-      title: Text('${player1.name} vs ${player2.name}'),
-      subtitle: _buildSubtitle(match),
-      trailing: _buildMatchTrailing(context, ref, match, templates),
-      onTap: () => _navigateToGame(context, ref, match, templates, league),
+      leading: _buildLeading(context, isBye),
+      title: Text(
+        isBye
+            ? '${player1.name} - 轮空'
+            : '${player1.name} vs ${player2?.name ?? '未知'}',
+        maxLines: 1, // 最多一行
+        overflow: TextOverflow.ellipsis, // 超出用省略号
+        softWrap: false, // 禁止换行
+      ),
+      subtitle: _buildSubtitle(context, match, isBye: isBye),
+      trailing:
+          isBye ? null : _buildMatchTrailing(context, ref, match, templates),
+      onTap: isBye
+          ? null
+          : () => _navigateToGame(context, ref, match, templates, league),
     );
   }
 
@@ -677,7 +783,8 @@ class _MatchTile extends ConsumerWidget {
     return (isAvailable: true, message: null);
   }
 
-  Widget _buildSubtitle(Match match) {
+  Widget _buildSubtitle(BuildContext context, Match match,
+      {required bool isBye}) {
     String statusText;
     switch (match.status) {
       case MatchStatus.pending:
@@ -694,6 +801,38 @@ class _MatchTile extends ConsumerWidget {
     if (match.status != MatchStatus.pending) {
       statusText +=
           ' - ${match.player1Score ?? 0} : ${match.player2Score ?? 0}';
+    }
+
+    if (roundNumber != null) {
+      final theme = Theme.of(context);
+      final roundLabelColor = roundColor ??
+          (roundNumber != null
+              ? Colors.primaries[(roundNumber! - 1) % Colors.primaries.length]
+              : Theme.of(context).colorScheme.primary);
+      final statusLabel = isBye ? '自动晋级' : statusText;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '第$roundNumber轮',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: roundLabelColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            statusLabel,
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      );
+    }
+
+    if (isBye) {
+      return const Text('自动晋级');
     }
 
     return Text(statusText);
@@ -719,6 +858,22 @@ class _MatchTile extends ConsumerWidget {
       onPressed: () => _navigateToGame(context, ref, match, templates, league),
       child: Text(buttonText),
     );
+  }
+
+  Widget? _buildLeading(BuildContext context, bool isBye) {
+    if (roundNumber != null) {
+      return _RoundBadge(
+        roundNumber: roundNumber!,
+        color: roundColor ?? Theme.of(context).colorScheme.primary,
+      );
+    }
+
+    if (isBye) {
+      return Icon(Icons.airline_stops_rounded,
+          color: Theme.of(context).colorScheme.primary);
+    }
+
+    return null;
   }
 
   void _navigateToGame(BuildContext context, WidgetRef ref, Match match,

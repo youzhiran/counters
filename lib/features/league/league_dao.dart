@@ -26,6 +26,7 @@ class LeagueDao {
         'points_for_win': league.pointsForWin,
         'points_for_draw': league.pointsForDraw,
         'points_for_loss': league.pointsForLoss,
+        'round_robin_rounds': league.roundRobinRounds,
         'current_round': league.currentRound,
       };
       await txn.insert(
@@ -224,6 +225,7 @@ class LeagueDao {
       'pointsForWin': leagueMap['points_for_win'],
       'pointsForDraw': leagueMap['points_for_draw'],
       'pointsForLoss': leagueMap['points_for_loss'],
+      'roundRobinRounds': (leagueMap['round_robin_rounds'] as int?) ?? 1,
       'currentRound': leagueMap['current_round'],
     };
     return League.fromJson(leagueJson);

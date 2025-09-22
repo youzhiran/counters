@@ -4,7 +4,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 part 'league.freezed.dart';
-
 part 'league.g.dart';
 
 @freezed
@@ -17,6 +16,7 @@ abstract class League with _$League {
     required List<Match> matches,
     required String defaultTemplateId,
     // Round-robin specific settings
+    @Default(1) int roundRobinRounds,
     @Default(3) int pointsForWin,
     @Default(1) int pointsForDraw,
     @Default(0) int pointsForLoss,
@@ -31,6 +31,7 @@ abstract class League with _$League {
     required List<String> playerIds,
     required List<Match> matches,
     required String defaultTemplateId,
+    int? roundRobinRounds,
     int? pointsForWin,
     int? pointsForDraw,
     int? pointsForLoss,
@@ -43,6 +44,7 @@ abstract class League with _$League {
       playerIds: playerIds,
       matches: matches,
       defaultTemplateId: defaultTemplateId,
+      roundRobinRounds: roundRobinRounds ?? 1,
       pointsForWin: pointsForWin ?? 3,
       pointsForDraw: pointsForDraw ?? 1,
       pointsForLoss: pointsForLoss ?? 0,

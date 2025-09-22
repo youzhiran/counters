@@ -854,9 +854,8 @@ class Score extends _$Score {
 
     // 4. 比较胜负方是否变化，并决定是否重新生成比赛
     String? returnMessage;
-    // 关键修复：只有在非双败淘汰赛中，才执行这个破坏性的“重新生成”逻辑
-    if (league.type != LeagueType.doubleElimination &&
-        originalWinnerId != newWinnerId) {
+    // 仅当联赛为单败淘汰赛时才需要重新生成后续对阵
+    if (league.type == LeagueType.knockout && originalWinnerId != newWinnerId) {
       Log.i('胜负方发生变化 (from $originalWinnerId to $newWinnerId)，正在重新生成后续比赛...');
       try {
         await ref
@@ -869,8 +868,8 @@ class Score extends _$Score {
         returnMessage = '比赛结果已记录，但更新后续赛程时出错。';
       }
     } else {
-      // 对于双败淘汰赛，所有逻辑都在 league_provider 内部处理，这里只需显示成功消息
-      // 对于胜负方未变的非双败淘汰赛，也只需显示成功消息
+      // 对于双败淘汰赛，所有逻辑都在 league_provider 内部处理
+      // 对于循环赛或胜负方未变的情况，也无需重建赛程
       // GlobalMsgManager.showSuccess('比赛结果已记录');
     }
 
@@ -943,9 +942,9 @@ class Score extends _$Score {
         );
     Log.i('已完成的联赛比赛结果已更新，比赛ID: $leagueMatchId');
 
-    // 4. 关键优化：仅当胜负方发生变化时，才重新生成后续比赛
+    // 4. 关键优化：仅当胜负方变化且联赛为单败淘汰赛时，才重新生成后续比赛
     String? returnMessage;
-    if (originalWinnerId != newWinnerId) {
+    if (league.type == LeagueType.knockout && originalWinnerId != newWinnerId) {
       Log.i(
           '胜负方因修改而改变 (from $originalWinnerId to $newWinnerId)，正在删除并重新生成后续轮次...');
       try {
@@ -958,8 +957,10 @@ class Score extends _$Score {
         ErrorHandler.handle(e, s, prefix: '重新生成后续比赛失败');
         returnMessage = '计分已更新，但刷新后续赛程时出错，请手动检查。';
       }
-    } else {
+    } else if (originalWinnerId == newWinnerId) {
       Log.i('胜负方未改变，无需重新生成后续比赛。');
+    } else {
+      Log.i('联赛类型 ${league.type} 不需要重建赛程，直接保留原有对阵。');
     }
 
     Log.i('比赛结果已更新');

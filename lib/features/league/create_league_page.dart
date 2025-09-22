@@ -19,6 +19,7 @@ class CreateLeaguePage extends ConsumerStatefulWidget {
 class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _roundRobinRoundsController = TextEditingController(text: '1');
   final _winPointsController = TextEditingController(text: '3');
   final _drawPointsController = TextEditingController(text: '1');
   final _lossPointsController = TextEditingController(text: '0');
@@ -29,6 +30,7 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _roundRobinRoundsController.dispose();
     _winPointsController.dispose();
     _drawPointsController.dispose();
     _lossPointsController.dispose();
@@ -62,6 +64,7 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
               type: _selectedType,
               playerIds: _selectedPlayers.map((p) => p.pid).toList(),
               defaultTemplateId: _selectedTemplate!.tid,
+              roundRobinRounds: int.parse(_roundRobinRoundsController.text),
               pointsForWin: int.parse(_winPointsController.text),
               pointsForDraw: int.parse(_drawPointsController.text),
               pointsForLoss: int.parse(_lossPointsController.text),
