@@ -252,6 +252,35 @@ class _BracketMatchesList extends ConsumerWidget {
 
   const _BracketMatchesList({required this.league, required this.bracketType});
 
+  Widget? _buildLoserBracketGuide(BuildContext context) {
+    if (bracketType != BracketType.loser) {
+      return null;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline,
+              color: Theme.of(context).colorScheme.secondary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '败者组的每一轮都会分为两个阶段：阶段一是幸存者之间的内部对决；阶段二会迎来刚从胜者组掉入败者组的选手。完成阶段二的胜者才会进入下一轮。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 检查特定轮次是否已全部完成
   bool _isRoundCompleted(int round, BracketType type) {
     final roundMatches =
@@ -350,11 +379,13 @@ class _BracketMatchesList extends ConsumerWidget {
     final groupedMatches = groupBy<Match, int>(matches, (match) => match.round);
     final sortedRounds = groupedMatches.keys.toList()..sort();
     final completionInfo = _buildCompletionInfo(context);
+    final loserGuide = _buildLoserBracketGuide(context);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
+          if (loserGuide != null) loserGuide,
           if (completionInfo != null) completionInfo,
           ...sortedRounds.map((round) {
             final matchesInRound = groupedMatches[round]!;
@@ -609,7 +640,7 @@ class _MatchTile extends ConsumerWidget {
 
     // --- 双败淘汰赛流程检查 ---
 
-    // 1. 找出胜者组和败者组各自完成到的最高轮次
+    // 1. 找出胜者组完成到的最高轮次
     final completedWinnerRounds = league.matches
         .where((m) =>
             m.bracketType == BracketType.winner &&
@@ -620,40 +651,26 @@ class _MatchTile extends ConsumerWidget {
         ? 0
         : completedWinnerRounds.reduce((a, b) => a > b ? a : b);
 
-    final completedLoserRounds = league.matches
-        .where((m) =>
-            m.bracketType == BracketType.loser &&
-            m.status == MatchStatus.completed)
-        .map((m) => m.round)
-        .toSet();
-    final maxCompletedLoserRound = completedLoserRounds.isEmpty
-        ? 0
-        : completedLoserRounds.reduce((a, b) => a > b ? a : b);
-
-    // 规则A: 对于一场未开始的胜者组比赛
-    if (match.bracketType == BracketType.winner) {
-      // 修复：第一轮比赛 (match.round == 1) 应该总是可以进行的
-      if (match.round == 1) return (isAvailable: true, message: null);
-
-      // 对于后续轮次，要求前一轮的败者组比赛完成
-      // 例如，要打 WB R2 (match.round=2)，要求 LB R1 完成 (maxCompletedLoserRound >= 1)
-      if (maxCompletedLoserRound < match.round - 1) {
-        return (
-          isAvailable: false,
-          message: '胜者组第 ${match.round} 轮需要等待败者组第 ${match.round - 1} 轮完成后才能开始。'
-        );
-      }
-    }
-
     // 规则B: 对于一场未开始的败者组比赛
     if (match.bracketType == BracketType.loser) {
-      // 检查生成这场比赛所依赖的胜者组比赛是否已完成
-      // 例如，要打 LB R1 (match.round=1)，要求 WB R1 完成 (maxCompletedWinnerRound >= 1)
-      if (maxCompletedWinnerRound < match.round) {
-        return (
-          isAvailable: false,
-          message: '败者组第 ${match.round} 轮需要等待胜者组第 ${match.round} 轮完成后才能开始。'
-        );
+      // 检查生成这场比赛所依赖的胜者组比赛是否已完成。
+      // 阶段说明：
+      // - 第1轮：来自胜者组首轮的败者，需要等待胜者组第1轮结束；
+      // - 奇数轮 (>1)：败者组内部阶段，不依赖新的胜者组轮次；
+      // - 偶数轮：与刚掉入败者组的胜者组选手交叉，需要等待对应的胜者组轮次结束。
+      if (match.round == 1) {
+        if (maxCompletedWinnerRound < 1) {
+          return (isAvailable: false, message: '败者组第 1 轮需要等待胜者组第 1 轮完成后才能开始。');
+        }
+      } else if (match.round.isEven) {
+        final requiredWinnerRound = match.round ~/ 2 + 1;
+        if (maxCompletedWinnerRound < requiredWinnerRound) {
+          return (
+            isAvailable: false,
+            message:
+                '败者组第 ${match.round} 轮需要等待胜者组第 $requiredWinnerRound 轮完成后才能开始。'
+          );
+        }
       }
     }
 

@@ -249,6 +249,9 @@ class LeagueNotifier extends _$LeagueNotifier {
       // 2. 如果是淘汰赛，并且比赛状态从未完成变为完成，则检查是否需要生成下一轮
       final bool justCompleted = oldMatch.status != MatchStatus.completed &&
           updatedMatch.status == MatchStatus.completed;
+      final bool resultChanged = oldMatch.status == MatchStatus.completed &&
+          updatedMatch.status == MatchStatus.completed &&
+          oldMatch.winnerId != updatedMatch.winnerId;
 
       if (league.type == LeagueType.knockout && justCompleted) {
         final currentRound = oldMatch.round;
@@ -268,11 +271,21 @@ class LeagueNotifier extends _$LeagueNotifier {
             updatedLeague = league.copyWith(matches: updatedMatches);
           }
         }
-      } else if (league.type == LeagueType.doubleElimination && justCompleted) {
-        // 对于双败淘汰赛，委托给专门的处理器。
-        // 这个处理器会负责保存和刷新状态，所以这里可以直接返回。
-        await _handleDoubleEliminationProgress(updatedLeague, updatedMatch);
-        return;
+      } else if (league.type == LeagueType.doubleElimination) {
+        if (justCompleted) {
+          // 对于双败淘汰赛，委托给专门的处理器。
+          // 这个处理器会负责保存和刷新状态，所以这里可以直接返回。
+          await _handleDoubleEliminationProgress(updatedLeague, updatedMatch);
+          return;
+        }
+
+        if (resultChanged) {
+          await _rebuildDoubleEliminationAfterResultChange(
+            updatedLeague: updatedLeague,
+            updatedMatch: updatedMatch,
+          );
+          return;
+        }
       }
 
       // 3. 保存并刷新状态 (对于非双败或非完赛的更新)
@@ -535,6 +548,94 @@ class LeagueNotifier extends _$LeagueNotifier {
     await _reloadLeagues();
   }
 
+  Future<void> _rebuildDoubleEliminationAfterResultChange({
+    required League updatedLeague,
+    required Match updatedMatch,
+  }) async {
+    Log.w('[赛程推进] 检测到双败淘汰赛比赛结果发生变动，开始重建后续赛程。');
+
+    final trimmedMatches = _trimDoubleEliminationMatches(
+      matches: updatedLeague.matches,
+      pivotMatch: updatedMatch,
+    );
+
+    var rebuildingLeague =
+        updatedLeague.copyWith(matches: List<Match>.from(trimmedMatches));
+
+    while (true) {
+      final generatedMatches =
+          DoubleEliminationHelper.advanceTournament(rebuildingLeague);
+      if (generatedMatches.isEmpty) {
+        break;
+      }
+      rebuildingLeague = rebuildingLeague.copyWith(
+        matches: [...rebuildingLeague.matches, ...generatedMatches],
+      );
+    }
+
+    final finals = _generateFinalsIfNeeded(rebuildingLeague);
+    if (finals.isNotEmpty) {
+      rebuildingLeague = rebuildingLeague.copyWith(
+        matches: [...rebuildingLeague.matches, ...finals],
+      );
+    }
+
+    await _leagueDao.saveLeague(rebuildingLeague);
+    await Future.delayed(Duration.zero);
+    await _reloadLeagues();
+  }
+
+  List<Match> _trimDoubleEliminationMatches({
+    required List<Match> matches,
+    required Match pivotMatch,
+  }) {
+    final pivotRound = pivotMatch.round;
+    final pivotBracket = pivotMatch.bracketType;
+    final loserCutoff = pivotBracket == BracketType.winner
+        ? DoubleEliminationHelper.firstLoserRoundAffectedByWinnerRound(
+            pivotRound)
+        : null;
+
+    final filtered = <Match>[];
+    for (final match in matches) {
+      if (match.mid == pivotMatch.mid) {
+        filtered.add(match);
+        continue;
+      }
+
+      if (match.bracketType == BracketType.finals) {
+        // 总决赛会在重建结束后重新生成。
+        continue;
+      }
+
+      if (pivotBracket == BracketType.winner) {
+        if (match.bracketType == BracketType.winner &&
+            match.round > pivotRound) {
+          continue;
+        }
+        if (match.bracketType == BracketType.loser &&
+            loserCutoff != null &&
+            match.round >= loserCutoff) {
+          continue;
+        }
+      } else if (pivotBracket == BracketType.loser) {
+        if (match.bracketType == BracketType.loser &&
+            match.round > pivotRound) {
+          continue;
+        }
+      } else if (pivotBracket == BracketType.finals) {
+        if (match.bracketType == BracketType.finals &&
+            match.round >= pivotRound) {
+          continue;
+        }
+      }
+
+      filtered.add(match);
+    }
+
+    return filtered;
+  }
+
   /// 检查并生成总决赛。这是决定性的检查方法。
   List<Match> _generateFinalsIfNeeded(League league) {
     Log.d('[总决赛检查] 开始运行...');
@@ -545,6 +646,7 @@ class LeagueNotifier extends _$LeagueNotifier {
     }
 
     // 2. 检查胜者组是否已决出冠军
+    final totalPlayers = league.playerIds.length;
     final winnerMatches =
         league.matches.where((m) => m.bracketType == BracketType.winner);
     Log.d('[总决赛检查] 胜者组共有 ${winnerMatches.length} 场比赛。');
@@ -557,20 +659,26 @@ class LeagueNotifier extends _$LeagueNotifier {
       Log.d('[总决赛检查] 检查失败: 并非所有胜者组比赛都已完成。');
       return [];
     }
-    // 确定胜者组的最后一轮
-    final maxWinnerRound =
-        winnerMatches.map((m) => m.round).reduce((a, b) => a > b ? a : b);
-    // 尝试生成胜者组的下一轮比赛
-    final nextWinnerMatches = _generateNextRoundMatches(league, maxWinnerRound,
-        bracketType: BracketType.winner);
-    // 如果能生成下一轮比赛（结果不为空），说明胜者组还没打完。
-    if (nextWinnerMatches.isNotEmpty) {
-      Log.d('[总决赛检查] 检查失败: 胜者组尚未结束 (仍可生成下一轮)。');
+
+    final expectedWinnerRounds =
+        DoubleEliminationHelper.totalWinnerRoundsForPlayers(totalPlayers);
+    final finalWinnerRoundMatches =
+        winnerMatches.where((m) => m.round == expectedWinnerRounds).toList();
+    if (finalWinnerRoundMatches.isEmpty) {
+      Log.d('[总决赛检查] 检查失败: 胜者组尚未进入最终轮 ($expectedWinnerRounds)。');
       return [];
     }
-    // 至此，可以确认胜者组冠军已产生。
-    final winnerChampion =
-        winnerMatches.firstWhere((m) => m.round == maxWinnerRound).winnerId;
+    if (finalWinnerRoundMatches.any((m) => m.status != MatchStatus.completed)) {
+      Log.d('[总决赛检查] 检查失败: 胜者组最终轮尚未完成。');
+      return [];
+    }
+    String? winnerChampion;
+    for (final match in finalWinnerRoundMatches) {
+      if (match.winnerId != null) {
+        winnerChampion = match.winnerId;
+        break;
+      }
+    }
     if (winnerChampion == null) {
       Log.w('[总决赛检查] 检查失败: 胜者组冠军ID为空。');
       return [];
@@ -589,16 +697,29 @@ class LeagueNotifier extends _$LeagueNotifier {
       Log.d('[总决赛检查] 检查失败: 并非所有败者组比赛都已完成。');
       return [];
     }
-    final maxLoserRound =
-        loserMatches.map((m) => m.round).reduce((a, b) => a > b ? a : b);
-    final nextLoserMatches = _generateNextRoundMatches(league, maxLoserRound,
-        bracketType: BracketType.loser);
-    if (nextLoserMatches.isNotEmpty) {
-      Log.d('[总决赛检查] 检查失败: 败者组尚未结束 (仍可生成下一轮)。');
+    final expectedLoserRounds =
+        DoubleEliminationHelper.totalLoserRoundsForPlayers(totalPlayers);
+    if (expectedLoserRounds == 0) {
+      Log.d('[总决赛检查] 检查失败: 赛制无需败者组。');
       return [];
     }
-    final loserChampion =
-        loserMatches.firstWhere((m) => m.round == maxLoserRound).winnerId;
+    final finalLoserRoundMatches =
+        loserMatches.where((m) => m.round == expectedLoserRounds).toList();
+    if (finalLoserRoundMatches.isEmpty) {
+      Log.d('[总决赛检查] 检查失败: 败者组尚未进入最终阶段 ($expectedLoserRounds)。');
+      return [];
+    }
+    if (finalLoserRoundMatches.any((m) => m.status != MatchStatus.completed)) {
+      Log.d('[总决赛检查] 检查失败: 败者组最终阶段尚未完成。');
+      return [];
+    }
+    String? loserChampion;
+    for (final match in finalLoserRoundMatches) {
+      if (match.winnerId != null) {
+        loserChampion = match.winnerId;
+        break;
+      }
+    }
     if (loserChampion == null) {
       Log.w('[总决赛检查] 检查失败: 败者组冠军ID为空。');
       return [];
@@ -606,7 +727,7 @@ class LeagueNotifier extends _$LeagueNotifier {
     Log.i('[总决赛检查] 败者组冠军已确定: $loserChampion');
 
     // 4. 两个分支的冠军都已决出，生成总决赛！
-    final grandFinalRound = maxWinnerRound + 1;
+    final grandFinalRound = expectedWinnerRounds + 1;
     Log.i('[总决赛检查] 所有条件均满足！正在生成总决赛: $winnerChampion vs $loserChampion。');
     return [
       Match(

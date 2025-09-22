@@ -401,12 +401,50 @@ class _TournamentBracketViewState extends ConsumerState<TournamentBracketView>
     }
 
     // --- Pass 4: Position Finals Last ---
-    for (final node in finalNodes) {
-      if (node.sourceNode1 != null && node.sourceNode2 != null) {
-        final double x = (node.depth - 1) * (_cardWidth + _roundSpacing);
-        final y =
-            (node.sourceNode1!.position.dy + node.sourceNode2!.position.dy) / 2;
+    if (finalNodes.isNotEmpty) {
+      final finalsSorted = List<BracketNode>.from(finalNodes)
+        ..sort((a, b) {
+          final roundCompare = a.match.round.compareTo(b.match.round);
+          if (roundCompare != 0) return roundCompare;
+          return a.verticalOrder.compareTo(b.verticalOrder);
+        });
+
+      final baseDepthNodes = [...wbNodes, ...lbNodes];
+      final baseDepth = baseDepthNodes.isEmpty
+          ? 0
+          : baseDepthNodes
+              .map((node) => node.depth)
+              .reduce((value, element) => value > element ? value : element);
+      final finalColumnDepth = baseDepth + 1;
+
+      double? previousFinalY;
+      for (final node in finalsSorted) {
+        final double x = (finalColumnDepth - 1) * (_cardWidth + _roundSpacing);
+        double? y;
+
+        if (node.sourceNode1 != null && node.sourceNode2 != null) {
+          y = (node.sourceNode1!.position.dy + node.sourceNode2!.position.dy) /
+              2;
+        } else if (node.sourceNode1 != null) {
+          y = node.sourceNode1!.position.dy;
+        } else if (node.sourceNode2 != null) {
+          y = node.sourceNode2!.position.dy;
+        } else if (previousFinalY != null) {
+          y = previousFinalY + _cardHeight + _verticalCardSpacing;
+        }
+
+        y ??= winnerMaxY;
+        if (previousFinalY != null) {
+          final minAllowedY =
+              previousFinalY + _cardHeight + _verticalCardSpacing;
+          if (y < minAllowedY) {
+            y = minAllowedY;
+          }
+        }
+
         node.position = Offset(x, y);
+        previousFinalY = y;
+
         Log.v(
             '[决赛] ${getPlayerNames(node.match)} 位置修正: ${formatOffset(node.position)}');
         if (node.sourceNode1 != null) {

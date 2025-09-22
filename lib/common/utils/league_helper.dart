@@ -5,7 +5,10 @@ import 'package:counters/common/model/league_enums.dart';
 /// 根据总玩家数和当前轮次，获取轮次的友好名称
 String getRoundName(int totalPlayers, int round, {BracketType? bracketType}) {
   if (bracketType == BracketType.loser) {
-    return '败者组第 $round 轮';
+    final stageIndex = (round + 1) ~/ 2;
+    // final phaseLabel = round.isOdd ? '第一阶段' : '第二阶段';
+    final phaseDescription = round.isOdd ? '败者内部对决' : '胜者组落败者加入';
+    return '败者组第 $stageIndex 轮 · $phaseDescription';
   }
 
   if (bracketType == BracketType.finals) {
