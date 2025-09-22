@@ -1,6 +1,7 @@
 // common/utils/error_handler.dart
 
 import 'package:counters/app/state.dart';
+import 'package:counters/common/providers/message_provider.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,14 @@ class ErrorHandler {
     StackTrace? stack, {
     String prefix = '',
   }) {
+    if (error is BusinessException) {
+      final levelName = error.level.name;
+      final detailText = error.detail == null ? '' : '，详情: ${error.detail}';
+      final sourcePrefix = prefix.isEmpty ? '' : '$prefix - ';
+      Log.v('业务异常($levelName)已捕获: $sourcePrefix${error.message}$detailText');
+      return;
+    }
+
     Log.e('$prefix错误: $error');
     if (stack != null) Log.e('Stack: $stack');
 
@@ -84,5 +93,56 @@ class ErrorHandler {
         }
       });
     });
+  }
+
+  ///
+  /// 业务错误快速失败：通过 GMM 展示提示后抛出业务异常。
+  static Never failBusiness(
+    String message, {
+    MessageType level = MessageType.error,
+    Object? detail,
+  }) {
+    final displayText = detail == null ? message : '$message：$detail';
+
+    switch (level) {
+      case MessageType.success:
+        GlobalMsgManager.showSuccess(displayText);
+        break;
+      case MessageType.warning:
+        GlobalMsgManager.showWarn(displayText);
+        break;
+      case MessageType.info:
+        GlobalMsgManager.showMessage(displayText);
+        break;
+      case MessageType.error:
+        GlobalMsgManager.showError(displayText);
+        Log.e('业务错误: $displayText');
+        break;
+    }
+
+    throw BusinessException(
+      message: message,
+      level: level,
+      detail: detail,
+    );
+  }
+}
+
+/// 业务异常类型，确保上层可区分业务异常与系统异常。
+class BusinessException implements Exception {
+  final String message;
+  final MessageType level;
+  final Object? detail;
+
+  const BusinessException({
+    required this.message,
+    this.level = MessageType.error,
+    this.detail,
+  });
+
+  @override
+  String toString() {
+    final suffix = detail == null ? '' : '，详情: $detail';
+    return 'BusinessException(${level.name}): $message$suffix';
   }
 }

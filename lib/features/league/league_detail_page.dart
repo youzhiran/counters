@@ -197,16 +197,10 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage> {
                           );
 
                           if (confirmed == true) {
-                            try {
-                              await ref
-                                  .read(leagueNotifierProvider.notifier)
-                                  .addRoundRobinRound(league.lid);
-                              ref.showSuccess('已成功增加一轮');
-                            } catch (e) {
-                              // 使用 showWarning 并提供简洁的用户提示
-                              ref.showWarning(
-                                  e.toString().replaceFirst('Exception: ', ''));
-                            }
+                            await ref
+                                .read(leagueNotifierProvider.notifier)
+                                .addRoundRobinRound(league.lid);
+                            ref.showSuccess('已成功增加一轮');
                           }
                         },
                       ),

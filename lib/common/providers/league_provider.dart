@@ -2,6 +2,7 @@ import 'package:counters/common/db/db_helper.dart';
 import 'package:counters/common/model/league.dart';
 import 'package:counters/common/model/league_enums.dart';
 import 'package:counters/common/model/match.dart';
+import 'package:counters/common/providers/message_provider.dart';
 import 'package:counters/common/utils/double_elimination_helper.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
@@ -98,52 +99,53 @@ class LeagueNotifier extends _$LeagueNotifier {
 
   Future<void> addRoundRobinRound(String leagueId) async {
     if (!state.hasValue) return;
-    try {
-      final league = state.value!.leagues.firstWhere((l) => l.lid == leagueId);
-      if (league.type != LeagueType.roundRobin) {
-        throw Exception('只有循环赛可以增加轮次');
-      }
-
-      // 检查当前最后一轮是否已全部完成
-      final currentRoundNumber = league.roundRobinRounds;
-      final currentRoundMatches =
-          league.matches.where((m) => m.round == currentRoundNumber);
-
-      if (currentRoundMatches.isNotEmpty &&
-          currentRoundMatches.any((m) => m.status != MatchStatus.completed)) {
-        throw Exception('当前轮次尚有未完成的比赛，无法添加新轮次。');
-      }
-
-      final newRoundNumber = league.roundRobinRounds + 1;
-      final playerIds = league.playerIds;
-      final newMatches = <Match>[];
-
-      // 生成新一轮的对阵
-      for (int i = 0; i < playerIds.length; i++) {
-        for (int j = i + 1; j < playerIds.length; j++) {
-          // 为了让每一轮的先后手顺序可能不同，可以根据轮次的奇偶性来交换
-          final player1 = newRoundNumber.isEven ? playerIds[j] : playerIds[i];
-          final player2 = newRoundNumber.isEven ? playerIds[i] : playerIds[j];
-          newMatches.add(Match(
-            leagueId: league.lid,
-            round: newRoundNumber,
-            player1Id: player1,
-            player2Id: player2,
-          ));
-        }
-      }
-
-      final updatedLeague = league.copyWith(
-        roundRobinRounds: newRoundNumber,
-        matches: [...league.matches, ...newMatches],
-      );
-
-      await _leagueDao.saveLeague(updatedLeague);
-      await _reloadLeagues();
-    } catch (e) {
-      // 重新抛出异常，由UI层处理
-      rethrow;
+    final league = state.value!.leagues.firstWhere((l) => l.lid == leagueId);
+    if (league.type != LeagueType.roundRobin) {
+      ErrorHandler.failBusiness('只有循环赛可以增加轮次');
     }
+
+    // 检查当前最后一轮是否已全部完成
+    final currentRoundNumber = league.roundRobinRounds;
+    final currentRoundMatches =
+        league.matches.where((m) => m.round == currentRoundNumber);
+
+    if (currentRoundMatches.isNotEmpty &&
+        currentRoundMatches.any((m) => m.status != MatchStatus.completed)) {
+      final unfinishedCount = currentRoundMatches
+          .where((m) => m.status != MatchStatus.completed)
+          .length;
+      ErrorHandler.failBusiness(
+        '当前轮次尚有$unfinishedCount场比赛未完成，无法添加新轮次',
+        level: MessageType.warning,
+      );
+    }
+
+    final newRoundNumber = league.roundRobinRounds + 1;
+    final playerIds = league.playerIds;
+    final newMatches = <Match>[];
+
+    // 生成新一轮的对阵
+    for (int i = 0; i < playerIds.length; i++) {
+      for (int j = i + 1; j < playerIds.length; j++) {
+        // 为了让每一轮的先后手顺序可能不同，可以根据轮次的奇偶性来交换
+        final player1 = newRoundNumber.isEven ? playerIds[j] : playerIds[i];
+        final player2 = newRoundNumber.isEven ? playerIds[i] : playerIds[j];
+        newMatches.add(Match(
+          leagueId: league.lid,
+          round: newRoundNumber,
+          player1Id: player1,
+          player2Id: player2,
+        ));
+      }
+    }
+
+    final updatedLeague = league.copyWith(
+      roundRobinRounds: newRoundNumber,
+      matches: [...league.matches, ...newMatches],
+    );
+
+    await _leagueDao.saveLeague(updatedLeague);
+    await _reloadLeagues();
   }
 
   Future<void> deleteLeague(String lid) async {
@@ -440,8 +442,8 @@ class LeagueNotifier extends _$LeagueNotifier {
     state = AsyncData(state.value!.copyWith(leagues: updatedLeagues));
   }
 
-  List<Match> _generateFirstRoundMatches(LeagueType type,
-      List<String> playerIds, int roundRobinRounds) {
+  List<Match> _generateFirstRoundMatches(
+      LeagueType type, List<String> playerIds, int roundRobinRounds) {
     if (type == LeagueType.roundRobin) {
       if (playerIds.length < 2) {
         return [];
@@ -501,8 +503,8 @@ class LeagueNotifier extends _$LeagueNotifier {
         bracketType: bracketType);
   }
 
-  List<Match> _generateKnockoutRound(List<String> playerIds, int round,
-      String leagueId,
+  List<Match> _generateKnockoutRound(
+      List<String> playerIds, int round, String leagueId,
       {BracketType? bracketType}) {
     if (playerIds.isEmpty) {
       return [];
