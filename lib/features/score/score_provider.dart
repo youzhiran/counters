@@ -101,6 +101,7 @@ class ScoreState {
 @Riverpod(keepAlive: true)
 class Score extends _$Score {
   late final GameSessionDao _sessionDao = ref.read(gameSessionDaoProvider);
+  ScoreState? _clientModeLocalBackup;
 
   List<GameSession> _upsertOngoingSession(
       List<GameSession> sessions, GameSession updatedSession) {
@@ -226,6 +227,36 @@ class Score extends _$Score {
         isInitialized: true,
         players: [],
         isTempMode: false);
+  }
+
+  void backupLocalStateForClientMode() {
+    if (_clientModeLocalBackup != null) {
+      Log.d('客户端模式：已存在本地计分备份，跳过重复备份');
+      return;
+    }
+
+    final currentState = state.valueOrNull;
+    if (currentState == null || !currentState.isInitialized) {
+      Log.w('客户端模式：当前计分状态未初始化，无法备份本地数据');
+      return;
+    }
+
+    _clientModeLocalBackup = currentState;
+    Log.i(
+        '客户端模式：已备份本地计分状态，当前会话: ${currentState.currentSession?.sid ?? '无'}, 未完成对局数量: ${currentState.ongoingSessions.length}');
+  }
+
+  void restoreClientModeBackupIfNeeded() {
+    if (_clientModeLocalBackup == null) {
+      Log.d('客户端模式：没有可恢复的本地计分备份');
+      return;
+    }
+
+    final backup = _clientModeLocalBackup!;
+    state = AsyncData(backup);
+    _clientModeLocalBackup = null;
+    Log.i(
+        '客户端模式：已恢复本地计分状态，会话: ${backup.currentSession?.sid ?? '无'}, 未完成对局数量: ${backup.ongoingSessions.length}');
   }
 
   Future<void> clearAllHistory() async {

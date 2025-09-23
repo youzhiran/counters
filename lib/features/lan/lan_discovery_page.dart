@@ -91,8 +91,10 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       }
 
       // 3.发送状态同步请求
+      final requestedTemplateId = host.baseTid;
       final requestMessage = SyncMessage(
-          type: "request_sync_state", data: {"templateId": host.baseTid});
+          type: "request_sync_state",
+          data: {"templateId": requestedTemplateId});
       final jsonString = jsonEncode(requestMessage.toJson());
       lanNotifier.sendJsonMessage(jsonString);
 
@@ -107,13 +109,17 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
         // 记录 Provider 当前状态
         Log.d('_connectToHost 轮询: scoreProvider 状态为 ${scoreAsync.runtimeType}');
 
+        final currentLanState = ref.read(lanProvider);
+        final expectedTemplateId =
+            currentLanState.expectedTemplateId ?? requestedTemplateId;
+
         if (scoreAsync is AsyncData) {
           final scoreState = scoreAsync.value;
           // 修复：更详细的同步状态检查
           if (scoreState != null) {
             final hasSession = scoreState.currentSession != null;
             final templateMatches = hasSession &&
-                scoreState.currentSession!.templateId == host.baseTid;
+                scoreState.currentSession!.templateId == expectedTemplateId;
             final hasPlayers = scoreState.players.isNotEmpty;
             final hasScores =
                 hasSession && scoreState.currentSession!.scores.isNotEmpty;
@@ -125,7 +131,8 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
 
             // 检查是否有会话状态、模板ID匹配、且有玩家信息
             if (hasSession && templateMatches && hasPlayers && hasScores) {
-              Log.i('_connectToHost 轮询: 会话状态和玩家信息已成功同步（模板: ${host.baseTid}）!');
+              Log.i(
+                  '_connectToHost 轮询: 会话状态和玩家信息已成功同步（模板: $expectedTemplateId，广播模板: ${host.baseTid}）!');
               sessionSynced = true;
               break; // 会话已同步，退出循环
             } else {
@@ -165,9 +172,12 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
       await Future.delayed(Duration(milliseconds: 100));
 
       if (!mounted) return;
+      final syncedLanState = ref.read(lanProvider);
+      final templateIdForNavigation =
+          syncedLanState.expectedTemplateId ?? requestedTemplateId;
       Navigator.of(context).pushReplacement(
         CustomPageTransitions.slideFromRight(
-          HomePage.buildSessionPageFromId(host.baseTid),
+          HomePage.buildSessionPageFromId(templateIdForNavigation),
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         ),

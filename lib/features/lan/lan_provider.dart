@@ -48,6 +48,7 @@ class LanState {
   final int maxReconnectAttempts; // 最大重连次数
   final String? disconnectReason; // 断开连接的原因
   final String? hostIp; // 记录主机IP用于重连
+  final String? expectedTemplateId; // 当前连接期望同步的模板ID
 
   const LanState({
     this.isLoading = false,
@@ -70,6 +71,7 @@ class LanState {
     this.maxReconnectAttempts = 5, // 默认最大重连次数为5
     this.disconnectReason, // 默认无断开原因
     this.hostIp, // 默认无主机IP
+    this.expectedTemplateId, // 默认无期望模板ID
   });
 
   LanState copyWith({
@@ -96,6 +98,8 @@ class LanState {
     String? hostIp,
     bool clearDisconnectReason = false,
     bool clearHostIp = false,
+    String? expectedTemplateId,
+    bool clearExpectedTemplateId = false,
   }) {
     return LanState(
       isLoading: isLoading ?? this.isLoading,
@@ -126,6 +130,9 @@ class LanState {
           ? null
           : (disconnectReason ?? this.disconnectReason),
       hostIp: clearHostIp ? null : (hostIp ?? this.hostIp),
+      expectedTemplateId: clearExpectedTemplateId
+          ? null
+          : (expectedTemplateId ?? this.expectedTemplateId),
     );
   }
 }
@@ -159,7 +166,7 @@ class Lan extends _$Lan {
   Future<void> connectToHostFromInput(int port) async {
     final hostIp = _hostIpController.text.trim();
     if (hostIp.isNotEmpty) {
-      await connectToHost(hostIp, port);
+      await connectToHost(hostIp, port, expectedTemplateId: null);
     } else {
       GlobalMsgManager.showMessage('请输入主机IP地址');
     }
@@ -288,11 +295,13 @@ class Lan extends _$Lan {
               Log.i("解析到玩家数据，players=$players");
 
               // 获取当前页面需要的templateId（从当前session或_scoreProvider中获取）
-              String? requiredTid;
-              final scoreStateValue = ref.read(scoreProvider).value;
-              if (scoreStateValue != null &&
-                  scoreStateValue.currentSession != null) {
-                requiredTid = scoreStateValue.currentSession!.templateId;
+              String? requiredTid = state.expectedTemplateId;
+              if (requiredTid == null) {
+                final scoreStateValue = ref.read(scoreProvider).value;
+                if (scoreStateValue != null &&
+                    scoreStateValue.currentSession != null) {
+                  requiredTid = scoreStateValue.currentSession!.templateId;
+                }
               }
 
               Log.i("收到模板，tid=${receivedTid ?? 'null'}");
@@ -332,6 +341,9 @@ class Lan extends _$Lan {
               final templatesNotifier = ref.read(templatesProvider.notifier);
               await templatesNotifier.saveOrUpdateNetworkTemplate(template);
               Log.i("同步网络模板到本地：${template.tid}");
+
+              // 更新期望的模板ID，确保后续同步使用服务器的模板ID
+              state = state.copyWith(expectedTemplateId: template.tid);
             } catch (e, stack) {
               // 使用统一的错误处理器
               ErrorHandler.handle(e, stack, prefix: '解析template_info失败');
@@ -839,7 +851,7 @@ class Lan extends _$Lan {
 
   /// 连接到一个指定 IP 地址和端口的 WebSocket 主机。
   Future<void> connectToHost(String hostIp, int port,
-      {int? discoveryPort}) async {
+      {int? discoveryPort, String? expectedTemplateId}) async {
     await disposeManager();
     state = state.copyWith(
       isLoading: true,
@@ -861,7 +873,11 @@ class Lan extends _$Lan {
       reconnectAttempts: 0,
       // 重置重连次数
       isReconnecting: false,
+      expectedTemplateId: expectedTemplateId,
+      clearExpectedTemplateId: expectedTemplateId == null,
     );
+
+    ref.read(scoreProvider.notifier).backupLocalStateForClientMode();
     try {
       // === 修复点 2：使用 ScoreNetworkManager.createClient 静态方法创建管理器 ===
       final manager = await ScoreNetworkManager.createClient(
@@ -895,7 +911,8 @@ class Lan extends _$Lan {
 
   /// 从DiscoveredHost连接到主机
   Future<void> connectToDiscoveredHost(DiscoveredHost host) async {
-    await connectToHost(host.ip, host.port, discoveryPort: host.discoveryPort);
+    await connectToHost(host.ip, host.port,
+        discoveryPort: host.discoveryPort, expectedTemplateId: host.baseTid);
   }
 
   /// 发送 JSON 格式的消息。
@@ -1036,8 +1053,10 @@ class Lan extends _$Lan {
     await disposeManager();
 
     // 清理客户端模式数据
-    ref.read(scoreProvider.notifier).clearClientModeData();
-    ref.read(templatesProvider.notifier).clearClientModeTemplates();
+    final scoreNotifier = ref.read(scoreProvider.notifier);
+    scoreNotifier.clearClientModeData();
+    await ref.read(templatesProvider.notifier).clearClientModeTemplates();
+    scoreNotifier.restoreClientModeBackupIfNeeded();
 
     state = state.copyWith(
       isClientMode: false,
@@ -1048,7 +1067,18 @@ class Lan extends _$Lan {
       clearDisconnectReason: true,
       clearHostIp: true,
       connectionStatus: '未连接',
+      clearExpectedTemplateId: true,
     );
+
+    // 重新加载本地计分状态，恢复未完成对局提示
+    Future.microtask(() async {
+      try {
+        ref.invalidate(scoreProvider);
+        await ref.read(scoreProvider.future);
+      } catch (e, stack) {
+        ErrorHandler.handle(e, stack, prefix: '退出客户端模式后刷新计分状态失败');
+      }
+    });
 
     GlobalMsgManager.showMessage('已退出客户端模式');
   }
