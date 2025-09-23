@@ -138,7 +138,11 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         // 客户端模式和主机模式退出提示
         return PopScope(
             canPop: false,
-            onPopInvokedWithResult: (bool didPop, Object? result) async {
+            // onPopInvokedWithResult: (bool didPop, Object? result) async {
+            //   if (didPop) return;
+            //   await _handleExitRequest();
+            // },
+            onPopInvoked: (didPop) async {
               if (didPop) return;
               await _handleExitRequest();
             },
@@ -298,8 +302,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
 
     globalState.showCommonDialog(
         child: PopScope(
-      onPopInvokedWithResult: (didPop, result) async {
-        ref.read(scoreProvider.notifier).resetGameEndDialog();
+      // onPopInvokedWithResult: (didPop, result) async {
+      //   ref.read(scoreProvider.notifier).resetGameEndDialog();
+      // },
+      onPopInvoked: (didPop) async {
+        if (didPop) {
+          ref.read(scoreProvider.notifier).resetGameEndDialog();
+        }
       },
       child: AlertDialog(
         title: Text(result.havTargetScore ? '计分结束' : '当前计分情况'),

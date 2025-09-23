@@ -270,7 +270,7 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
                   color: Theme.of(context)
                       .colorScheme
                       .error
-                      .withValues(alpha: 0.3),
+                      .withOpacity(0.3),
                 ),
               ),
               child: Row(
@@ -308,13 +308,13 @@ class _LanDiscoveryPageState extends ConsumerState<LanDiscoveryPage> {
                 color: Theme.of(context)
                     .colorScheme
                     .surfaceContainerHighest
-                    .withValues(alpha: 0.5),
+                    .withOpacity(0.5),
                 borderRadius: BorderRadius.circular(8.0),
                 border: Border.all(
                   color: Theme.of(context)
                       .colorScheme
                       .outline
-                      .withValues(alpha: 0.3),
+                      .withOpacity(0.3),
                 ),
               ),
               child: Row(

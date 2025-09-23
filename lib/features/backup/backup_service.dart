@@ -14,7 +14,7 @@ import 'package:counters/features/backup/import_transaction.dart';
 import 'package:counters/features/backup/services/hash_service.dart';
 import 'package:counters/features/setting/data_manager.dart';
 import 'package:crypto/crypto.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';

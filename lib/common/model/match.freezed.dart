@@ -1,5 +1,5 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -9,283 +9,69 @@ part of 'match.dart';
 // FreezedGenerator
 // **************************************************************************
 
-// dart format off
 T _$identity<T>(T value) => value;
+
+final _privateConstructorUsedError = UnsupportedError(
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+
+Match _$MatchFromJson(Map<String, dynamic> json) {
+  return _Match.fromJson(json);
+}
 
 /// @nodoc
 mixin _$Match {
-  String get mid;
-  String get leagueId;
-  int get round;
-  String get player1Id;
-  String? get player2Id; // 在淘汰赛中，选手2可能稍后确定
-  MatchStatus get status;
-  int? get player1Score;
-  int? get player2Score;
-  String? get winnerId;
-  String? get templateId; // 本场比赛使用的计分模板
-  DateTime? get startTime;
-  DateTime? get endTime;
-  BracketType? get bracketType;
-
-  /// Create a copy of Match
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  $MatchCopyWith<Match> get copyWith =>
-      _$MatchCopyWithImpl<Match>(this as Match, _$identity);
-
-  /// Serializes this Match to a JSON map.
-  Map<String, dynamic> toJson();
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is Match &&
-            (identical(other.mid, mid) || other.mid == mid) &&
-            (identical(other.leagueId, leagueId) ||
-                other.leagueId == leagueId) &&
-            (identical(other.round, round) || other.round == round) &&
-            (identical(other.player1Id, player1Id) ||
-                other.player1Id == player1Id) &&
-            (identical(other.player2Id, player2Id) ||
-                other.player2Id == player2Id) &&
-            (identical(other.status, status) || other.status == status) &&
-            (identical(other.player1Score, player1Score) ||
-                other.player1Score == player1Score) &&
-            (identical(other.player2Score, player2Score) ||
-                other.player2Score == player2Score) &&
-            (identical(other.winnerId, winnerId) ||
-                other.winnerId == winnerId) &&
-            (identical(other.templateId, templateId) ||
-                other.templateId == templateId) &&
-            (identical(other.startTime, startTime) ||
-                other.startTime == startTime) &&
-            (identical(other.endTime, endTime) || other.endTime == endTime) &&
-            (identical(other.bracketType, bracketType) ||
-                other.bracketType == bracketType));
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      mid,
-      leagueId,
-      round,
-      player1Id,
-      player2Id,
-      status,
-      player1Score,
-      player2Score,
-      winnerId,
-      templateId,
-      startTime,
-      endTime,
-      bracketType);
-
-  @override
-  String toString() {
-    return 'Match(mid: $mid, leagueId: $leagueId, round: $round, player1Id: $player1Id, player2Id: $player2Id, status: $status, player1Score: $player1Score, player2Score: $player2Score, winnerId: $winnerId, templateId: $templateId, startTime: $startTime, endTime: $endTime, bracketType: $bracketType)';
-  }
-}
-
-/// @nodoc
-abstract mixin class $MatchCopyWith<$Res> {
-  factory $MatchCopyWith(Match value, $Res Function(Match) _then) =
-      _$MatchCopyWithImpl;
-  @useResult
-  $Res call(
-      {String mid,
-      String leagueId,
-      int round,
-      String player1Id,
-      String? player2Id,
-      MatchStatus status,
-      int? player1Score,
-      int? player2Score,
-      String? winnerId,
-      String? templateId,
-      DateTime? startTime,
-      DateTime? endTime,
-      BracketType? bracketType});
-}
-
-/// @nodoc
-class _$MatchCopyWithImpl<$Res> implements $MatchCopyWith<$Res> {
-  _$MatchCopyWithImpl(this._self, this._then);
-
-  final Match _self;
-  final $Res Function(Match) _then;
-
-  /// Create a copy of Match
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? mid = null,
-    Object? leagueId = null,
-    Object? round = null,
-    Object? player1Id = null,
-    Object? player2Id = freezed,
-    Object? status = null,
-    Object? player1Score = freezed,
-    Object? player2Score = freezed,
-    Object? winnerId = freezed,
-    Object? templateId = freezed,
-    Object? startTime = freezed,
-    Object? endTime = freezed,
-    Object? bracketType = freezed,
-  }) {
-    return _then(_self.copyWith(
-      mid: null == mid
-          ? _self.mid
-          : mid // ignore: cast_nullable_to_non_nullable
-              as String,
-      leagueId: null == leagueId
-          ? _self.leagueId
-          : leagueId // ignore: cast_nullable_to_non_nullable
-              as String,
-      round: null == round
-          ? _self.round
-          : round // ignore: cast_nullable_to_non_nullable
-              as int,
-      player1Id: null == player1Id
-          ? _self.player1Id
-          : player1Id // ignore: cast_nullable_to_non_nullable
-              as String,
-      player2Id: freezed == player2Id
-          ? _self.player2Id
-          : player2Id // ignore: cast_nullable_to_non_nullable
-              as String?,
-      status: null == status
-          ? _self.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as MatchStatus,
-      player1Score: freezed == player1Score
-          ? _self.player1Score
-          : player1Score // ignore: cast_nullable_to_non_nullable
-              as int?,
-      player2Score: freezed == player2Score
-          ? _self.player2Score
-          : player2Score // ignore: cast_nullable_to_non_nullable
-              as int?,
-      winnerId: freezed == winnerId
-          ? _self.winnerId
-          : winnerId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      templateId: freezed == templateId
-          ? _self.templateId
-          : templateId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      startTime: freezed == startTime
-          ? _self.startTime
-          : startTime // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      endTime: freezed == endTime
-          ? _self.endTime
-          : endTime // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      bracketType: freezed == bracketType
-          ? _self.bracketType
-          : bracketType // ignore: cast_nullable_to_non_nullable
-              as BracketType?,
-    ));
-  }
-}
-
-/// Adds pattern-matching-related methods to [Match].
-extension MatchPatterns on Match {
-  /// A variant of `map` that fallback to returning `orElse`.
-  ///
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case final Subclass value:
-  ///     return ...;
-  ///   case _:
-  ///     return orElse();
-  /// }
-  /// ```
-
+  String get mid => throw _privateConstructorUsedError;
+  String get leagueId => throw _privateConstructorUsedError;
+  int get round => throw _privateConstructorUsedError;
+  String get player1Id => throw _privateConstructorUsedError;
+  String? get player2Id =>
+      throw _privateConstructorUsedError; // 在淘汰赛中，选手2可能稍后确定
+  MatchStatus get status => throw _privateConstructorUsedError;
+  int? get player1Score => throw _privateConstructorUsedError;
+  int? get player2Score => throw _privateConstructorUsedError;
+  String? get winnerId => throw _privateConstructorUsedError;
+  String? get templateId => throw _privateConstructorUsedError; // 本场比赛使用的计分模板
+  DateTime? get startTime => throw _privateConstructorUsedError;
+  DateTime? get endTime => throw _privateConstructorUsedError;
+  BracketType? get bracketType => throw _privateConstructorUsedError;
   @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Match value)? internal,
-    required TResult orElse(),
-  }) {
-    final _that = this;
-    switch (_that) {
-      case _Match() when internal != null:
-        return internal(_that);
-      case _:
-        return orElse();
-    }
-  }
-
-  /// A `switch`-like method, using callbacks.
-  ///
-  /// Callbacks receives the raw object, upcasted.
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case final Subclass value:
-  ///     return ...;
-  ///   case final Subclass2 value:
-  ///     return ...;
-  /// }
-  /// ```
-
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+            String mid,
+            String leagueId,
+            int round,
+            String player1Id,
+            String? player2Id,
+            MatchStatus status,
+            int? player1Score,
+            int? player2Score,
+            String? winnerId,
+            String? templateId,
+            DateTime? startTime,
+            DateTime? endTime,
+            BracketType? bracketType)
+        internal,
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Match value) internal,
-  }) {
-    final _that = this;
-    switch (_that) {
-      case _Match():
-        return internal(_that);
-      case _:
-        throw StateError('Unexpected subclass');
-    }
-  }
-
-  /// A variant of `map` that fallback to returning `null`.
-  ///
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case final Subclass value:
-  ///     return ...;
-  ///   case _:
-  ///     return null;
-  /// }
-  /// ```
-
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Match value)? internal,
-  }) {
-    final _that = this;
-    switch (_that) {
-      case _Match() when internal != null:
-        return internal(_that);
-      case _:
-        return null;
-    }
-  }
-
-  /// A variant of `when` that fallback to an `orElse` callback.
-  ///
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case Subclass(:final field):
-  ///     return ...;
-  ///   case _:
-  ///     return orElse();
-  /// }
-  /// ```
-
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+            String mid,
+            String leagueId,
+            int round,
+            String player1Id,
+            String? player2Id,
+            MatchStatus status,
+            int? player1Score,
+            int? player2Score,
+            String? winnerId,
+            String? templateId,
+            DateTime? startTime,
+            DateTime? endTime,
+            BracketType? bracketType)?
+        internal,
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
@@ -304,139 +90,243 @@ extension MatchPatterns on Match {
             BracketType? bracketType)?
         internal,
     required TResult orElse(),
-  }) {
-    final _that = this;
-    switch (_that) {
-      case _Match() when internal != null:
-        return internal(
-            _that.mid,
-            _that.leagueId,
-            _that.round,
-            _that.player1Id,
-            _that.player2Id,
-            _that.status,
-            _that.player1Score,
-            _that.player2Score,
-            _that.winnerId,
-            _that.templateId,
-            _that.startTime,
-            _that.endTime,
-            _that.bracketType);
-      case _:
-        return orElse();
-    }
-  }
-
-  /// A `switch`-like method, using callbacks.
-  ///
-  /// As opposed to `map`, this offers destructuring.
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case Subclass(:final field):
-  ///     return ...;
-  ///   case Subclass2(:final field2):
-  ///     return ...;
-  /// }
-  /// ```
-
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function(
-            String mid,
-            String leagueId,
-            int round,
-            String player1Id,
-            String? player2Id,
-            MatchStatus status,
-            int? player1Score,
-            int? player2Score,
-            String? winnerId,
-            String? templateId,
-            DateTime? startTime,
-            DateTime? endTime,
-            BracketType? bracketType)
-        internal,
-  }) {
-    final _that = this;
-    switch (_that) {
-      case _Match():
-        return internal(
-            _that.mid,
-            _that.leagueId,
-            _that.round,
-            _that.player1Id,
-            _that.player2Id,
-            _that.status,
-            _that.player1Score,
-            _that.player2Score,
-            _that.winnerId,
-            _that.templateId,
-            _that.startTime,
-            _that.endTime,
-            _that.bracketType);
-      case _:
-        throw StateError('Unexpected subclass');
-    }
-  }
-
-  /// A variant of `when` that fallback to returning `null`
-  ///
-  /// It is equivalent to doing:
-  /// ```dart
-  /// switch (sealedClass) {
-  ///   case Subclass(:final field):
-  ///     return ...;
-  ///   case _:
-  ///     return null;
-  /// }
-  /// ```
-
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Match value) internal,
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String mid,
-            String leagueId,
-            int round,
-            String player1Id,
-            String? player2Id,
-            MatchStatus status,
-            int? player1Score,
-            int? player2Score,
-            String? winnerId,
-            String? templateId,
-            DateTime? startTime,
-            DateTime? endTime,
-            BracketType? bracketType)?
-        internal,
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Match value)? internal,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Match value)? internal,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $MatchCopyWith<Match> get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $MatchCopyWith<$Res> {
+  factory $MatchCopyWith(Match value, $Res Function(Match) then) =
+      _$MatchCopyWithImpl<$Res, Match>;
+  @useResult
+  $Res call(
+      {String mid,
+      String leagueId,
+      int round,
+      String player1Id,
+      String? player2Id,
+      MatchStatus status,
+      int? player1Score,
+      int? player2Score,
+      String? winnerId,
+      String? templateId,
+      DateTime? startTime,
+      DateTime? endTime,
+      BracketType? bracketType});
+}
+
+/// @nodoc
+class _$MatchCopyWithImpl<$Res, $Val extends Match>
+    implements $MatchCopyWith<$Res> {
+  _$MatchCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? mid = null,
+    Object? leagueId = null,
+    Object? round = null,
+    Object? player1Id = null,
+    Object? player2Id = freezed,
+    Object? status = null,
+    Object? player1Score = freezed,
+    Object? player2Score = freezed,
+    Object? winnerId = freezed,
+    Object? templateId = freezed,
+    Object? startTime = freezed,
+    Object? endTime = freezed,
+    Object? bracketType = freezed,
   }) {
-    final _that = this;
-    switch (_that) {
-      case _Match() when internal != null:
-        return internal(
-            _that.mid,
-            _that.leagueId,
-            _that.round,
-            _that.player1Id,
-            _that.player2Id,
-            _that.status,
-            _that.player1Score,
-            _that.player2Score,
-            _that.winnerId,
-            _that.templateId,
-            _that.startTime,
-            _that.endTime,
-            _that.bracketType);
-      case _:
-        return null;
-    }
+    return _then(_value.copyWith(
+      mid: null == mid
+          ? _value.mid
+          : mid // ignore: cast_nullable_to_non_nullable
+              as String,
+      leagueId: null == leagueId
+          ? _value.leagueId
+          : leagueId // ignore: cast_nullable_to_non_nullable
+              as String,
+      round: null == round
+          ? _value.round
+          : round // ignore: cast_nullable_to_non_nullable
+              as int,
+      player1Id: null == player1Id
+          ? _value.player1Id
+          : player1Id // ignore: cast_nullable_to_non_nullable
+              as String,
+      player2Id: freezed == player2Id
+          ? _value.player2Id
+          : player2Id // ignore: cast_nullable_to_non_nullable
+              as String?,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as MatchStatus,
+      player1Score: freezed == player1Score
+          ? _value.player1Score
+          : player1Score // ignore: cast_nullable_to_non_nullable
+              as int?,
+      player2Score: freezed == player2Score
+          ? _value.player2Score
+          : player2Score // ignore: cast_nullable_to_non_nullable
+              as int?,
+      winnerId: freezed == winnerId
+          ? _value.winnerId
+          : winnerId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      templateId: freezed == templateId
+          ? _value.templateId
+          : templateId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      startTime: freezed == startTime
+          ? _value.startTime
+          : startTime // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      endTime: freezed == endTime
+          ? _value.endTime
+          : endTime // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      bracketType: freezed == bracketType
+          ? _value.bracketType
+          : bracketType // ignore: cast_nullable_to_non_nullable
+              as BracketType?,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$MatchImplCopyWith<$Res> implements $MatchCopyWith<$Res> {
+  factory _$$MatchImplCopyWith(
+          _$MatchImpl value, $Res Function(_$MatchImpl) then) =
+      __$$MatchImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {String mid,
+      String leagueId,
+      int round,
+      String player1Id,
+      String? player2Id,
+      MatchStatus status,
+      int? player1Score,
+      int? player2Score,
+      String? winnerId,
+      String? templateId,
+      DateTime? startTime,
+      DateTime? endTime,
+      BracketType? bracketType});
+}
+
+/// @nodoc
+class __$$MatchImplCopyWithImpl<$Res>
+    extends _$MatchCopyWithImpl<$Res, _$MatchImpl>
+    implements _$$MatchImplCopyWith<$Res> {
+  __$$MatchImplCopyWithImpl(
+      _$MatchImpl _value, $Res Function(_$MatchImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? mid = null,
+    Object? leagueId = null,
+    Object? round = null,
+    Object? player1Id = null,
+    Object? player2Id = freezed,
+    Object? status = null,
+    Object? player1Score = freezed,
+    Object? player2Score = freezed,
+    Object? winnerId = freezed,
+    Object? templateId = freezed,
+    Object? startTime = freezed,
+    Object? endTime = freezed,
+    Object? bracketType = freezed,
+  }) {
+    return _then(_$MatchImpl(
+      mid: null == mid
+          ? _value.mid
+          : mid // ignore: cast_nullable_to_non_nullable
+              as String,
+      leagueId: null == leagueId
+          ? _value.leagueId
+          : leagueId // ignore: cast_nullable_to_non_nullable
+              as String,
+      round: null == round
+          ? _value.round
+          : round // ignore: cast_nullable_to_non_nullable
+              as int,
+      player1Id: null == player1Id
+          ? _value.player1Id
+          : player1Id // ignore: cast_nullable_to_non_nullable
+              as String,
+      player2Id: freezed == player2Id
+          ? _value.player2Id
+          : player2Id // ignore: cast_nullable_to_non_nullable
+              as String?,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as MatchStatus,
+      player1Score: freezed == player1Score
+          ? _value.player1Score
+          : player1Score // ignore: cast_nullable_to_non_nullable
+              as int?,
+      player2Score: freezed == player2Score
+          ? _value.player2Score
+          : player2Score // ignore: cast_nullable_to_non_nullable
+              as int?,
+      winnerId: freezed == winnerId
+          ? _value.winnerId
+          : winnerId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      templateId: freezed == templateId
+          ? _value.templateId
+          : templateId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      startTime: freezed == startTime
+          ? _value.startTime
+          : startTime // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      endTime: freezed == endTime
+          ? _value.endTime
+          : endTime // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      bracketType: freezed == bracketType
+          ? _value.bracketType
+          : bracketType // ignore: cast_nullable_to_non_nullable
+              as BracketType?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _Match implements Match {
-  const _Match(
+class _$MatchImpl implements _Match {
+  const _$MatchImpl(
       {required this.mid,
       required this.leagueId,
       required this.round,
@@ -450,7 +340,9 @@ class _Match implements Match {
       this.startTime,
       this.endTime,
       this.bracketType});
-  factory _Match.fromJson(Map<String, dynamic> json) => _$MatchFromJson(json);
+
+  factory _$MatchImpl.fromJson(Map<String, dynamic> json) =>
+      _$$MatchImplFromJson(json);
 
   @override
   final String mid;
@@ -482,26 +374,16 @@ class _Match implements Match {
   @override
   final BracketType? bracketType;
 
-  /// Create a copy of Match
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$MatchCopyWith<_Match> get copyWith =>
-      __$MatchCopyWithImpl<_Match>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$MatchToJson(
-      this,
-    );
+  String toString() {
+    return 'Match.internal(mid: $mid, leagueId: $leagueId, round: $round, player1Id: $player1Id, player2Id: $player2Id, status: $status, player1Score: $player1Score, player2Score: $player2Score, winnerId: $winnerId, templateId: $templateId, startTime: $startTime, endTime: $endTime, bracketType: $bracketType)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _Match &&
+            other is _$MatchImpl &&
             (identical(other.mid, mid) || other.mid == mid) &&
             (identical(other.leagueId, leagueId) ||
                 other.leagueId == leagueId) &&
@@ -526,7 +408,7 @@ class _Match implements Match {
                 other.bracketType == bracketType));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -544,115 +426,203 @@ class _Match implements Match {
       endTime,
       bracketType);
 
-  @override
-  String toString() {
-    return 'Match.internal(mid: $mid, leagueId: $leagueId, round: $round, player1Id: $player1Id, player2Id: $player2Id, status: $status, player1Score: $player1Score, player2Score: $player2Score, winnerId: $winnerId, templateId: $templateId, startTime: $startTime, endTime: $endTime, bracketType: $bracketType)';
-  }
-}
-
-/// @nodoc
-abstract mixin class _$MatchCopyWith<$Res> implements $MatchCopyWith<$Res> {
-  factory _$MatchCopyWith(_Match value, $Res Function(_Match) _then) =
-      __$MatchCopyWithImpl;
-  @override
-  @useResult
-  $Res call(
-      {String mid,
-      String leagueId,
-      int round,
-      String player1Id,
-      String? player2Id,
-      MatchStatus status,
-      int? player1Score,
-      int? player2Score,
-      String? winnerId,
-      String? templateId,
-      DateTime? startTime,
-      DateTime? endTime,
-      BracketType? bracketType});
-}
-
-/// @nodoc
-class __$MatchCopyWithImpl<$Res> implements _$MatchCopyWith<$Res> {
-  __$MatchCopyWithImpl(this._self, this._then);
-
-  final _Match _self;
-  final $Res Function(_Match) _then;
-
-  /// Create a copy of Match
-  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  $Res call({
-    Object? mid = null,
-    Object? leagueId = null,
-    Object? round = null,
-    Object? player1Id = null,
-    Object? player2Id = freezed,
-    Object? status = null,
-    Object? player1Score = freezed,
-    Object? player2Score = freezed,
-    Object? winnerId = freezed,
-    Object? templateId = freezed,
-    Object? startTime = freezed,
-    Object? endTime = freezed,
-    Object? bracketType = freezed,
+  _$$MatchImplCopyWith<_$MatchImpl> get copyWith =>
+      __$$MatchImplCopyWithImpl<_$MatchImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+            String mid,
+            String leagueId,
+            int round,
+            String player1Id,
+            String? player2Id,
+            MatchStatus status,
+            int? player1Score,
+            int? player2Score,
+            String? winnerId,
+            String? templateId,
+            DateTime? startTime,
+            DateTime? endTime,
+            BracketType? bracketType)
+        internal,
   }) {
-    return _then(_Match(
-      mid: null == mid
-          ? _self.mid
-          : mid // ignore: cast_nullable_to_non_nullable
-              as String,
-      leagueId: null == leagueId
-          ? _self.leagueId
-          : leagueId // ignore: cast_nullable_to_non_nullable
-              as String,
-      round: null == round
-          ? _self.round
-          : round // ignore: cast_nullable_to_non_nullable
-              as int,
-      player1Id: null == player1Id
-          ? _self.player1Id
-          : player1Id // ignore: cast_nullable_to_non_nullable
-              as String,
-      player2Id: freezed == player2Id
-          ? _self.player2Id
-          : player2Id // ignore: cast_nullable_to_non_nullable
-              as String?,
-      status: null == status
-          ? _self.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as MatchStatus,
-      player1Score: freezed == player1Score
-          ? _self.player1Score
-          : player1Score // ignore: cast_nullable_to_non_nullable
-              as int?,
-      player2Score: freezed == player2Score
-          ? _self.player2Score
-          : player2Score // ignore: cast_nullable_to_non_nullable
-              as int?,
-      winnerId: freezed == winnerId
-          ? _self.winnerId
-          : winnerId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      templateId: freezed == templateId
-          ? _self.templateId
-          : templateId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      startTime: freezed == startTime
-          ? _self.startTime
-          : startTime // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      endTime: freezed == endTime
-          ? _self.endTime
-          : endTime // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      bracketType: freezed == bracketType
-          ? _self.bracketType
-          : bracketType // ignore: cast_nullable_to_non_nullable
-              as BracketType?,
-    ));
+    return internal(
+        mid,
+        leagueId,
+        round,
+        player1Id,
+        player2Id,
+        status,
+        player1Score,
+        player2Score,
+        winnerId,
+        templateId,
+        startTime,
+        endTime,
+        bracketType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+            String mid,
+            String leagueId,
+            int round,
+            String player1Id,
+            String? player2Id,
+            MatchStatus status,
+            int? player1Score,
+            int? player2Score,
+            String? winnerId,
+            String? templateId,
+            DateTime? startTime,
+            DateTime? endTime,
+            BracketType? bracketType)?
+        internal,
+  }) {
+    return internal?.call(
+        mid,
+        leagueId,
+        round,
+        player1Id,
+        player2Id,
+        status,
+        player1Score,
+        player2Score,
+        winnerId,
+        templateId,
+        startTime,
+        endTime,
+        bracketType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(
+            String mid,
+            String leagueId,
+            int round,
+            String player1Id,
+            String? player2Id,
+            MatchStatus status,
+            int? player1Score,
+            int? player2Score,
+            String? winnerId,
+            String? templateId,
+            DateTime? startTime,
+            DateTime? endTime,
+            BracketType? bracketType)?
+        internal,
+    required TResult orElse(),
+  }) {
+    if (internal != null) {
+      return internal(
+          mid,
+          leagueId,
+          round,
+          player1Id,
+          player2Id,
+          status,
+          player1Score,
+          player2Score,
+          winnerId,
+          templateId,
+          startTime,
+          endTime,
+          bracketType);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Match value) internal,
+  }) {
+    return internal(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Match value)? internal,
+  }) {
+    return internal?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Match value)? internal,
+    required TResult orElse(),
+  }) {
+    if (internal != null) {
+      return internal(this);
+    }
+    return orElse();
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$MatchImplToJson(
+      this,
+    );
   }
 }
 
-// dart format on
+abstract class _Match implements Match {
+  const factory _Match(
+      {required final String mid,
+      required final String leagueId,
+      required final int round,
+      required final String player1Id,
+      final String? player2Id,
+      final MatchStatus status,
+      final int? player1Score,
+      final int? player2Score,
+      final String? winnerId,
+      final String? templateId,
+      final DateTime? startTime,
+      final DateTime? endTime,
+      final BracketType? bracketType}) = _$MatchImpl;
+
+  factory _Match.fromJson(Map<String, dynamic> json) = _$MatchImpl.fromJson;
+
+  @override
+  String get mid;
+  @override
+  String get leagueId;
+  @override
+  int get round;
+  @override
+  String get player1Id;
+  @override
+  String? get player2Id;
+  @override // 在淘汰赛中，选手2可能稍后确定
+  MatchStatus get status;
+  @override
+  int? get player1Score;
+  @override
+  int? get player2Score;
+  @override
+  String? get winnerId;
+  @override
+  String? get templateId;
+  @override // 本场比赛使用的计分模板
+  DateTime? get startTime;
+  @override
+  DateTime? get endTime;
+  @override
+  BracketType? get bracketType;
+  @override
+  @JsonKey(ignore: true)
+  _$$MatchImplCopyWith<_$MatchImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}

@@ -6,7 +6,7 @@ part of 'league.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_League _$LeagueFromJson(Map<String, dynamic> json) => _League(
+_$LeagueImpl _$$LeagueImplFromJson(Map<String, dynamic> json) => _$LeagueImpl(
       lid: json['lid'] as String,
       name: json['name'] as String,
       type: $enumDecode(_$LeagueTypeEnumMap, json['type']),
@@ -23,7 +23,8 @@ _League _$LeagueFromJson(Map<String, dynamic> json) => _League(
       currentRound: (json['currentRound'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$LeagueToJson(_League instance) => <String, dynamic>{
+Map<String, dynamic> _$$LeagueImplToJson(_$LeagueImpl instance) =>
+    <String, dynamic>{
       'lid': instance.lid,
       'name': instance.name,
       'type': _$LeagueTypeEnumMap[instance.type]!,

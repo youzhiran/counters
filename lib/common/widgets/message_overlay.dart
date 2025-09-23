@@ -756,14 +756,14 @@ class _MessageCardState extends State<_MessageCard>
                       // 使用柔和的自定义阴影，符合Material 3设计规范
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08 * _fadeAnimation.value), // 阴影透明度也与动画同步
+                          color: Colors.black.withOpacity(0.08 * _fadeAnimation.value), // 阴影透明度也与动画同步
                           blurRadius: 6, // 减少模糊半径
                           spreadRadius: 0, // 不扩散，避免"脏"的效果
                           offset: const Offset(0, 2), // 轻微向下偏移，自然的投影
                         ),
                         // 添加第二层更淡的阴影，增加层次感但不突兀
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04 * _fadeAnimation.value), // 阴影透明度也与动画同步
+                          color: Colors.black.withOpacity(0.04 * _fadeAnimation.value), // 阴影透明度也与动画同步
                           blurRadius: 12,
                           spreadRadius: 0,
                           offset: const Offset(0, 4),
@@ -796,7 +796,7 @@ class _MessageCardState extends State<_MessageCard>
                           child: Container(
                             padding: const EdgeInsets.all(8), // 增大触摸区域
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
+                              color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Icon(

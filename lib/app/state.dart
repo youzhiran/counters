@@ -104,7 +104,7 @@ class GlobalState {
 
     // 加载主题设置
     final modeIndex = _prefs.getInt('themeMode') ?? ThemeMode.system.index;
-    final colorValue = _prefs.getInt('themeColor') ?? Colors.blue.toARGB32();
+    final colorValue = _prefs.getInt('themeColor') ?? Colors.blue.value;
 
     // 加载桌面模式设置
     final enableDesktopMode = _prefs.getBool('enable_desktop_mode') ?? false;
@@ -153,7 +153,7 @@ class GlobalState {
 
   // 更新主题颜色
   Future<void> setThemeColor(Color color) async {
-    await _prefs.setInt('themeColor', color.toARGB32());
+    await _prefs.setInt('themeColor', color.value);
     _state = _state.copyWith(themeColor: color);
 
     // 通知应用重建以应用新主题

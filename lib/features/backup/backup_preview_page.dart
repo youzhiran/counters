@@ -59,9 +59,9 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
             Expanded(
               child: _buildContent(previewState),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 按钮区域
             _buildActionButtons(previewState),
           ],
@@ -171,11 +171,11 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
       if (isDark) {
         switch (level) {
           case CompatibilityLevel.compatible:
-            return Colors.green.shade900.withValues(alpha: 0.3);
+            return Colors.green.shade900.withOpacity(0.3);
           case CompatibilityLevel.warning:
-            return Colors.orange.shade900.withValues(alpha: 0.3);
+            return Colors.orange.shade900.withOpacity(0.3);
           case CompatibilityLevel.incompatible:
-            return Colors.red.shade900.withValues(alpha: 0.3);
+            return Colors.red.shade900.withOpacity(0.3);
         }
       } else {
         switch (level) {
@@ -458,10 +458,12 @@ class _BackupPreviewPageState extends ConsumerState<BackupPreviewPage> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final warningColor = isDark ? Colors.orange.shade300 : Colors.orange.shade700;
-    final warningTextColor = isDark ? Colors.orange.shade300 : Colors.orange.shade800;
+    final warningColor =
+        isDark ? Colors.orange.shade300 : Colors.orange.shade700;
+    final warningTextColor =
+        isDark ? Colors.orange.shade300 : Colors.orange.shade800;
     final warningBackgroundColor = isDark
-        ? Colors.orange.shade900.withValues(alpha: 0.3)
+        ? Colors.orange.shade900.withOpacity(0.3)
         : Colors.orange.shade50;
 
     return Card(

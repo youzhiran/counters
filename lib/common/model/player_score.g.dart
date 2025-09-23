@@ -6,7 +6,8 @@ part of 'player_score.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_PlayerScore _$PlayerScoreFromJson(Map<String, dynamic> json) => _PlayerScore(
+_$PlayerScoreImpl _$$PlayerScoreImplFromJson(Map<String, dynamic> json) =>
+    _$PlayerScoreImpl(
       playerId: json['playerId'] as String,
       roundScores: (json['roundScores'] as List<dynamic>?)
               ?.map((e) => (e as num?)?.toInt())
@@ -19,7 +20,7 @@ _PlayerScore _$PlayerScoreFromJson(Map<String, dynamic> json) => _PlayerScore(
               const {},
     );
 
-Map<String, dynamic> _$PlayerScoreToJson(_PlayerScore instance) =>
+Map<String, dynamic> _$$PlayerScoreImplToJson(_$PlayerScoreImpl instance) =>
     <String, dynamic>{
       'playerId': instance.playerId,
       'roundScores': instance.roundScores,

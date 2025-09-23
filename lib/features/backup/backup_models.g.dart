@@ -6,7 +6,8 @@ part of 'backup_models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_BackupData _$BackupDataFromJson(Map<String, dynamic> json) => _BackupData(
+_$BackupDataImpl _$$BackupDataImplFromJson(Map<String, dynamic> json) =>
+    _$BackupDataImpl(
       metadata:
           BackupMetadata.fromJson(json['metadata'] as Map<String, dynamic>),
       sharedPreferences: json['sharedPreferences'] as Map<String, dynamic>,
@@ -15,15 +16,15 @@ _BackupData _$BackupDataFromJson(Map<String, dynamic> json) => _BackupData(
           .toList(),
     );
 
-Map<String, dynamic> _$BackupDataToJson(_BackupData instance) =>
+Map<String, dynamic> _$$BackupDataImplToJson(_$BackupDataImpl instance) =>
     <String, dynamic>{
       'metadata': instance.metadata,
       'sharedPreferences': instance.sharedPreferences,
       'databases': instance.databases,
     };
 
-_BackupMetadata _$BackupMetadataFromJson(Map<String, dynamic> json) =>
-    _BackupMetadata(
+_$BackupMetadataImpl _$$BackupMetadataImplFromJson(Map<String, dynamic> json) =>
+    _$BackupMetadataImpl(
       appVersion: json['appVersion'] as String,
       buildNumber: json['buildNumber'] as String,
       timestamp: (json['timestamp'] as num).toInt(),
@@ -31,7 +32,8 @@ _BackupMetadata _$BackupMetadataFromJson(Map<String, dynamic> json) =>
       backupCode: (json['backupCode'] as num).toInt(),
     );
 
-Map<String, dynamic> _$BackupMetadataToJson(_BackupMetadata instance) =>
+Map<String, dynamic> _$$BackupMetadataImplToJson(
+        _$BackupMetadataImpl instance) =>
     <String, dynamic>{
       'appVersion': instance.appVersion,
       'buildNumber': instance.buildNumber,
@@ -40,15 +42,15 @@ Map<String, dynamic> _$BackupMetadataToJson(_BackupMetadata instance) =>
       'backupCode': instance.backupCode,
     };
 
-_DatabaseFile _$DatabaseFileFromJson(Map<String, dynamic> json) =>
-    _DatabaseFile(
+_$DatabaseFileImpl _$$DatabaseFileImplFromJson(Map<String, dynamic> json) =>
+    _$DatabaseFileImpl(
       name: json['name'] as String,
       relativePath: json['relativePath'] as String,
       size: (json['size'] as num).toInt(),
       checksum: json['checksum'] as String,
     );
 
-Map<String, dynamic> _$DatabaseFileToJson(_DatabaseFile instance) =>
+Map<String, dynamic> _$$DatabaseFileImplToJson(_$DatabaseFileImpl instance) =>
     <String, dynamic>{
       'name': instance.name,
       'relativePath': instance.relativePath,
@@ -56,13 +58,15 @@ Map<String, dynamic> _$DatabaseFileToJson(_DatabaseFile instance) =>
       'checksum': instance.checksum,
     };
 
-_HashInfo _$HashInfoFromJson(Map<String, dynamic> json) => _HashInfo(
+_$HashInfoImpl _$$HashInfoImplFromJson(Map<String, dynamic> json) =>
+    _$HashInfoImpl(
       algorithm: json['algorithm'] as String,
       hash: json['hash'] as String,
       timestamp: json['timestamp'] as String,
     );
 
-Map<String, dynamic> _$HashInfoToJson(_HashInfo instance) => <String, dynamic>{
+Map<String, dynamic> _$$HashInfoImplToJson(_$HashInfoImpl instance) =>
+    <String, dynamic>{
       'algorithm': instance.algorithm,
       'hash': instance.hash,
       'timestamp': instance.timestamp,

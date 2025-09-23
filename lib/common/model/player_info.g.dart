@@ -6,13 +6,14 @@ part of 'player_info.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_PlayerInfo _$PlayerInfoFromJson(Map<String, dynamic> json) => _PlayerInfo(
+_$PlayerInfoImpl _$$PlayerInfoImplFromJson(Map<String, dynamic> json) =>
+    _$PlayerInfoImpl(
       pid: json['pid'] as String,
       name: json['name'] as String,
       avatar: json['avatar'] as String,
     );
 
-Map<String, dynamic> _$PlayerInfoToJson(_PlayerInfo instance) =>
+Map<String, dynamic> _$$PlayerInfoImplToJson(_$PlayerInfoImpl instance) =>
     <String, dynamic>{
       'pid': instance.pid,
       'name': instance.name,

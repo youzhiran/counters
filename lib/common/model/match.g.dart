@@ -6,7 +6,7 @@ part of 'match.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_Match _$MatchFromJson(Map<String, dynamic> json) => _Match(
+_$MatchImpl _$$MatchImplFromJson(Map<String, dynamic> json) => _$MatchImpl(
       mid: json['mid'] as String,
       leagueId: json['leagueId'] as String,
       round: (json['round'] as num).toInt(),
@@ -28,7 +28,8 @@ _Match _$MatchFromJson(Map<String, dynamic> json) => _Match(
           $enumDecodeNullable(_$BracketTypeEnumMap, json['bracketType']),
     );
 
-Map<String, dynamic> _$MatchToJson(_Match instance) => <String, dynamic>{
+Map<String, dynamic> _$$MatchImplToJson(_$MatchImpl instance) =>
+    <String, dynamic>{
       'mid': instance.mid,
       'leagueId': instance.leagueId,
       'round': instance.round,

@@ -1,0 +1,10 @@
+{
+  "app": {
+    "bundleName": "com.devyi.counters.h",
+    "vendor": "devyi",
+    "versionCode": 25082600,
+    "versionName": "0.11.6.0",
+    "icon": "$media:app_layered_image",
+    "label": "$string:app_name"
+  }
+}

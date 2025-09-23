@@ -6,7 +6,8 @@ part of 'game_session.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_GameSession _$GameSessionFromJson(Map<String, dynamic> json) => _GameSession(
+_$GameSessionImpl _$$GameSessionImplFromJson(Map<String, dynamic> json) =>
+    _$GameSessionImpl(
       sid: json['sid'] as String,
       templateId: json['templateId'] as String,
       startTime: DateTime.parse(json['startTime'] as String),
@@ -20,7 +21,7 @@ _GameSession _$GameSessionFromJson(Map<String, dynamic> json) => _GameSession(
       leagueMatchId: json['leagueMatchId'] as String?,
     );
 
-Map<String, dynamic> _$GameSessionToJson(_GameSession instance) =>
+Map<String, dynamic> _$$GameSessionImplToJson(_$GameSessionImpl instance) =>
     <String, dynamic>{
       'sid': instance.sid,
       'templateId': instance.templateId,

@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:counters/app/state.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
-import 'package:file_picker/file_picker.dart';
+// import 'package:file_picker/file_picker.dart';
+import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 

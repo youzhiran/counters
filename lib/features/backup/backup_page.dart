@@ -7,7 +7,8 @@ import 'package:counters/common/widgets/page_transitions.dart';
 import 'package:counters/features/backup/backup_models.dart';
 import 'package:counters/features/backup/backup_preview_page.dart';
 import 'package:counters/features/backup/backup_provider.dart';
-import 'package:file_picker/file_picker.dart';
+// import 'package:file_picker/file_picker.dart';
+import 'package:file_picker_ohos/file_picker_ohos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as path;
@@ -789,10 +790,7 @@ class _RestoreDialog extends StatelessWidget {
                     itemCount: backupFiles.length,
                     separatorBuilder: (context, index) => Divider(
                       height: 1,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .outline
-                          .withValues(alpha: 0.2),
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
                     ),
                     itemBuilder: (context, index) {
                       final backupFile = backupFiles[index];
