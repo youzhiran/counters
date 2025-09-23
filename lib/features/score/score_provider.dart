@@ -261,6 +261,7 @@ class Score extends _$Score {
 
   Future<void> clearAllHistory() async {
     await _sessionDao.deleteAllGameSessions();
+    await ref.read(leagueNotifierProvider.notifier).clearAllLeagueData();
     state = AsyncData(const ScoreState(
       currentSession: null,
       ongoingSessions: [],

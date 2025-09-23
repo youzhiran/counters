@@ -234,7 +234,11 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         .showCommonDialog(
       child: ConfirmationDialog(
         title: '确认清除',
-        content: '这将永久删除所有历史记录!\n玩家统计数据同时也会被清除。\n此操作不可撤销!',
+        content: '这将永久删除所有计分数据！包括：\n'
+            '● 所有计分历史记录\n'
+            '● 所有联赛赛程数据\n'
+            '● 玩家统计数据\n'
+            '此操作不可撤销！',
         confirmText: '确认清除',
       ),
     )
@@ -247,7 +251,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
 
   void _clearAllHistory(WidgetRef ref) async {
     await ref.read(scoreProvider.notifier).clearAllHistory();
-    ref.showSuccess('已清除所有历史记录');
+    ref.showSuccess('已清除所有历史记录及联赛数据');
     setState(() {}); // Refresh the page to show empty state
   }
 

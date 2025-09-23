@@ -154,6 +154,23 @@ class LeagueDao {
     Log.i('已删除ID为 $lid 的联赛及其关联比赛。');
   }
 
+  /// 清空 matches 表中的所有记录。
+  Future<void> deleteAllMatches() async {
+    final db = await dbHelper.database;
+    await db.delete('matches');
+    Log.i('已清除所有联赛比赛记录');
+  }
+
+  /// 清空 leagues 与 matches 表中的所有记录。
+  Future<void> deleteAllLeagues() async {
+    final db = await dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.delete('matches');
+      await txn.delete('leagues');
+    });
+    Log.i('已清除所有联赛配置与赛程数据');
+  }
+
   /// 更新联赛中的单场比赛。
   Future<void> updateMatch(Match match) async {
     final db = await dbHelper.database;

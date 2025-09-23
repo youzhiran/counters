@@ -171,6 +171,18 @@ class LeagueNotifier extends _$LeagueNotifier {
     }
   }
 
+  /// 清空所有联赛配置及赛程数据，常用于全量重置历史数据。
+  Future<void> clearAllLeagueData() async {
+    try {
+      await _leagueDao.deleteAllLeagues();
+      await _reloadLeagues();
+    } catch (e, s) {
+      ErrorHandler.handle(e, s);
+      state = AsyncError(e, s);
+      rethrow;
+    }
+  }
+
   /// 重置并重新生成指定轮次及其后续所有轮次
   Future<void> resetRound(String leagueId, int round) async {
     if (!state.hasValue) return;
