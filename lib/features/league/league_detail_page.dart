@@ -636,10 +636,20 @@ class _RoundRobinMatchesList extends ConsumerWidget {
 
   Color _colorForRound(BuildContext context, int round) {
     final palette = Colors.primaries;
-    final m = palette[(round - 1) % palette.length];
-    final base = m.shade500;
+    const stride = 5; // 选择与长度互质的步长以拉开每一轮的颜色
+    final index = ((round - 1) * stride) % palette.length;
+    final cycle = (round - 1) ~/ palette.length;
+    final material = palette[index];
+
+    // 按轮次切换同一色系的不同明度，保证下一轮与上一轮不同
+    const shadeCycle = [500, 300, 700];
+    final shadeKey = shadeCycle[cycle % shadeCycle.length];
+    final base = material[shadeKey] ?? material.shade500;
+
     final surface = Theme.of(context).colorScheme.surface;
-    return Color.alphaBlend(base.withOpacity(0.80), surface); // 进一步柔和
+    final opacity =
+        (0.75 + 0.05 * (cycle % shadeCycle.length)).clamp(0.6, 0.9).toDouble();
+    return Color.alphaBlend(base.withOpacity(opacity), surface);
   }
 
   @override
@@ -819,7 +829,12 @@ class _MatchTile extends ConsumerWidget {
           const SizedBox(height: 2),
           Text(
             statusLabel,
-            style: theme.textTheme.bodySmall,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: (match.status == MatchStatus.pending ||
+                      match.status == MatchStatus.inProgress)
+                  ? roundLabelColor
+                  : null,
+            ),
           ),
         ],
       );
