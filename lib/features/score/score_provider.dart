@@ -102,6 +102,17 @@ class ScoreState {
 class Score extends _$Score {
   late final GameSessionDao _sessionDao = ref.read(gameSessionDaoProvider);
 
+  List<GameSession> _upsertOngoingSession(
+      List<GameSession> sessions, GameSession updatedSession) {
+    final index = sessions.indexWhere((s) => s.sid == updatedSession.sid);
+    if (index == -1) {
+      return [updatedSession, ...sessions];
+    }
+    final updatedList = List<GameSession>.from(sessions);
+    updatedList[index] = updatedSession;
+    return updatedList;
+  }
+
   @override
   Future<ScoreState> build() async {
     Log.d('ScoreNotifier: build() called.');
@@ -311,6 +322,11 @@ class Score extends _$Score {
     await _sessionDao.deleteSessionsByTemplate(templateId);
 
     final currentState = state.valueOrNull;
+    final updatedOngoing = currentState?.ongoingSessions
+            .where((session) => session.templateId != templateId)
+            .toList() ??
+        const <GameSession>[];
+
     if (currentState != null &&
         currentState.currentSession?.templateId == templateId) {
       state = AsyncData(currentState.copyWith(
@@ -320,12 +336,14 @@ class Score extends _$Score {
         currentHighlight: null,
         showGameEndDialog: false,
         players: [],
+        ongoingSessions: updatedOngoing,
       ));
       _broadcastResetGame();
+    } else if (currentState != null) {
+      state = AsyncData(currentState.copyWith(ongoingSessions: updatedOngoing));
     } else {
-      state = AsyncData(currentState ??
-          const ScoreState(
-              isInitialized: true, players: [], isTempMode: false));
+      state = const AsyncData(
+          ScoreState(isInitialized: true, players: [], isTempMode: false));
     }
   }
 
@@ -333,6 +351,11 @@ class Score extends _$Score {
     await _sessionDao.deleteGameSession(sessionId);
 
     final currentState = state.valueOrNull;
+    final updatedOngoing = currentState?.ongoingSessions
+            .where((session) => session.sid != sessionId)
+            .toList() ??
+        const <GameSession>[];
+
     if (currentState != null && currentState.currentSession?.sid == sessionId) {
       state = AsyncData(currentState.copyWith(
         currentSession: null,
@@ -341,12 +364,14 @@ class Score extends _$Score {
         currentHighlight: null,
         showGameEndDialog: false,
         players: [],
+        ongoingSessions: updatedOngoing,
       ));
       _broadcastResetGame();
+    } else if (currentState != null) {
+      state = AsyncData(currentState.copyWith(ongoingSessions: updatedOngoing));
     } else {
-      state = AsyncData(currentState ??
-          const ScoreState(
-              isInitialized: true, players: [], isTempMode: false));
+      state = const AsyncData(
+          ScoreState(isInitialized: true, players: [], isTempMode: false));
     }
   }
 
@@ -599,9 +624,12 @@ class Score extends _$Score {
     }).toList();
 
     final updatedSession = sessionToUpdate.copyWith(scores: updatedScores);
+    final updatedOngoing = _upsertOngoingSession(
+        currentStateBeforeUpdate.ongoingSessions, updatedSession);
 
     state = AsyncData(currentStateBeforeUpdate.copyWith(
       currentSession: updatedSession,
+      ongoingSessions: updatedOngoing,
       currentRound: _calculateCurrentRound(updatedSession),
     ));
 
@@ -706,9 +734,12 @@ class Score extends _$Score {
     }).toList();
 
     final updatedSession = session.copyWith(scores: updatedScores);
+    final updatedOngoing =
+        _upsertOngoingSession(currentState.ongoingSessions, updatedSession);
 
     state = AsyncData(currentState.copyWith(
       currentSession: updatedSession,
+      ongoingSessions: updatedOngoing,
       currentRound: currentRoundIndex + 1,
     ));
 
@@ -1051,8 +1082,13 @@ class Score extends _$Score {
       endTime: null,
     );
 
+    final previousOngoing = state.valueOrNull?.ongoingSessions ?? [];
+    final updatedOngoing =
+        _upsertOngoingSession(previousOngoing, updatedSession);
+
     state = AsyncData(ScoreState(
       currentSession: updatedSession,
+      ongoingSessions: updatedOngoing,
       template: sessionTemplate,
       currentRound: _calculateCurrentRound(updatedSession),
       isInitialized: true,
