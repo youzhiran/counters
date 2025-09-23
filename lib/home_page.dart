@@ -140,7 +140,10 @@ class HomePage extends ConsumerWidget {
           data: (scoreState) {
             final quickActions =
                 _buildQuickActions(context, ref, lanState, scoreState);
-            final ongoingSessions = scoreState.ongoingSessions;
+            // 主页“进行中对局”仅展示非联赛对局
+            final ongoingSessions = scoreState.ongoingSessions
+                .where((s) => s.leagueMatchId == null)
+                .toList();
 
             return CustomScrollView(
               physics: const BouncingScrollPhysics(),
@@ -198,9 +201,11 @@ class HomePage extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
+    // 主页不展示联赛对局的续玩提示
     final currentSessionExists = scoreState.currentSession != null &&
-        scoreState.ongoingSessions
-            .any((s) => s.sid == scoreState.currentSession!.sid);
+        scoreState.currentSession!.leagueMatchId == null &&
+        scoreState.ongoingSessions.any((s) =>
+            s.sid == scoreState.currentSession!.sid && s.leagueMatchId == null);
 
     final templateName = scoreState.template?.templateName;
     final headline = currentSessionExists && templateName != null
@@ -209,9 +214,11 @@ class HomePage extends ConsumerWidget {
     final description = currentSessionExists && templateName != null
         ? '上次停留在第${scoreState.currentRound}轮，随时可以恢复。'
         : '挑选模板创建新对局，或快速回到历史记录。';
-    final ongoingLabel = scoreState.ongoingSessions.isEmpty
-        ? '暂无进行中对局'
-        : '进行中：${scoreState.ongoingSessions.length} 场';
+    // 顶部文案“进行中”数量也排除联赛场次
+    final nonLeagueCount =
+        scoreState.ongoingSessions.where((s) => s.leagueMatchId == null).length;
+    final ongoingLabel =
+        nonLeagueCount == 0 ? '暂无进行中对局' : '进行中：$nonLeagueCount 场';
     final lanLabel = _getLanSummary(lanState);
 
     // 使用固定色板生成渐变
@@ -347,10 +354,12 @@ class HomePage extends ConsumerWidget {
   ) {
     final actions = <_HomeQuickAction>[];
 
-    // 检查当前会话是否真的存在于“进行中”列表，防止数据不一致
+    // 检查当前会话是否真的存在于“进行中”列表，且不是联赛对局
+    // 联赛的计分不应在主页继续
     final currentSessionExists = scoreState.currentSession != null &&
-        scoreState.ongoingSessions
-            .any((s) => s.sid == scoreState.currentSession!.sid);
+        scoreState.currentSession!.leagueMatchId == null &&
+        scoreState.ongoingSessions.any((s) =>
+            s.sid == scoreState.currentSession!.sid && s.leagueMatchId == null);
 
     if (currentSessionExists) {
       final templateName = scoreState.template?.templateName ?? '未知模板';
@@ -449,7 +458,10 @@ class HomePage extends ConsumerWidget {
         final templateMap = {
           for (final template in templates) template.tid: template
         };
-        final sessions = scoreState.ongoingSessions;
+        // 列表中排除联赛对局
+        final sessions = scoreState.ongoingSessions
+            .where((s) => s.leagueMatchId == null)
+            .toList();
 
         // 单卡默认宽度（含内容），高度由卡片内部自适应；外层给一个合适的视口高度
         const double tileWidth = 260;
