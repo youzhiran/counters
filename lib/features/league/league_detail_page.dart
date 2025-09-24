@@ -11,11 +11,11 @@ import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/outline_card.dart';
 import 'package:counters/common/widgets/responsive_grid_view.dart';
+import 'package:counters/features/home/home_page.dart';
 import 'package:counters/features/league/widgets/tournament_bracket_view.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
-import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

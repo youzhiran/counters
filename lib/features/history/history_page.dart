@@ -11,10 +11,10 @@ import 'package:counters/common/widgets/history_session_item.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/outline_card.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
+import 'package:counters/features/home/home_page.dart';
 import 'package:counters/features/league/league_detail_page.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
-import 'package:counters/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
