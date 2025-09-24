@@ -1,6 +1,7 @@
 import 'package:counters/common/providers/message_provider.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/toast_message.dart';
+import 'package:counters/features/home/providers/main_tab_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -287,17 +288,10 @@ class _MessageDebugPageState extends ConsumerState<MessageDebugPage> {
               '模拟断开重连测试',
               () {
                 // 模拟断开重连后的消息显示
-                Navigator.of(context)
-                    .pushNamedAndRemoveUntil(
-                  '/main',
-                  (route) => false,
-                )
-                    .then((_) {
-                  // 延迟一下再显示消息，模拟重连后的操作
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    _messageCount++;
-                    ref.showSuccess('模拟重连后复制IP: 192.168.1.100');
-                  });
+                ref.popToMainTab(0);
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  _messageCount++;
+                  ref.showSuccess('模拟重连后复制IP: 192.168.1.100');
                 });
               },
               color: Colors.amber,

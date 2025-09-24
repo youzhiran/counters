@@ -17,6 +17,7 @@ import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/dev/message_debug_page.dart';
 import 'package:counters/features/home/home_page.dart';
+import 'package:counters/features/home/providers/main_tab_controller.dart';
 import 'package:counters/features/lan/log_test_page.dart';
 import 'package:counters/features/player/player_page.dart';
 import 'package:counters/features/score/poker50/config.dart';
@@ -265,10 +266,6 @@ class _MyAppState extends ConsumerState<MyApp> {
         },
       ),
       routes: {
-        '/templates': (context) =>
-            const MessageOverlay(child: MainTabsScreen(initialIndex: 2)),
-        // 添加主页面路由
-        '/main': (context) => const MessageOverlay(child: MainTabsScreen()),
         // 添加测试页面路由
         '/log_test': (context) => const LogTestPage(),
         // 添加消息调试页面
@@ -338,9 +335,7 @@ class _MyAppState extends ConsumerState<MyApp> {
 // MainTabsScreen 是应用程序的主界面，包含主要的 Tab。
 // 它根据屏幕尺寸和用户设置切换使用底部导航栏或侧边导航栏。
 class MainTabsScreen extends ConsumerStatefulWidget {
-  final int initialIndex;
-
-  const MainTabsScreen({super.key, this.initialIndex = 0});
+  const MainTabsScreen({super.key});
 
   @override
   ConsumerState<MainTabsScreen> createState() => _MainTabsScreenState();
@@ -352,6 +347,8 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
   late int _selectedIndex;
   late PageController _pageController;
   bool _isAnimating = false; // 标记是否正在执行页面切换动画
+  bool _ignoreProviderUpdate = false; // 用户手势切换时跳过一次监听
+  late final ProviderSubscription<int> _tabSubscription;
 
   // 定义导航目标常量列表，包含每个 Tab 的图标和标签文本。
   static const List<({Icon icon, Icon selectedIcon, String label})>
@@ -396,21 +393,43 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
   @override
   void initState() {
     super.initState();
-    // 尝试从 PageStorage 中恢复保存的页面索引，或者使用初始索引。
-    final initialPage = PageStorage.of(context)
-            .readState(context, identifier: 'mainTabsPage') as int? ??
-        widget.initialIndex; // 使用 widget.initialIndex 作为默认值
-    _selectedIndex = initialPage; // 初始化 _selectedIndex 为恢复的或初始的页面索引
+    final storedIndex = PageStorage.of(context)
+        .readState(context, identifier: 'mainTabsPage') as int?;
+    final controller = ref.read(mainTabControllerProvider.notifier);
+    final currentIndex = ref.read(mainTabControllerProvider);
 
-    // 初始化 PageController，使用恢复的或初始的页面索引。
+    _selectedIndex = storedIndex ?? currentIndex;
     _pageController = PageController(initialPage: _selectedIndex);
+    controller.syncInitialIndex(_selectedIndex);
 
-    // 添加屏幕指标变化的监听器，用于处理屏幕旋转等情况。
+    _tabSubscription = ref.listenManual<int>(
+      mainTabControllerProvider,
+      (previous, next) {
+        if (!mounted) {
+          return;
+        }
+        if (_ignoreProviderUpdate) {
+          _ignoreProviderUpdate = false;
+          setState(() {
+            _selectedIndex = next;
+            _isAnimating = false;
+          });
+          _writeTabToStorage(next);
+          return;
+        }
+        final shouldAnimate =
+            previous != null && (next - _selectedIndex).abs() == 1;
+        _switchToPage(next, animate: shouldAnimate);
+      },
+      fireImmediately: false,
+    );
+
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    _tabSubscription.close();
     // 销毁 PageController。
     _pageController.dispose();
     // 移除屏幕指标变化的监听器。
@@ -434,51 +453,65 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
 
   // 处理底部或侧边导航栏项目点击事件。
   void _onItemTapped(int index) {
-    // 只有当点击的项目不是当前选中项且不在动画中时才进行更新和跳转。
-    if (_selectedIndex != index && !_isAnimating) {
-      final shouldAnimate = (_selectedIndex - index).abs() == 1;
+    if (_isAnimating) {
+      return;
+    }
+    final currentIndex = ref.read(mainTabControllerProvider);
+    if (currentIndex == index) {
+      return;
+    }
+    ref.read(mainTabControllerProvider.notifier).selectTab(index);
+  }
 
-      // 立即更新导航栏状态，避免图标跟随页面滑动
+  void _switchToPage(int index, {required bool animate}) {
+    if (_selectedIndex == index &&
+        _pageController.hasClients &&
+        _pageController.page?.round() == index) {
+      _writeTabToStorage(index);
+      return;
+    }
+
+    if (!_pageController.hasClients) {
       setState(() {
         _selectedIndex = index;
-        _isAnimating = shouldAnimate;
-        // 保存当前的页面索引到 PageStorage，以便应用重启后恢复。
-        PageStorage.of(context)
-            .writeState(context, index, identifier: 'mainTabsPage');
-      });
-
-      if (!_pageController.hasClients) {
-        if (shouldAnimate && mounted) {
-          setState(() {
-            _isAnimating = false;
-          });
-        } else {
-          _isAnimating = false;
-        }
-        return;
-      }
-
-      if (shouldAnimate) {
-        // 相邻页面保持平滑动画
-        _pageController
-            .animateToPage(
-          index,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        )
-            .then((_) {
-          if (mounted) {
-            setState(() {
-              _isAnimating = false;
-            });
-          }
-        });
-      } else {
-        // 跨多个标签时直接跳转以避免明显的滚动痕迹
-        _pageController.jumpToPage(index);
         _isAnimating = false;
-      }
+      });
+      _writeTabToStorage(index);
+      return;
     }
+
+    if (animate) {
+      setState(() {
+        _selectedIndex = index;
+        _isAnimating = true;
+      });
+      _pageController
+          .animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      )
+          .whenComplete(() {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _isAnimating = false;
+        });
+      });
+    } else {
+      _pageController.jumpToPage(index);
+      setState(() {
+        _selectedIndex = index;
+        _isAnimating = false;
+      });
+    }
+    _writeTabToStorage(index);
+  }
+
+  void _writeTabToStorage(int index) {
+    final storage = PageStorage.of(context);
+    storage.writeState(context, index, identifier: 'mainTabsPage');
   }
 
   @override
@@ -520,14 +553,16 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
                 // 启用滑动切换，添加滑动动画
                 controller: _pageController,
                 onPageChanged: (index) {
-                  // 只有在非动画状态下（用户手动滑动）才更新导航栏状态
-                  if (!_isAnimating) {
-                    setState(() {
-                      _selectedIndex = index;
-                      PageStorage.of(context).writeState(context, index,
-                          identifier: 'mainTabsPage');
-                    });
+                  if (_isAnimating) {
+                    return;
                   }
+                  final currentIndex = ref.read(mainTabControllerProvider);
+                  if (currentIndex == index) {
+                    _writeTabToStorage(index);
+                    return;
+                  }
+                  _ignoreProviderUpdate = true;
+                  ref.read(mainTabControllerProvider.notifier).selectTab(index);
                 },
                 children: _screens,
               ),
@@ -545,14 +580,16 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
           // 启用滑动切换，添加滑动动画
           controller: _pageController,
           onPageChanged: (index) {
-            // 只有在非动画状态下（用户手动滑动）才更新导航栏状态
-            if (!_isAnimating) {
-              setState(() {
-                _selectedIndex = index;
-                PageStorage.of(context)
-                    .writeState(context, index, identifier: 'mainTabsPage');
-              });
+            if (_isAnimating) {
+              return;
             }
+            final currentIndex = ref.read(mainTabControllerProvider);
+            if (currentIndex == index) {
+              _writeTabToStorage(index);
+              return;
+            }
+            _ignoreProviderUpdate = true;
+            ref.read(mainTabControllerProvider.notifier).selectTab(index);
           },
           children: _screens,
         ),

@@ -26,6 +26,8 @@ import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'providers/main_tab_actions.dart';
+
 part 'constants.dart';
 part 'helpers.dart';
 part 'session_page_loader.dart';

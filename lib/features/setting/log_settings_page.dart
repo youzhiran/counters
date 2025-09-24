@@ -48,7 +48,7 @@ class _LogSettingsPageState extends ConsumerState<LogSettingsPage> {
             title: '查看程序日志',
             subtitle: '查看应用运行日志和局域网状态',
             onTap: () {
-              Navigator.pushNamed(context, '/log_test');
+              Navigator.of(context).pushNamed('/log_test');
             },
           ),
           _buildSectionHeader('日志导出设置'),

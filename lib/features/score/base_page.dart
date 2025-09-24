@@ -15,6 +15,7 @@ import 'package:counters/common/utils/wakelock_helper.dart';
 import 'package:counters/common/widgets/dice_roller_dialog.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/page_transitions.dart';
+import 'package:counters/features/home/providers/main_tab_actions.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/log_test_page.dart';
@@ -236,10 +237,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       // 修复：客户端断开连接时返回到带有底部导航栏的主界面
       lanNotifier.disposeManager();
       ref.showSuccess('已断开连接');
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/main',
-        (route) => false,
-      );
+      ref.popToMainTab(0);
     } else {
       lanNotifier
           .startHost(8080, template.tid, templateName: template.templateName)
@@ -802,12 +800,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       await ref.read(lanProvider.notifier).exitClientMode();
       ref.invalidate(scoreProvider);
 
-      if (mounted && context.mounted) {
+      if (mounted) {
         // 修复：客户端断开连接时返回到带有底部导航栏的主界面
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/main',
-          (route) => false,
-        );
+        ref.popToMainTab(0);
       }
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '客户端模式退出失败');

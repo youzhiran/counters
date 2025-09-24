@@ -1,6 +1,7 @@
 import 'package:counters/app/state.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
+import 'package:counters/features/home/providers/main_tab_actions.dart';
 import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/lan/ping_provider.dart';
 import 'package:counters/features/setting/ping_display_provider.dart';
@@ -728,12 +729,7 @@ class _ActionButtons extends ConsumerWidget {
                   // 修复：使用exitClientMode完全退出客户端模式
                   await ref.read(lanProvider.notifier).exitClientMode();
                   // 修复：断开连接后导航到带有底部导航栏的主界面
-                  if (context.mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/main',
-                      (route) => false,
-                    );
-                  }
+                  ref.popToMainTab(0);
                 },
                 icon: const Icon(Icons.wifi_off),
                 label: const Text('断开连接'),
@@ -776,12 +772,7 @@ class _ActionButtons extends ConsumerWidget {
                       Navigator.pop(context);
                       await ref.read(lanProvider.notifier).exitClientMode();
                       // 修复：退出客户端模式后导航到带有底部导航栏的主界面
-                      if (context.mounted) {
-                        Navigator.of(context).pushNamedAndRemoveUntil(
-                          '/main',
-                          (route) => false,
-                        );
-                      }
+                      ref.popToMainTab(0);
                     },
                     icon: const Icon(Icons.exit_to_app),
                     label: const Text('退出客户端'),

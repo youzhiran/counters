@@ -27,11 +27,9 @@ class _TemplateSelector extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          '/templates',
-                          (route) => false,
-                        ),
+                        onPressed: () {
+                          ref.popToMainTab(2);
+                        },
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(200, 48),
                         ),

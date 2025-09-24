@@ -48,7 +48,7 @@ List<_HomeQuickAction> _buildQuickActions(
       subtitle: '自定义模板，灵活配置计分',
       icon: Icons.view_list,
       color: kActionColors[4],
-      onTap: () => Navigator.pushNamed(context, '/templates'),
+      onTap: () => ref.switchMainTab(2),
     ),
   );
 

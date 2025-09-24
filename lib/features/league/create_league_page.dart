@@ -9,6 +9,8 @@ import 'package:counters/features/template/template_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../home/providers/main_tab_actions.dart';
+
 class CreateLeaguePage extends ConsumerStatefulWidget {
   const CreateLeaguePage({super.key});
 
@@ -125,7 +127,7 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.of(context).pushNamed('/templates');
+                        ref.popToMainTab(2);
                       },
                       icon: const Icon(Icons.add),
                       label: const Text('去创建模板'),

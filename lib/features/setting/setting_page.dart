@@ -308,7 +308,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                   title: '程序日志',
                   subtitle: '提供局域网状态和程序日志查看',
                   onTap: () {
-                    Navigator.pushNamed(context, '/log_test');
+                    Navigator.of(context).pushNamed('/log_test');
                   },
                 ),
                 _buildSectionHeader('关于'),
@@ -355,7 +355,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     title: '消息系统调试',
                     subtitle: '测试消息显示系统',
                     onTap: () {
-                      Navigator.pushNamed(context, '/message_debug');
+                      Navigator.of(context).pushNamed('/message_debug');
                     },
                   ),
                   SettingListTile(

@@ -117,7 +117,26 @@
 - **注意**: 此方法非常底层，它只负责弹出和关闭。对话框内部的逻辑、状态管理和UI布局完全由传入的 `child`
   Widget 负责。
 
-### 四、 日志工具 (`Log`)
+### 四、 导航栈管理策略
+
+项目主界面通过 `MainTabsScreen` 承载四个核心标签页（主页、玩家、模板、设置）。自导航栈改造后，我们引入了
+`mainTabControllerProvider` 与 `MainTabActions` 扩展来统一管理标签切换，避免重复构建主页面或破坏现有路由栈。
+
+- **状态来源**：`lib/features/home/providers/main_tab_controller.dart` 定义的
+  `mainTabControllerProvider` 负责存储当前标签索引，并在应用启动时与 `PageController` 同步。
+- **推荐调用方式**：
+  - 使用 `ref.switchMainTab(index)` 在当前页面保持栈结构的前提下切换标签，适用于快速入口、侧边/底部导航等即时切换场景。
+  - 使用 `ref.popToMainTab(index)` 先回退到根路由再切换标签，适用于流程结束或需要清理上层页面的场景（如局域网断开、会话退出）。
+- **禁止操作**：
+  - 不再使用 `Navigator.popAndPushNamed('/templates')`、
+    `Navigator.pushNamedAndRemoveUntil('/main', ...)` 等方式回到主界面。
+  - 不再在路由表中注册新的 `MainTabsScreen` 实例，也不要手动创建多个主界面副本。
+- **编码建议**：
+  - 对外暴露入口时优先提供封装方法，封堵对子路由的直接导航。
+  - 新增标签页前先扩展 `_navigationItems`、`_screens`，并确保 `main_tab_controller.dart`
+    支持默认索引初始化与持久化。
+
+### 五、 日志工具 (`Log`)
 
 项目封装了一个全局统一的日志工具，位于 `lib/common/utils/log.dart`，旨在提供分级、易用且包含调用位置的日志输出。
 请在必要的时候添加调试日志。
@@ -145,4 +164,3 @@
 - **可配置的日志级别**: 可以在应用启动时或通过开发者选项动态设置日志的输出级别，以控制日志的详细程度。
 - **颜色高亮**: 在支持的控制台（如VS Code、Android Studio）中，不同级别的日志会以不同颜色显示，提高可读性。
 - **日志流**: 提供一个全局的 `Log.logStream`，可以监听此流来构建一个应用内的日志显示界面，方便测试和调试。
-
