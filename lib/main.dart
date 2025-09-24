@@ -436,30 +436,48 @@ class _MainTabsScreenState extends ConsumerState<MainTabsScreen>
   void _onItemTapped(int index) {
     // 只有当点击的项目不是当前选中项且不在动画中时才进行更新和跳转。
     if (_selectedIndex != index && !_isAnimating) {
+      final shouldAnimate = (_selectedIndex - index).abs() == 1;
+
       // 立即更新导航栏状态，避免图标跟随页面滑动
       setState(() {
         _selectedIndex = index;
-        _isAnimating = true;
+        _isAnimating = shouldAnimate;
         // 保存当前的页面索引到 PageStorage，以便应用重启后恢复。
         PageStorage.of(context)
             .writeState(context, index, identifier: 'mainTabsPage');
       });
 
-      // 执行页面切换动画
-      _pageController
-          .animateToPage(
-        index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      )
-          .then((_) {
-        // 动画完成后重置标志
-        if (mounted) {
+      if (!_pageController.hasClients) {
+        if (shouldAnimate && mounted) {
           setState(() {
             _isAnimating = false;
           });
+        } else {
+          _isAnimating = false;
         }
-      });
+        return;
+      }
+
+      if (shouldAnimate) {
+        // 相邻页面保持平滑动画
+        _pageController
+            .animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        )
+            .then((_) {
+          if (mounted) {
+            setState(() {
+              _isAnimating = false;
+            });
+          }
+        });
+      } else {
+        // 跨多个标签时直接跳转以避免明显的滚动痕迹
+        _pageController.jumpToPage(index);
+        _isAnimating = false;
+      }
     }
   }
 

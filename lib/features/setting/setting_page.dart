@@ -37,6 +37,9 @@ class SettingPage extends ConsumerStatefulWidget {
 }
 
 class _SettingPageState extends ConsumerState<SettingPage> {
+  static bool _cachedShowDevOptions = false;
+  static bool _hasCachedShowDevOptions = false;
+
   String _versionName = '读取失败';
   String _versionCode = '读取失败';
   String _dataStoragePath = '应用默认目录';
@@ -73,6 +76,9 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   @override
   void initState() {
     super.initState();
+    if (_hasCachedShowDevOptions) {
+      _showDevOptions = _cachedShowDevOptions;
+    }
     _loadPackageInfo();
     _loadDevOptions();
     _loadStorageSettings();
@@ -691,9 +697,24 @@ class _SettingPageState extends ConsumerState<SettingPage> {
   // 添加加载开发者选项方法
   Future<void> _loadDevOptions() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _showDevOptions = prefs.getBool(_keyShowDevOptions) ?? false;
-    });
+    final showDevOptions = prefs.getBool(_keyShowDevOptions) ?? false;
+
+    void updateState() {
+      _showDevOptions = showDevOptions;
+      _cachedShowDevOptions = showDevOptions;
+      _hasCachedShowDevOptions = true;
+    }
+
+    if (!mounted) {
+      updateState();
+      return;
+    }
+
+    if (_showDevOptions != showDevOptions || !_hasCachedShowDevOptions) {
+      setState(updateState);
+    } else {
+      updateState();
+    }
   }
 
   // 处理版本信息点击
@@ -728,6 +749,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
 
   // 添加保存开发者选项状态方法
   Future<void> _saveDevOptions(bool value) async {
+    _cachedShowDevOptions = value;
+    _hasCachedShowDevOptions = true;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyShowDevOptions, value);
   }
