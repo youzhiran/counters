@@ -58,31 +58,32 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
         return;
       }
 
-      try {
-        await ref.read(leagueNotifierProvider.notifier).addLeague(
-              name: _nameController.text,
-              type: _selectedType,
-              playerIds: _selectedPlayers.map((p) => p.pid).toList(),
-              defaultTemplateId: _selectedTemplate!.tid,
-              roundRobinRounds: int.parse(_roundRobinRoundsController.text),
-              pointsForWin: int.parse(_winPointsController.text),
-              pointsForDraw: int.parse(_drawPointsController.text),
-              pointsForLoss: int.parse(_lossPointsController.text),
-            );
+      await ref.read(leagueNotifierProvider.notifier).addLeague(
+            name: _nameController.text,
+            type: _selectedType,
+            playerIds: _selectedPlayers.map((p) => p.pid).toList(),
+            defaultTemplateId: _selectedTemplate!.tid,
+            roundRobinRounds: int.parse(_roundRobinRoundsController.text),
+            pointsForWin: int.parse(_winPointsController.text),
+            pointsForDraw: int.parse(_drawPointsController.text),
+            pointsForLoss: int.parse(_lossPointsController.text),
+          );
 
-        // 检查组件是否仍然挂载
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        ref.showSuccess('联赛创建成功');
-      } catch (e) {
-        ref.showError(e.toString());
-      }
+      // 检查组件是否仍然挂载
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ref.showSuccess('联赛创建成功');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final templatesAsync = ref.watch(templatesProvider);
+    final bool hasSuitableUserTemplates = templatesAsync.maybeWhen(
+      data: (templates) =>
+          templates.any((template) => !template.isSystemTemplate),
+      orElse: () => false,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -90,7 +91,7 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: _submitForm,
+            onPressed: hasSuitableUserTemplates ? _submitForm : null,
             tooltip: '保存联赛',
           )
         ],
@@ -102,6 +103,38 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
           // 联赛功能当前仅支持2人对战，但模板选择放开
           final suitableUserTemplates =
               templates.where((t) => !t.isSystemTemplate).toList();
+
+          if (suitableUserTemplates.isEmpty) {
+            // 当缺少用户模板时提示用户前往创建
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.insert_drive_file_outlined,
+                      size: 80,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      '当前没有可用的用户模板，请先至少创建一个模板后再来创建联赛。',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pushNamed('/templates');
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('去创建模板'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
 
           return Form(
             key: _formKey,
@@ -258,31 +291,9 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
                   },
                   validator: (value) => value == null ? '请选择一个模板' : null,
                 ),
-                // 如果没有合适的模板，显示提示和新建按钮
-                if (suitableUserTemplates.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '没有可用的用户模板',
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.error),
-                        ),
-                        TextButton(
-                          child: const Text('去新建一个'),
-                          onPressed: () {
-                            // 跳转到模板管理页面
-                            Navigator.of(context).pushNamed('/templates');
-                          },
-                        )
-                      ],
-                    ),
-                  ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: _submitForm,
+                  onPressed: hasSuitableUserTemplates ? _submitForm : null,
                   icon: const Icon(Icons.save),
                   label: const Text('创建联赛'),
                   style: ElevatedButton.styleFrom(

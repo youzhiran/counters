@@ -47,7 +47,7 @@ List<_HomeQuickAction> _buildQuickActions(
       title: '模板管理',
       subtitle: '自定义模板，灵活配置计分',
       icon: Icons.view_list,
-      color: kActionColors[3],
+      color: kActionColors[4],
       onTap: () => Navigator.pushNamed(context, '/templates'),
     ),
   );
@@ -57,7 +57,7 @@ List<_HomeQuickAction> _buildQuickActions(
       title: '联赛中心',
       subtitle: '管理淘汰赛或循环赛',
       icon: Icons.emoji_events,
-      color: kActionColors[4],
+      color: kActionColors[3],
       onTap: () => Navigator.of(context).pushWithSlide(
         const LeagueListPage(),
         direction: SlideDirection.fromRight,

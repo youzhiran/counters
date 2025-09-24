@@ -13,6 +13,9 @@ class Migrations {
     if (oldVersion < 5) {
       await _apply4to5Migrations(db);
     }
+    if (oldVersion < 6) {
+      await _ensureRoundRobinRoundsColumn(db);
+    }
   }
 
   static Future<void> _apply1to4Migrations(Database db) async {
@@ -145,9 +148,32 @@ class Migrations {
 
   static Future<void> _apply4to5Migrations(Database db) async {
     Log.i("应用 v4 到 v5 的数据库结构变更...");
+    await _ensureRoundRobinRoundsColumn(db);
+  }
+
+  /// 确保联赛表存在 round_robin_rounds 列，新安装与旧版本升级都会走到这里。
+  static Future<void> _ensureRoundRobinRoundsColumn(Database db) async {
+    final hasColumn = await _columnExists(db, 'leagues', 'round_robin_rounds');
+    if (hasColumn) {
+      Log.i("round_robin_rounds 列已存在，跳过新增步骤。");
+      return;
+    }
     await db.execute('''
         ALTER TABLE leagues ADD COLUMN round_robin_rounds INTEGER NOT NULL DEFAULT 1
       ''');
     Log.i("round_robin_rounds 列已添加到 leagues 表。");
+  }
+
+  /// 查询指定表是否存在特定列，避免重复执行 ALTER 语句。
+  static Future<bool> _columnExists(
+      Database db, String tableName, String columnName) async {
+    final columns = await db.rawQuery('PRAGMA table_info($tableName)');
+    for (final column in columns) {
+      final name = column['name'] as String?;
+      if (name == columnName) {
+        return true;
+      }
+    }
+    return false;
   }
 }

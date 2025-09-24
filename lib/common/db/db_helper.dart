@@ -8,7 +8,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
-  static const int dbVersion = 5;
+  static const int dbVersion = 6;
   static final DatabaseHelper instance = DatabaseHelper._();
   static Database? _database;
 
@@ -234,6 +234,7 @@ class DatabaseHelper {
         points_for_win INTEGER NOT NULL,
         points_for_draw INTEGER NOT NULL,
         points_for_loss INTEGER NOT NULL,
+        round_robin_rounds INTEGER NOT NULL DEFAULT 1,
         current_round INTEGER
       )
     ''');
