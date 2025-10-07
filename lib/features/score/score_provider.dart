@@ -102,6 +102,8 @@ class ScoreState {
 class Score extends _$Score {
   late final GameSessionDao _sessionDao = ref.read(gameSessionDaoProvider);
   ScoreState? _clientModeLocalBackup;
+  // 临时计分模式下的本地状态备份：用于在退出临时计分后恢复首页“继续对局”等提示
+  ScoreState? _tempModeLocalBackup;
 
   List<GameSession> _upsertOngoingSession(
       List<GameSession> sessions, GameSession updatedSession) {
@@ -501,6 +503,9 @@ class Score extends _$Score {
 
   /// 开始临时计分（快速体验模式）
   void startTempGame(BaseTemplate template) {
+    // 进入临时计分前，备份当前完整计分状态（含当前会话与进行中的会话列表）
+    _tempModeLocalBackup = state.valueOrNull;
+
     final validatedPlayers = template.players
         .map((p) => p.pid.isEmpty ? p.copyWith(pid: const Uuid().v4()) : p)
         .toList();
@@ -516,8 +521,12 @@ class Score extends _$Score {
       startTime: DateTime.now(),
     );
 
+    // 保留之前的“进行中对局”列表，避免临时计分覆盖导致首页“继续对局”消失
+    final previousOngoing = state.valueOrNull?.ongoingSessions ?? const <GameSession>[];
+
     state = AsyncData(ScoreState(
       currentSession: newSession,
+      ongoingSessions: previousOngoing,
       template: template,
       currentRound: 0,
       isInitialized: true,
@@ -528,6 +537,29 @@ class Score extends _$Score {
     updateHighlight();
     // 临时模式下不进行网络广播
     Log.i('临时计分模式：已开始，数据不会保存到本地存储');
+  }
+
+  /// 退出临时计分：清理临时模板并恢复进入临时计分前的状态
+  Future<void> exitTempGame() async {
+    final currentState = state.valueOrNull;
+    if (currentState?.isTempMode == true && currentState?.currentSession != null) {
+      final templateId = currentState!.currentSession!.templateId;
+      if (templateId.startsWith('temp_')) {
+        await _cleanupTempTemplate(templateId);
+      }
+    }
+
+    if (_tempModeLocalBackup != null) {
+      final backup = _tempModeLocalBackup!;
+      _tempModeLocalBackup = null; // 防止重复恢复
+      state = AsyncData(backup);
+      Log.i('临时计分退出：已恢复进入临时模式前的计分状态');
+      return;
+    }
+
+    // 没有备份则回退到默认状态（不影响数据库中的未完成对局，稍后首次构建会从DAO加载）
+    state = const AsyncData(
+        ScoreState(isInitialized: true, players: [], isTempMode: false));
   }
 
   /// 清理临时模板

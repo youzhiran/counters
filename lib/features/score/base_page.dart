@@ -125,6 +125,14 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           );
         }
 
+        // 安全检查：当前页面绑定的模板ID与状态中的模板不一致时，
+        // 说明会话已切换（例如从临时计分恢复到之前的对局），该页面应主动关闭，避免类型不匹配导致的强制转换错误。
+        if (template.tid != widget.templateId) {
+          // 返回占位以避免当前页面在模板切换瞬间因类型不匹配而崩溃，
+          // 实际的返回操作由触发方（如临时计分退出）负责。
+          return const SizedBox.shrink();
+        }
+
         // 在第一次构建时，创建会话数据的快照
         _initialSession ??= session.copyWith(
           scores: session.scores
@@ -597,8 +605,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
               // 检查并断开联机连接
               await _handleNetworkDisconnection();
 
-              // 重置计分状态（不保存历史）
-              ref.read(scoreProvider.notifier).resetGame(false);
+              // 退出临时计分：清理临时模板并恢复进入临时模式前的计分状态
+              await ref.read(scoreProvider.notifier).exitTempGame();
 
               // 返回到上一个页面（保持底部导航）
               if (context.mounted) {
