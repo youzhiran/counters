@@ -216,7 +216,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 SettingSwitchListTile(
                   icon: Icons.desktop_windows,
                   title: '启用桌面模式适配',
-                  subtitle: '启用并重启后程序支持横屏界面',
+                  // 说明：桌面模式适配现已可即时生效，无需重启
+                  subtitle: '更适合大屏/桌面端：启用后采用侧边导航与多列布局',
                   value: _enableDesktopMode,
                   onChanged: _saveDesktopModeSetting,
                 ),
@@ -770,7 +771,10 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     setState(() {
       _enableDesktopMode = value;
     });
-    GlobalMsgManager.showMessage('设置已保存，重启应用后生效');
+    // 同步更新全局状态，确保无需重启即可生效
+    // 注意：采用统一判断逻辑，实际是否展示桌面布局仍取决于屏幕宽度阈值
+    await globalState.setEnableDesktopMode(value);
+    GlobalMsgManager.showSuccess(value ? '已启用桌面模式适配' : '已关闭桌面模式适配');
   }
 
   // 加载测试鸿蒙平台设置

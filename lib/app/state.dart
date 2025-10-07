@@ -107,7 +107,8 @@ class GlobalState {
     final colorValue = _prefs.getInt('themeColor') ?? Colors.blue.toARGB32();
 
     // 加载桌面模式设置
-    final enableDesktopMode = _prefs.getBool('enable_desktop_mode') ?? false;
+    // 默认开启：若无存储值则按开启处理，避免首次启动需手动切换一次才生效
+    final enableDesktopMode = _prefs.getBool('enable_desktop_mode') ?? true;
 
     // 在初始化方法中加载字体
     fontFamily = _prefs.getString('fontFamily');
@@ -235,6 +236,17 @@ class GlobalState {
   Future<void> setEnableDesktopMode(bool enable) async {
     await _prefs.setBool('enable_desktop_mode', enable);
     _state = _state.copyWith(enableDesktopMode: enable);
+    // 触发全局重建，使依赖桌面模式判断的界面（如主界面布局）即时生效
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      if (context is Element && context.mounted) {
+        void rebuildApp(Element element) {
+          element.markNeedsBuild();
+          element.visitChildren(rebuildApp);
+        }
+        context.visitChildElements(rebuildApp);
+      }
+    }
   }
 
   /// 显示一个带进度更新的异步任务对话框
