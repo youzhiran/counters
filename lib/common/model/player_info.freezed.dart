@@ -17,6 +17,7 @@ mixin _$PlayerInfo {
   String get pid;
   String get name;
   String get avatar;
+  String? get avatarColor;
 
   /// Create a copy of PlayerInfo
   /// with the given fields replaced by the non-null parameter values.
@@ -35,16 +36,18 @@ mixin _$PlayerInfo {
             other is PlayerInfo &&
             (identical(other.pid, pid) || other.pid == pid) &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.avatar, avatar) || other.avatar == avatar));
+            (identical(other.avatar, avatar) || other.avatar == avatar) &&
+            (identical(other.avatarColor, avatarColor) ||
+                other.avatarColor == avatarColor));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, pid, name, avatar);
+  int get hashCode => Object.hash(runtimeType, pid, name, avatar, avatarColor);
 
   @override
   String toString() {
-    return 'PlayerInfo(pid: $pid, name: $name, avatar: $avatar)';
+    return 'PlayerInfo(pid: $pid, name: $name, avatar: $avatar, avatarColor: $avatarColor)';
   }
 }
 
@@ -54,7 +57,7 @@ abstract mixin class $PlayerInfoCopyWith<$Res> {
           PlayerInfo value, $Res Function(PlayerInfo) _then) =
       _$PlayerInfoCopyWithImpl;
   @useResult
-  $Res call({String pid, String name, String avatar});
+  $Res call({String pid, String name, String avatar, String? avatarColor});
 }
 
 /// @nodoc
@@ -72,6 +75,7 @@ class _$PlayerInfoCopyWithImpl<$Res> implements $PlayerInfoCopyWith<$Res> {
     Object? pid = null,
     Object? name = null,
     Object? avatar = null,
+    Object? avatarColor = freezed,
   }) {
     return _then(_self.copyWith(
       pid: null == pid
@@ -86,6 +90,10 @@ class _$PlayerInfoCopyWithImpl<$Res> implements $PlayerInfoCopyWith<$Res> {
           ? _self.avatar
           : avatar // ignore: cast_nullable_to_non_nullable
               as String,
+      avatarColor: freezed == avatarColor
+          ? _self.avatarColor
+          : avatarColor // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -183,13 +191,15 @@ extension PlayerInfoPatterns on PlayerInfo {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String pid, String name, String avatar)? internal,
+    TResult Function(
+            String pid, String name, String avatar, String? avatarColor)?
+        internal,
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _PlayerInfo() when internal != null:
-        return internal(_that.pid, _that.name, _that.avatar);
+        return internal(_that.pid, _that.name, _that.avatar, _that.avatarColor);
       case _:
         return orElse();
     }
@@ -210,12 +220,14 @@ extension PlayerInfoPatterns on PlayerInfo {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String pid, String name, String avatar) internal,
+    required TResult Function(
+            String pid, String name, String avatar, String? avatarColor)
+        internal,
   }) {
     final _that = this;
     switch (_that) {
       case _PlayerInfo():
-        return internal(_that.pid, _that.name, _that.avatar);
+        return internal(_that.pid, _that.name, _that.avatar, _that.avatarColor);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -235,12 +247,14 @@ extension PlayerInfoPatterns on PlayerInfo {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String pid, String name, String avatar)? internal,
+    TResult? Function(
+            String pid, String name, String avatar, String? avatarColor)?
+        internal,
   }) {
     final _that = this;
     switch (_that) {
       case _PlayerInfo() when internal != null:
-        return internal(_that.pid, _that.name, _that.avatar);
+        return internal(_that.pid, _that.name, _that.avatar, _that.avatarColor);
       case _:
         return null;
     }
@@ -251,7 +265,10 @@ extension PlayerInfoPatterns on PlayerInfo {
 @JsonSerializable()
 class _PlayerInfo extends PlayerInfo {
   const _PlayerInfo(
-      {required this.pid, required this.name, required this.avatar})
+      {required this.pid,
+      required this.name,
+      required this.avatar,
+      this.avatarColor})
       : super._();
   factory _PlayerInfo.fromJson(Map<String, dynamic> json) =>
       _$PlayerInfoFromJson(json);
@@ -262,6 +279,8 @@ class _PlayerInfo extends PlayerInfo {
   final String name;
   @override
   final String avatar;
+  @override
+  final String? avatarColor;
 
   /// Create a copy of PlayerInfo
   /// with the given fields replaced by the non-null parameter values.
@@ -285,16 +304,18 @@ class _PlayerInfo extends PlayerInfo {
             other is _PlayerInfo &&
             (identical(other.pid, pid) || other.pid == pid) &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.avatar, avatar) || other.avatar == avatar));
+            (identical(other.avatar, avatar) || other.avatar == avatar) &&
+            (identical(other.avatarColor, avatarColor) ||
+                other.avatarColor == avatarColor));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, pid, name, avatar);
+  int get hashCode => Object.hash(runtimeType, pid, name, avatar, avatarColor);
 
   @override
   String toString() {
-    return 'PlayerInfo.internal(pid: $pid, name: $name, avatar: $avatar)';
+    return 'PlayerInfo.internal(pid: $pid, name: $name, avatar: $avatar, avatarColor: $avatarColor)';
   }
 }
 
@@ -306,7 +327,7 @@ abstract mixin class _$PlayerInfoCopyWith<$Res>
       __$PlayerInfoCopyWithImpl;
   @override
   @useResult
-  $Res call({String pid, String name, String avatar});
+  $Res call({String pid, String name, String avatar, String? avatarColor});
 }
 
 /// @nodoc
@@ -324,6 +345,7 @@ class __$PlayerInfoCopyWithImpl<$Res> implements _$PlayerInfoCopyWith<$Res> {
     Object? pid = null,
     Object? name = null,
     Object? avatar = null,
+    Object? avatarColor = freezed,
   }) {
     return _then(_PlayerInfo(
       pid: null == pid
@@ -338,6 +360,10 @@ class __$PlayerInfoCopyWithImpl<$Res> implements _$PlayerInfoCopyWith<$Res> {
           ? _self.avatar
           : avatar // ignore: cast_nullable_to_non_nullable
               as String,
+      avatarColor: freezed == avatarColor
+          ? _self.avatarColor
+          : avatarColor // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }

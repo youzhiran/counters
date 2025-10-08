@@ -495,9 +495,8 @@ class ScoreChartBottomSheet extends ConsumerWidget {
 
       final player = playersMap[score.playerId];
       if (player != null) {
-        final colorIndex =
-            player.pid.hashCode % PlayerAvatar.avatarColors.length;
-        playerColors[score.playerId] = PlayerAvatar.avatarColors[colorIndex];
+        playerColors[score.playerId] =
+            PlayerAvatar.resolvePrimaryColor(player);
         playerNames[score.playerId] = player.name;
       } else {
         // Fallback if player info not found in template

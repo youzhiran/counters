@@ -10,6 +10,7 @@ _PlayerInfo _$PlayerInfoFromJson(Map<String, dynamic> json) => _PlayerInfo(
       pid: json['pid'] as String,
       name: json['name'] as String,
       avatar: json['avatar'] as String,
+      avatarColor: json['avatarColor'] as String?,
     );
 
 Map<String, dynamic> _$PlayerInfoToJson(_PlayerInfo instance) =>
@@ -17,4 +18,5 @@ Map<String, dynamic> _$PlayerInfoToJson(_PlayerInfo instance) =>
       'pid': instance.pid,
       'name': instance.name,
       'avatar': instance.avatar,
+      'avatarColor': instance.avatarColor,
     };

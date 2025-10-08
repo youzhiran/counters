@@ -8,7 +8,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
-  static const int dbVersion = 6;
+  static const int dbVersion = 7;
   static final DatabaseHelper instance = DatabaseHelper._();
   static Database? _database;
 
@@ -157,7 +157,8 @@ class DatabaseHelper {
       CREATE TABLE players (
         pid TEXT PRIMARY KEY,
         name TEXT NOT NULL DEFAULT '未知玩家',
-        avatar TEXT NOT NULL DEFAULT 'default_avatar.png'
+        avatar TEXT NOT NULL DEFAULT 'default_avatar.png',
+        avatarColor TEXT
       );
     ''');
 

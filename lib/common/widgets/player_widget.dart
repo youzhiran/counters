@@ -1,5 +1,5 @@
-import 'package:counters/app/state.dart';
 import 'package:counters/common/model/player_info.dart';
+import 'package:counters/features/player/player_avatar_picker_page.dart';
 import 'package:counters/features/player/player_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,17 +18,53 @@ class PlayerAvatar {
     Colors.deepPurple,
   ];
 
+  /// 将数据库中存储的颜色字符串转换为 [Color]
+  static Color? tryParseColor(String? colorValue) {
+    if (colorValue == null || colorValue.isEmpty) {
+      return null;
+    }
+    final parsed = int.tryParse(colorValue);
+    if (parsed == null) {
+      return null;
+    }
+    return Color(parsed);
+  }
+
+  /// 将 [Color] 转换为数据库可存储的字符串
+  static String? colorToStorageValue(Color? color) {
+    return color?.value.toString();
+  }
+
+  /// 解析玩家头像的主色调，如无自定义则退回到哈希计算的默认色
+  static Color resolvePrimaryColor(PlayerInfo player) {
+    final storedColor = tryParseColor(player.avatarColor);
+    if (storedColor != null) {
+      return storedColor;
+    }
+    final colorIndex = player.pid.hashCode.abs() % avatarColors.length;
+    return avatarColors[colorIndex];
+  }
+
+  /// 根据指定透明度生成头像背景色，主要用于保持统一的视觉风格
+  static Color resolveBackgroundColor(
+    PlayerInfo player, {
+    double opacity = 0.2,
+  }) {
+    final safeOpacity = opacity.clamp(0.0, 1.0);
+    return resolvePrimaryColor(player).withOpacity(safeOpacity);
+  }
+
   /// 创建玩家头像组件
   static Widget build(BuildContext context, PlayerInfo player) {
-    // 根据玩家ID生成固定的随机颜色
-    final colorIndex = player.pid.hashCode % avatarColors.length;
-    final backgroundColor =
-        avatarColors[colorIndex].withAlpha((0.2 * 255).toInt());
-    final foregroundColor = avatarColors[colorIndex];
+    final foregroundColor = resolvePrimaryColor(player);
+    final backgroundColor = resolveBackgroundColor(player);
+    final iconCodePoint = int.tryParse(player.avatar);
+    final isDefault = player.avatar == 'default_avatar.png';
+    final isEmoji = !isDefault && iconCodePoint == null;
 
     return CircleAvatar(
       backgroundColor: backgroundColor,
-      child: player.avatar == 'default_avatar.png'
+      child: isDefault
           ? Text(
               player.name.isNotEmpty
                   ? String.fromCharCodes(player.name.runes.take(1))
@@ -38,11 +74,18 @@ class PlayerAvatar {
                 fontWeight: FontWeight.bold,
               ),
             )
-          : Icon(
-              // 使用查找表从预定义图标中获取
-              getIconFromCodePoint(int.parse(player.avatar)),
-              color: foregroundColor,
-            ),
+          : isEmoji
+              ? Text(
+                  player.avatar,
+                  style: const TextStyle(fontSize: 24),
+                )
+              : Icon(
+                  // 使用查找表从预定义图标中获取
+                  getIconFromCodePoint(
+                    iconCodePoint ?? Icons.person.codePoint,
+                  ),
+                  color: foregroundColor,
+                ),
     );
   }
 }
@@ -128,6 +171,9 @@ class PlayerListItem extends ConsumerStatefulWidget {
 class PlayerListItemState extends ConsumerState<PlayerListItem> {
   late TextEditingController _controller;
   IconData? _selectedIcon;
+  String? _selectedEmoji;
+  Color? _selectedColor;
+  bool _useSystemColor = false;
   bool _isInternalController = false;
 
   @override
@@ -143,11 +189,25 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
       );
     }
 
-    _selectedIcon = widget.initialIcon ??
-        (widget.initialPlayer?.avatar != null &&
-                widget.initialPlayer?.avatar != 'default_avatar.png'
-            ? getIconFromCodePoint(int.parse(widget.initialPlayer!.avatar))
-            : null);
+    _selectedIcon = widget.initialIcon;
+    _selectedEmoji = null;
+    final initialAvatar = widget.initialPlayer?.avatar;
+    if (initialAvatar != null && initialAvatar != 'default_avatar.png') {
+      final iconCodePoint = int.tryParse(initialAvatar);
+      if (iconCodePoint != null) {
+        _selectedIcon = getIconFromCodePoint(iconCodePoint);
+      } else {
+        _selectedEmoji = initialAvatar;
+        _selectedIcon = null;
+      }
+    }
+
+    _selectedColor =
+        PlayerAvatar.tryParseColor(widget.initialPlayer?.avatarColor);
+    _useSystemColor = widget.initialPlayer?.avatarColor == null;
+    if (_selectedColor != null) {
+      _useSystemColor = false;
+    }
   }
 
   @override
@@ -163,18 +223,67 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
   }
 
   PlayerInfo getPlayerInfo() {
+    final trimmedName = _controller.text.trim();
+    String avatarValue;
+    if (_selectedEmoji != null && _selectedEmoji!.isNotEmpty) {
+      avatarValue = _selectedEmoji!;
+    } else if (_selectedIcon != null) {
+      avatarValue = _selectedIcon!.codePoint.toString();
+    } else {
+      avatarValue = 'default_avatar.png';
+    }
+    final colorValue = _useSystemColor
+        ? null
+        : PlayerAvatar.colorToStorageValue(
+            _selectedColor ??
+                PlayerAvatar.tryParseColor(widget.initialPlayer?.avatarColor),
+          );
+
     return PlayerInfo(
       pid: widget.initialPlayer?.pid,
-      name: _controller.text.trim(),
-      avatar: _selectedIcon?.codePoint.toString() ?? 'default_avatar.png',
+      name: trimmedName,
+      avatar: avatarValue,
+      avatarColor: colorValue,
     );
   }
 
-  void _showIconPicker() {
-    showIconPicker(context, (icon) {
-      setState(() {
-        _selectedIcon = icon;
-      });
+  Future<void> _openAvatarPicker() async {
+    final result =
+        await Navigator.of(context).push<PlayerAvatarSelectionResult>(
+      MaterialPageRoute(
+        builder: (_) => PlayerAvatarPickerPage(
+          playerName: _controller.text.trim(),
+          initialIcon: _selectedIcon,
+          initialColor: _selectedColor ??
+              PlayerAvatar.tryParseColor(widget.initialPlayer?.avatarColor),
+          initialEmoji: _selectedEmoji,
+          useSystemColor: _useSystemColor,
+          availableIcons: availablePlayerIcons,
+          colorPalette: PlayerAvatar.avatarColors,
+          systemColor: _systemColorPreview(),
+        ),
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    setState(() {
+      _selectedIcon = result.icon;
+      _selectedEmoji = result.emoji;
+      _useSystemColor = result.useSystemColor;
+      if (_selectedEmoji != null) {
+        _selectedIcon = null;
+      }
+      if (_selectedIcon != null) {
+        _selectedEmoji = null;
+      }
+      if (result.useSystemColor) {
+        _selectedColor = null;
+      } else {
+        _selectedColor = result.color ??
+            PlayerAvatar.tryParseColor(widget.initialPlayer?.avatarColor) ??
+            _selectedColor;
+      }
     });
   }
 
@@ -183,11 +292,7 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
     final name = _controller.text.trim();
     if (name.isEmpty) return;
 
-    final player = PlayerInfo(
-      pid: widget.initialPlayer?.pid,
-      name: name,
-      avatar: _selectedIcon?.codePoint.toString() ?? 'default_avatar.png',
-    );
+    final player = getPlayerInfo();
 
     if (widget.onPlayerSaved != null) {
       widget.onPlayerSaved!(player);
@@ -212,12 +317,40 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
           Padding(
             padding: EdgeInsets.only(bottom: 20),
             child: InkWell(
-              onTap: _showIconPicker,
-              child: CircleAvatar(
-                radius: 24,
-                child: _selectedIcon != null
-                    ? Icon(_selectedIcon)
-                    : Icon(Icons.person),
+              onTap: _openAvatarPicker,
+              borderRadius: BorderRadius.circular(24),
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _controller,
+                builder: (context, value, _) {
+                  final primaryColor = _primaryColorForPreview();
+                  final backgroundColor = _backgroundColorForPreview();
+                  final trimmed = value.text.trim();
+                  final displayText = trimmed.isNotEmpty
+                      ? String.fromCharCodes(trimmed.runes.take(1))
+                      : '?';
+                  return CircleAvatar(
+                    radius: 24,
+                    backgroundColor: backgroundColor,
+                    child: _selectedIcon != null
+                        ? Icon(
+                            _selectedIcon,
+                            color: primaryColor,
+                          )
+                        : (_selectedEmoji != null &&
+                                _selectedEmoji!.isNotEmpty)
+                            ? Text(
+                                _selectedEmoji!,
+                                style: const TextStyle(fontSize: 24),
+                              )
+                            : Text(
+                                displayText,
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                  );
+                },
               ),
             ),
           ),
@@ -251,102 +384,29 @@ class PlayerListItemState extends ConsumerState<PlayerListItem> {
     );
   }
 
-  // 显示图标选择对话框
-  void showIconPicker(BuildContext context, Function(IconData) onIconSelected) {
-    globalState.showCommonDialog(
-      child: Dialog(
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: 400,
-            maxHeight: MediaQuery.of(context).size.height * 0.7,
-          ),
-          padding: EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '选择头像',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              SizedBox(height: 16),
-              Flexible(
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 60,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemCount: availablePlayerIcons.length,
-                  itemBuilder: (context, iconIndex) {
-                    return Center(
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(24),
-                          onTap: () {
-                            onIconSelected(availablePlayerIcons[iconIndex]);
-                            globalState.navigatorKey.currentState?.pop();
-                          },
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              alignment: Alignment.center,
-                              child: Icon(
-                                availablePlayerIcons[iconIndex],
-                                size: 24,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onPrimaryContainer,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Text(
-                  '目前头像底色由系统自动分配',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                ),
-              ),
-              SizedBox(height: 16),
-              OverflowBar(
-                alignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () =>
-                        globalState.navigatorKey.currentState?.pop(), // 取消
-                    child: Text('取消'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      _selectedIcon = null; // 恢复默认头像
-                      globalState.navigatorKey.currentState?.pop();
-                    },
-                    child: Text('恢复默认'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  /// 计算系统默认底色预览值
+  Color _systemColorPreview() {
+    if (widget.initialPlayer != null) {
+      return PlayerAvatar.resolvePrimaryColor(
+        widget.initialPlayer!.copyWith(avatarColor: null),
+      );
+    }
+    return PlayerAvatar.avatarColors.first;
+  }
+
+  /// 预览状态下计算头像主色，用于渲染示意图
+  Color _primaryColorForPreview() {
+    if (_useSystemColor) {
+      return _systemColorPreview();
+    }
+    return _selectedColor ??
+        PlayerAvatar.tryParseColor(widget.initialPlayer?.avatarColor) ??
+        PlayerAvatar.avatarColors.first;
+  }
+
+  /// 预览状态下计算头像背景色
+  Color _backgroundColorForPreview({double opacity = 0.2}) {
+    final safeOpacity = opacity.clamp(0.0, 1.0);
+    return _primaryColorForPreview().withOpacity(safeOpacity);
   }
 }

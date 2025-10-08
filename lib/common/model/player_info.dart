@@ -12,17 +12,20 @@ abstract class PlayerInfo with _$PlayerInfo {
     required String pid,
     required String name,
     required String avatar,
+    String? avatarColor,
   }) = _PlayerInfo;
 
   factory PlayerInfo({
     String? pid,
     required String name,
-    required String avatar,
+    String? avatar,
+    String? avatarColor,
   }) {
     return PlayerInfo.internal(
       pid: pid ?? Uuid().v4(),
       name: name,
-      avatar: avatar,
+      avatar: avatar ?? 'default_avatar.png',
+      avatarColor: avatarColor,
     );
   }
 

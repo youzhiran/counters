@@ -16,6 +16,9 @@ class Migrations {
     if (oldVersion < 6) {
       await _ensureRoundRobinRoundsColumn(db);
     }
+    if (oldVersion < 7) {
+      await _ensurePlayerAvatarColorColumn(db);
+    }
   }
 
   static Future<void> _apply1to4Migrations(Database db) async {
@@ -162,6 +165,27 @@ class Migrations {
         ALTER TABLE leagues ADD COLUMN round_robin_rounds INTEGER NOT NULL DEFAULT 1
       ''');
     Log.i("round_robin_rounds 列已添加到 leagues 表。");
+  }
+
+  /// 确保玩家表存在头像底色列，兼容旧版本数据库。
+  static Future<void> _ensurePlayerAvatarColorColumn(Database db) async {
+    final hasColumn = await _columnExists(db, 'players', 'avatarColor');
+    if (hasColumn) {
+      Log.i("players.avatarColor 列已存在，跳过新增步骤。");
+      return;
+    }
+    // 兼容之前尝试添加的 avatar_color 列
+    final legacyColumnExists =
+        await _columnExists(db, 'players', 'avatar_color');
+    if (legacyColumnExists) {
+      Log.i("检测到历史 avatar_color 列，重命名为 avatarColor。");
+      await db.execute('ALTER TABLE players RENAME COLUMN avatar_color TO avatarColor');
+      return;
+    }
+    await db.execute('''
+        ALTER TABLE players ADD COLUMN avatarColor TEXT
+      ''');
+    Log.i("players.avatarColor 列已添加。");
   }
 
   /// 查询指定表是否存在特定列，避免重复执行 ALTER 语句。

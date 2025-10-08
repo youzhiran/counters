@@ -273,9 +273,9 @@ class _PlayerScoreGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 根据玩家ID生成固定的随机颜色，与PlayerAvatar中的逻辑一致
-    final colorIndex = player.pid.hashCode % PlayerAvatar.avatarColors.length;
-    final backgroundColor = PlayerAvatar.avatarColors[colorIndex].withAlpha((0.1 * 255).toInt()); // 比头像更浅的底色
+    // 使用头像工具类生成与玩家配置一致的底色
+    final backgroundColor =
+        PlayerAvatar.resolveBackgroundColor(player, opacity: 0.1); // 比头像更浅的底色
 
     return Material(
       color: backgroundColor, // 使用与头像颜色相匹配但更浅的底色
