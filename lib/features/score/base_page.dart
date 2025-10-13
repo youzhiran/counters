@@ -24,7 +24,9 @@ import 'package:counters/features/lan/widgets/ping_widget.dart';
 import 'package:counters/features/score/counter/config.dart';
 import 'package:counters/features/score/landlords/config.dart';
 import 'package:counters/features/score/mahjong/config.dart';
+import 'package:counters/features/score/models/score_action_type.dart';
 import 'package:counters/features/score/poker50/config.dart';
+import 'package:counters/features/score/providers/score_action_order_provider.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/score/widgets/base_score_edit_dialog.dart';
 import 'package:counters/features/score/widgets/score_chart_bottom_sheet.dart';
@@ -100,8 +102,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
       }
     });
 
-    ref.watch(lanProvider);
-
+    final lanState = ref.watch(lanProvider);
+    final wakelockState = ref.watch(screenWakelockSettingProvider);
+    final actionOrder = ref.watch(scoreActionOrderProvider);
     final scoreAsync = ref.watch(scoreProvider);
 
     return scoreAsync.when(
@@ -142,6 +145,27 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                   ))
               .toList(),
         );
+
+        final quickActions = _buildQuickActions(
+          context: context,
+          template: template,
+          session: session,
+          scoreState: scoreState,
+          lanState: lanState,
+          wakelockState: wakelockState,
+          order: actionOrder,
+        );
+
+        final visibleQuickActions =
+            quickActions.where((action) => action.visible).toList();
+
+        final maxQuickActionCount = _calculateMaxAppBarActionCount(
+          context,
+          visibleQuickActions.length,
+        );
+
+        final appBarQuickActions =
+            visibleQuickActions.take(maxQuickActionCount).toList();
 
         // 客户端模式和主机模式退出提示
         return PopScope(
@@ -190,31 +214,17 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                     ),
                     actions: [
                       // 显示LAN状态图标：主机模式、已连接的客户端、或处于客户端模式（包括重连状态）
-                      LanStatusButton(),
-                      IconButton(
-                        icon: Icon(Icons.sports_score),
-                        tooltip: '当前计分情况',
-                        onPressed: () => showGameResult(context),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.stacked_line_chart),
-                        tooltip: '查看计分图表',
-                        onPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (BuildContext modalContext) {
-                              return ScoreChartBottomSheet(session: session);
-                            },
-                          );
-                        },
-                      ),
+                      const LanStatusButton(),
+                      for (final action in appBarQuickActions)
+                        IconButton(
+                          icon: Icon(action.icon),
+                          tooltip: action.tooltip,
+                          onPressed: action.enabled ? action.onSelected : null,
+                        ),
                       IconButton(
                         icon: const Icon(Icons.apps),
                         tooltip: '更多操作',
-                        onPressed: () =>
-                            _showMoreActionsGrid(context, template),
+                        onPressed: () => _showMoreActions(context),
                       ),
                     ],
                   ),
@@ -940,189 +950,389 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     }
   }
 
-  void _showMoreActionsGrid(BuildContext context, BaseTemplate template) {
+  int _calculateMaxAppBarActionCount(
+      BuildContext context, int availableActions) {
+    if (availableActions <= 0) {
+      return 0;
+    }
+    if (availableActions <= 2) {
+      return availableActions;
+    }
+
+    final width = MediaQuery.of(context).size.width;
+    int desiredCount;
+    if (width >= 960) {
+      desiredCount = 5;
+    } else if (width >= 768) {
+      desiredCount = 4;
+    } else if (width >= 600) {
+      desiredCount = 3;
+    } else {
+      desiredCount = 2;
+    }
+
+    if (desiredCount < 2) {
+      desiredCount = 2;
+    }
+    if (desiredCount > availableActions) {
+      desiredCount = availableActions;
+    }
+    return desiredCount;
+  }
+
+  List<ScoreQuickActionConfig> _buildQuickActions({
+    required BuildContext context,
+    required BaseTemplate template,
+    required GameSession session,
+    required ScoreState scoreState,
+    required LanState lanState,
+    required ScreenWakelockState wakelockState,
+    required List<ScoreActionType> order,
+  }) {
+    final actions = <ScoreQuickActionConfig>[];
+    for (final type in order) {
+      final config = _createQuickAction(
+        type: type,
+        context: context,
+        template: template,
+        session: session,
+        scoreState: scoreState,
+        lanState: lanState,
+        wakelockState: wakelockState,
+      );
+      if (config != null) {
+        actions.add(config);
+      }
+    }
+    for (final tool in kScoreToolActions) {
+      final config = _createQuickAction(
+        type: tool,
+        context: context,
+        template: template,
+        session: session,
+        scoreState: scoreState,
+        lanState: lanState,
+        wakelockState: wakelockState,
+      );
+      if (config != null) {
+        actions.add(config);
+      }
+    }
+    final seen = <ScoreActionType>{};
+    final deduplicated = <ScoreQuickActionConfig>[];
+    for (final action in actions) {
+      if (seen.add(action.type)) {
+        deduplicated.add(action);
+      }
+    }
+    return deduplicated;
+  }
+
+  ScoreQuickActionConfig? _createQuickAction({
+    required ScoreActionType type,
+    required BuildContext context,
+    required BaseTemplate template,
+    required GameSession session,
+    required ScoreState scoreState,
+    required LanState lanState,
+    required ScreenWakelockState wakelockState,
+  }) {
+    switch (type) {
+      case ScoreActionType.showScoreboard:
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: Icons.sports_score,
+          label: '当前计分情况',
+          tooltip: '当前计分情况',
+          onSelected: () => showGameResult(context),
+        );
+      case ScoreActionType.showChart:
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: Icons.stacked_line_chart,
+          label: '查看计分图表',
+          tooltip: '查看计分图表',
+          onSelected: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (BuildContext modalContext) {
+                return ScoreChartBottomSheet(session: session);
+              },
+            );
+          },
+        );
+      case ScoreActionType.toggleLanHost:
+        final isHost = lanState.isHost;
+        final enabled =
+            (!lanState.isConnected && !lanState.isClientMode) || isHost;
+        final label = isHost ? '停止主机' : '开启局域网联机';
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: isHost ? Icons.wifi_off : Icons.wifi,
+          label: label,
+          tooltip: label,
+          enabled: enabled,
+          onSelected: () => _toggleLanConnection(context, template),
+        );
+      case ScoreActionType.discoverLanSession:
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: Icons.search,
+          label: '发现局域网计分',
+          tooltip: '发现局域网计分',
+          enabled: !lanState.isHost && !lanState.isClientMode,
+          onSelected: () {
+            Navigator.of(context).pushWithSlide(
+              const LanDiscoveryPage(),
+              direction: SlideDirection.fromRight,
+              duration: const Duration(milliseconds: 300),
+            );
+          },
+        );
+      case ScoreActionType.openLanLog:
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: Icons.article_outlined,
+          label: '程序日志',
+          tooltip: '程序日志',
+          onSelected: () {
+            Navigator.of(context).pushWithSlide(
+              const LogTestPage(),
+              direction: SlideDirection.fromRight,
+              duration: const Duration(milliseconds: 300),
+            );
+          },
+        );
+      case ScoreActionType.resetGame:
+        final canReset = !scoreState.isTempMode &&
+            scoreState.currentSession?.leagueMatchId == null;
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: Icons.restart_alt_rounded,
+          label: '重置计分',
+          tooltip: '重置计分',
+          enabled: canReset,
+          onSelected: () => showResetConfirmation(context),
+        );
+      case ScoreActionType.viewTemplateSettings:
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: Icons.info_outline,
+          label: '查看模板设置',
+          tooltip: '查看模板设置',
+          onSelected: () {
+            Widget? configPage;
+            if (template is LandlordsTemplate) {
+              configPage =
+                  LandlordsConfigPage(oriTemplate: template, isReadOnly: true);
+            } else if (template is Poker50Template) {
+              configPage =
+                  Poker50ConfigPage(oriTemplate: template, isReadOnly: true);
+            } else if (template is MahjongTemplate) {
+              configPage =
+                  MahjongConfigPage(oriTemplate: template, isReadOnly: true);
+            } else if (template is CounterTemplate) {
+              configPage =
+                  CounterConfigPage(oriTemplate: template, isReadOnly: true);
+            }
+
+            if (configPage == null) {
+              ref.showWarning('该模板类型暂不支持查看设置: ${template.runtimeType}');
+              return;
+            }
+
+            Navigator.of(context).pushWithSlide(
+              configPage,
+              direction: SlideDirection.fromRight,
+              duration: const Duration(milliseconds: 300),
+            );
+          },
+        );
+      case ScoreActionType.toggleScreenWakelock:
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: wakelockState.isEnabled
+              ? Icons.flashlight_on_outlined
+              : Icons.flashlight_off_outlined,
+          label: '切换屏幕常亮',
+          tooltip: '切换屏幕常亮',
+          enabled: !wakelockState.isLoading,
+          onSelected: _toggleScreenWakelock,
+        );
+      case ScoreActionType.openDiceRoller:
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: Icons.casino_outlined,
+          label: '掷骰子',
+          tooltip: '掷骰子',
+          onSelected: () {
+            globalState.showCommonDialog(
+              child: const DiceRollerDialog(),
+            );
+          },
+        );
+    }
+  }
+
+  void _showMoreActions(BuildContext context) {
     final scoreState = ref.read(scoreProvider).value;
-    if (scoreState == null) return;
+    if (scoreState == null) {
+      return;
+    }
+
+    final session = scoreState.currentSession;
+    final currentTemplate = scoreState.template;
+
+    if (session == null || currentTemplate == null) {
+      return;
+    }
 
     final lanState = ref.read(lanProvider);
     final wakelockState = ref.read(screenWakelockSettingProvider);
+    final order = ref.read(scoreActionOrderProvider);
 
-    void handleSelection(String value) {
-      Navigator.of(context).pop(); // Close the bottom sheet first
-      switch (value) {
-        case 'Template_set':
-          Widget configPage;
-          if (template is LandlordsTemplate) {
-            configPage =
-                LandlordsConfigPage(oriTemplate: template, isReadOnly: true);
-          } else if (template is Poker50Template) {
-            configPage =
-                Poker50ConfigPage(oriTemplate: template, isReadOnly: true);
-          } else if (template is MahjongTemplate) {
-            configPage =
-                MahjongConfigPage(oriTemplate: template, isReadOnly: true);
-          } else if (template is CounterTemplate) {
-            configPage =
-                CounterConfigPage(oriTemplate: template, isReadOnly: true);
-          } else {
-            ref.showWarning('该模板类型暂不支持查看设置: ${template.runtimeType}');
-            return;
-          }
-          Navigator.of(context).pushWithSlide(
-            configPage,
-            direction: SlideDirection.fromRight,
-            duration: const Duration(milliseconds: 300),
-          );
-          break;
-        case 'reset_game':
-          if (scoreState.isTempMode) {
-            ref.showWarning('临时计分模式下不可重置计分');
-            break;
-          }
-          showResetConfirmation(context);
-          break;
-        case 'lan_conn':
-          _toggleLanConnection(context, template);
-          break;
-        case 'lan_discovery':
-          Navigator.of(context).pushWithSlide(
-            const LanDiscoveryPage(),
-            direction: SlideDirection.fromRight,
-            duration: const Duration(milliseconds: 300),
-          );
-          break;
-        case 'lan_test':
-          Navigator.of(context).pushWithSlide(
-            const LogTestPage(),
-            direction: SlideDirection.fromRight,
-            duration: const Duration(milliseconds: 300),
-          );
-          break;
-        case 'screen_wakelock':
-          _toggleScreenWakelock();
-          break;
-        case 'dice_roller':
-          globalState.showCommonDialog(child: const DiceRollerDialog());
-          break;
-        default:
-          Log.warn('未知选项: $value');
-          break;
-      }
+    final actions = _buildQuickActions(
+      context: context,
+      template: currentTemplate,
+      session: session,
+      scoreState: scoreState,
+      lanState: lanState,
+      wakelockState: wakelockState,
+      order: order,
+    ).where((action) => action.visible).toList();
+
+    if (actions.isEmpty) {
+      ref.showWarning('暂时没有可用的操作');
+      return;
     }
 
-    Widget buildGridItem({
-      required String value,
-      required IconData icon,
-      required String label,
-      bool enabled = true,
-    }) {
-      final color = enabled
-          ? Theme.of(context).textTheme.bodyLarge?.color
-          : Theme.of(context).disabledColor;
-      return InkWell(
-        onTap: enabled ? () => handleSelection(value) : null,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 90,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: color, size: 30),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+    final generalActions = <ScoreQuickActionConfig>[];
+    final toolActions = <ScoreQuickActionConfig>[];
+    for (final action in actions) {
+      if (kScoreToolActions.contains(action.type)) {
+        toolActions.add(action);
+      } else {
+        generalActions.add(action);
+      }
     }
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (BuildContext modalContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    buildGridItem(
-                      value: 'lan_test',
-                      icon: Icons.article_outlined,
-                      label: '程序日志',
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (generalActions.isNotEmpty)
+                    Align(
+                      alignment: Alignment.center,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: generalActions
+                            .map((action) =>
+                                _buildQuickActionGridItem(modalContext, action))
+                            .toList(),
+                      ),
                     ),
-                    buildGridItem(
-                      value: 'lan_conn',
-                      icon: lanState.isHost ? Icons.wifi_off : Icons.wifi,
-                      label: lanState.isHost ? '停止主机' : '开启局域网联机',
-                      enabled: !lanState.isConnected && !lanState.isClientMode,
+                  if (generalActions.isNotEmpty && toolActions.isNotEmpty)
+                    const Divider(height: 32),
+                  if (toolActions.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        '计分工具',
+                        style: Theme.of(modalContext).textTheme.labelSmall,
+                      ),
                     ),
-                    buildGridItem(
-                      value: 'lan_discovery',
-                      icon: Icons.search,
-                      label: '发现局域网计分',
-                      enabled: !lanState.isHost && !lanState.isClientMode,
-                    ),
-                    buildGridItem(
-                      value: 'reset_game',
-                      icon: Icons.restart_alt_rounded,
-                      label: '重置计分',
-                      enabled: !scoreState.isTempMode &&
-                          scoreState.currentSession?.leagueMatchId == null,
-                    ),
-                    buildGridItem(
-                      value: 'Template_set',
-                      icon: Icons.info_outline,
-                      label: '查看模板设置',
-                    ),
-                    buildGridItem(
-                      value: 'screen_wakelock',
-                      icon: wakelockState.isEnabled
-                          ? Icons.flashlight_on_outlined
-                          : Icons.flashlight_off_outlined,
-                      label: '切换屏幕常亮',
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.center,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: toolActions
+                            .map((action) =>
+                                _buildQuickActionGridItem(modalContext, action))
+                            .toList(),
+                      ),
                     ),
                   ],
-                ),
-                const Divider(height: 32),
-                Text(
-                  '计分工具',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    buildGridItem(
-                      value: 'dice_roller',
-                      icon: Icons.casino_outlined,
-                      label: '掷骰子',
-                    ),
-                  ],
-                )
-              ],
+                ],
+              ),
             ),
           ),
         );
       },
     );
   }
+
+  Widget _buildQuickActionGridItem(
+      BuildContext modalContext, ScoreQuickActionConfig action) {
+    final theme = Theme.of(modalContext);
+    final color =
+        action.enabled ? theme.textTheme.bodyLarge?.color : theme.disabledColor;
+
+    return InkWell(
+      onTap: action.enabled
+          ? () {
+              Navigator.of(modalContext).pop();
+              action.onSelected?.call();
+            }
+          : null,
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 90,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(action.icon, color: color, size: 30),
+              const SizedBox(height: 8),
+              Text(
+                action.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ScoreQuickActionConfig {
+  final ScoreActionType type;
+  final IconData icon;
+  final String label;
+  final String tooltip;
+  final bool enabled;
+  final bool visible;
+  final VoidCallback? onSelected;
+
+  const ScoreQuickActionConfig({
+    required this.type,
+    required this.icon,
+    required this.label,
+    required this.tooltip,
+    this.enabled = true,
+    this.visible = true,
+    this.onSelected,
+  });
 }

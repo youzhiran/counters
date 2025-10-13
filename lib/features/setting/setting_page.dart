@@ -12,6 +12,8 @@ import 'package:counters/common/widgets/setting_list_tile.dart';
 import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/backup/backup_page.dart';
 import 'package:counters/features/dev/port_test_page.dart';
+import 'package:counters/features/score/models/score_action_type.dart';
+import 'package:counters/features/score/providers/score_action_order_provider.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
 import 'package:counters/features/setting/analytics_provider.dart';
 import 'package:counters/features/setting/data_manager.dart';
@@ -285,6 +287,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                       },
                     );
                   },
+                ),
+                SettingListTile(
+                  icon: Icons.tune,
+                  title: '自定义计分操作按钮',
+                  subtitle: '调整计分界面顶部按钮与更多操作顺序',
+                  onTap: _showScoreActionOrderDialog,
                 ),
                 SettingListTile(
                   icon: Icons.settings_ethernet,
@@ -672,6 +680,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showScoreActionOrderDialog() {
+    globalState.showCommonDialog(
+      child: const ScoreActionOrderDialog(),
     );
   }
 
@@ -1466,5 +1480,165 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     );
 
     return result ?? false; // 如果用户点击外部关闭弹窗，默认为取消
+  }
+}
+
+class ScoreActionOrderDialog extends ConsumerStatefulWidget {
+  const ScoreActionOrderDialog({super.key});
+
+  @override
+  ConsumerState<ScoreActionOrderDialog> createState() =>
+      _ScoreActionOrderDialogState();
+}
+
+class _ScoreActionOrderDialogState
+    extends ConsumerState<ScoreActionOrderDialog> {
+  late List<ScoreActionType> _order;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _order = List<ScoreActionType>.from(ref.read(scoreActionOrderProvider));
+  }
+
+  void _handleReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final item = _order.removeAt(oldIndex);
+      _order.insert(newIndex, item);
+    });
+  }
+
+  void _handleReset() {
+    setState(() {
+      _order = List<ScoreActionType>.from(kDefaultPrimaryActionOrder);
+    });
+  }
+
+  Future<void> _handleSave() async {
+    if (_isSaving) {
+      return;
+    }
+    setState(() {
+      _isSaving = true;
+    });
+    try {
+      await ref.read(scoreActionOrderProvider.notifier).updateOrder(_order);
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+      GlobalMsgManager.showSuccess('操作按钮顺序已更新');
+    } catch (e, stackTrace) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        ErrorHandler.handle(e, stackTrace, prefix: '保存操作顺序失败');
+        ref.showError('保存失败，请稍后再试');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('自定义操作按钮顺序'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 520),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '拖动条目可调整顺序。靠前的操作会优先显示在计分页面顶部，其余操作位于“更多操作”中。计分工具类操作保持固定顺序，始终展示在下方。',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 360,
+                  child: ReorderableListView.builder(
+                    padding: EdgeInsets.zero,
+                    buildDefaultDragHandles: false,
+                    itemCount: _order.length,
+                    onReorder: _handleReorder,
+                    proxyDecorator: (child, index, animation) {
+                      return child;
+                    },
+                    itemBuilder: (context, index) {
+                      final type = _order[index];
+                      return Card(
+                        key: ValueKey(type.storageKey),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 4,
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            type.displayIcon,
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: Text(type.displayName),
+                          trailing: ReorderableDragStartListener(
+                            index: index,
+                            child: const Icon(Icons.drag_indicator),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                if (kScoreToolActions.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Text(
+                    '计分工具(固定顺序）：',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  ...kScoreToolActions.map(
+                    (action) => ListTile(
+                      leading: Icon(
+                        action.displayIcon,
+                        color: theme.colorScheme.primary,
+                      ),
+                      title: Text(action.displayName),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: _handleReset,
+          child: const Text('恢复默认'),
+        ),
+        ElevatedButton(
+          onPressed: _isSaving ? null : _handleSave,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('保存'),
+        ),
+      ],
+    );
   }
 }
