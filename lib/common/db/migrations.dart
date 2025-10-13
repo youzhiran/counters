@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:counters/common/utils/log.dart';
+import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:sqflite/sqflite.dart';
 
 class Migrations {
@@ -19,6 +20,7 @@ class Migrations {
     if (oldVersion < 7) {
       await _ensurePlayerAvatarColorColumn(db);
     }
+    GlobalMsgManager.showSuccess("数据库升级成功，版本 $oldVersion 到 $newVersion");
   }
 
   static Future<void> _apply1to4Migrations(Database db) async {

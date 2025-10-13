@@ -822,49 +822,69 @@ class _MessageCardState extends State<_MessageCard>
 /// 全局消息显示工具类
 class GlobalMsgManager {
   static ProviderContainer? _container;
+  static final List<_PendingMessage> _pendingMessages = [];
 
   /// 设置全局容器
   static void setContainer(ProviderContainer container) {
     _container = container;
+    _flushPendingMessages();
+  }
+
+  /// 容器就绪后重放启动阶段积压的消息
+  static void _flushPendingMessages() {
+    if (_container == null || _pendingMessages.isEmpty) {
+      return;
+    }
+    final container = _container!;
+    final pendingMessages = List<_PendingMessage>.from(_pendingMessages);
+    _pendingMessages.clear();
+    Log.i('[GMM]: 容器已就绪，重放${pendingMessages.length}条历史消息');
+    for (final message in pendingMessages) {
+      _dispatchMessage(
+          container, message.content, message.type, message.typeName,
+          logPrefix: '重放');
+    }
   }
 
   /// 通用消息显示方法
   static void _showMessage(String content, MessageType type, String typeName) {
     try {
-      if (_container != null) {
-        switch (type) {
-          case MessageType.success:
-            _container!
-                .read(messageManagerProvider.notifier)
-                .showSuccess(content);
-            Log.i('[GMM]: 显示$typeName消息 - $content');
-            break;
-          case MessageType.error:
-            _container!
-                .read(messageManagerProvider.notifier)
-                .showError(content);
-            Log.e('[GMM]: 显示$typeName消息 - $content');
-            break;
-          case MessageType.warning:
-            _container!
-                .read(messageManagerProvider.notifier)
-                .showWarning(content);
-            Log.w('[GMM]: 显示$typeName消息 - $content');
-            break;
-          case MessageType.info:
-            _container!
-                .read(messageManagerProvider.notifier)
-                .showMessage(content, type: type);
-            Log.i('[GMM]: 显示$typeName消息 - $content');
-            break;
-        }
+      final container = _container;
+      if (container != null) {
+        _dispatchMessage(container, content, type, typeName);
       } else {
-        Log.w('[GMM]: 无法显示$typeName消息 - $content');
-        Log.w('[GMM]: 容器未设置，无法显示消息');
+        _pendingMessages.add(_PendingMessage(content, type, typeName));
+        Log.w('[GMM]: 容器未设置，暂存$typeName消息 - $content');
       }
     } catch (e, stackTrace) {
       Log.e('[GMM]: 显示消息失败 - $e');
       Log.e('StackTrace: $stackTrace');
+    }
+  }
+
+  /// 实际执行消息展示
+  static void _dispatchMessage(ProviderContainer container, String content,
+      MessageType type, String typeName,
+      {String logPrefix = '显示'}) {
+    switch (type) {
+      case MessageType.success:
+        container.read(messageManagerProvider.notifier).showSuccess(content);
+        Log.i('[GMM]: $logPrefix$typeName消息 - $content');
+        break;
+      case MessageType.error:
+        container.read(messageManagerProvider.notifier).showError(content);
+        Log.e('[GMM]: $logPrefix$typeName消息 - $content');
+        break;
+      case MessageType.warning:
+        container.read(messageManagerProvider.notifier).showWarning(content);
+        Log.w('[GMM]: $logPrefix$typeName消息 - $content');
+        break;
+      case MessageType.info:
+        container
+            .read(messageManagerProvider.notifier)
+            .showMessage(content, type: type);
+        Log.i('[GMM]: $logPrefix$typeName消息 - $content');
+        break;
     }
   }
 
@@ -887,6 +907,14 @@ class GlobalMsgManager {
   static void showWarn(String content) {
     _showMessage(content, MessageType.warning, '警告');
   }
+}
+
+class _PendingMessage {
+  final String content;
+  final MessageType type;
+  final String typeName;
+
+  const _PendingMessage(this.content, this.type, this.typeName);
 }
 
 /// 消息管理器的便捷扩展
