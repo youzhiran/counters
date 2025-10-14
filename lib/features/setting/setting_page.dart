@@ -616,8 +616,8 @@ class _SettingPageState extends ConsumerState<SettingPage> {
           children: [
             Text('当前位置:\n$_dataStoragePath'),
             SizedBox(height: 16),
-            Text('更改存储位置将进行数据迁移，若新目录含有旧版本数据将会被覆盖，旧目录程序数据不会删除。\n\n' 
-                '设置数据(shared_preferences)一般位于 C:\Users\{用户名}\AppData\Roaming\com.devyi\counters\shared_preferences.json ，其位置不会变动。\n\n' 
+            Text('更改存储位置将进行数据迁移，若新目录含有旧版本数据将会被覆盖，旧目录程序数据不会删除。\n\n'
+                '设置数据(shared_preferences)一般位于 C:\\Users\\{用户名}\\AppData\\Roaming\\com.devyi\\counters\\shared_preferences.json ，其位置不会变动。\n\n'
                 '数据实际存储于选择目录下的 counters-data 目录中。\n\n' 
                 '本功能目前仅适用于Windows。'),
           ],
