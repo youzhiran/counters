@@ -11,6 +11,14 @@ _想要快速了解本项目？可查看 DeepWiki ：_
 
 ## 程序主要功能与截图
 
+<div align="center">
+  <img src="snapshots/img_0.png" alt="详情截图0" style="width:18%; min-width:120px; margin:0 4px;" />
+  <img src="snapshots/img_1.png" alt="详情截图1" style="width:18%; min-width:120px; margin:0 4px;" />
+  <img src="snapshots/img_2.png" alt="详情截图2" style="width:18%; min-width:120px; margin:0 4px;" />
+  <img src="snapshots/img_3.png" alt="详情截图3" style="width:18%; min-width:120px; margin:0 4px;" />
+  <img src="snapshots/img_4.png" alt="详情截图4" style="width:18%; min-width:120px; margin:0 4px;" />
+</div>
+
 Counters 是一款用于桌游计分的 flutter 多平台计分程序，目前程序支持以下游戏的计分。
 
 - 计分扑克牌
@@ -23,6 +31,8 @@ Counters 同时支持下面的特色功能：
 - 计分走势图，直观查看得分变化趋势，分析游戏表现
 - 局域网联机，同步查看计分数据
 - 数据备份与恢复功能，支持导入、导出应用数据
+- 结束计分快捷操作，一键结算普通局或联赛对局并自动更新胜负
+- 内置掷骰子工具，支持多枚骰子动画投掷与结果历史回顾
 - 「快速体验」功能，无需设置玩家和模板信息，即刻可开始计分体验
 - 支持联赛模式，包括淘汰赛和循环赛模式，支持显示赛程列表和对阵图
 
@@ -80,4 +90,3 @@ _图片供参考，最新 UI 及特性请下载安装包体验_
 ## 致谢
 
 DeepSeek、Gemini、GPT、Claude、Trae、Cursor、Augment、Gemini CLI 等 AI 模型和工具的大力支持。
-
