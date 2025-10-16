@@ -8,6 +8,7 @@ enum ScoreActionType {
   discoverLanSession,
   openLanLog,
   resetGame,
+  finishGame,
   viewTemplateSettings,
   toggleScreenWakelock,
   openDiceRoller,
@@ -32,6 +33,8 @@ extension ScoreActionTypeLabel on ScoreActionType {
         return '程序日志';
       case ScoreActionType.resetGame:
         return '重置计分';
+      case ScoreActionType.finishGame:
+        return '结束计分';
       case ScoreActionType.viewTemplateSettings:
         return '查看模板设置';
       case ScoreActionType.toggleScreenWakelock:
@@ -56,6 +59,8 @@ extension ScoreActionTypeLabel on ScoreActionType {
         return Icons.article_outlined;
       case ScoreActionType.resetGame:
         return Icons.restart_alt_rounded;
+      case ScoreActionType.finishGame:
+        return Icons.flag_circle_rounded;
       case ScoreActionType.viewTemplateSettings:
         return Icons.info_outline;
       case ScoreActionType.toggleScreenWakelock:
@@ -76,6 +81,7 @@ extension ScoreActionTypeLabel on ScoreActionType {
 const List<ScoreActionType> kDefaultPrimaryActionOrder = [
   ScoreActionType.showScoreboard,
   ScoreActionType.showChart,
+  ScoreActionType.finishGame,
   ScoreActionType.resetGame,
   ScoreActionType.viewTemplateSettings,
   ScoreActionType.toggleLanHost,

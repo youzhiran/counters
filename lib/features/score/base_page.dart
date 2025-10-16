@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
@@ -402,59 +404,102 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     ));
   }
 
-  /// 封装确认比赛结果并退出的逻辑
-  void _confirmAndExit(BuildContext context, ScoreState? scoreState) async {
-    // UI层前置校验：检查淘汰赛平局
-    final league = ref
-        .read(leagueNotifierProvider)
-        .value
-        ?.leagues
-        .firstWhereOrNull((l) => l.matches
-            .any((m) => m.mid == scoreState?.currentSession?.leagueMatchId));
+  void _handleEndScoringQuickAction(ScoreState scoreState) {
+    unawaited(_finalizeScoring(
+      scoreState: scoreState,
+      closeResultDialogFirst: false,
+    ));
+  }
+
+  bool _canFinalizeCurrentSession(ScoreState? scoreState) {
+    final leagueMatchId = scoreState?.currentSession?.leagueMatchId;
+    if (leagueMatchId == null) {
+      return true;
+    }
+
+    final leagueState = ref.read(leagueNotifierProvider);
+    final league = leagueState.value?.leagues
+        .firstWhereOrNull((l) => l.matches.any((m) => m.mid == leagueMatchId));
     if (league != null &&
         (league.type == LeagueType.knockout ||
             league.type == LeagueType.doubleElimination)) {
       final scores = scoreState?.currentSession?.scores;
-      if (scores != null && scores.length == 2) {
-        if (scores[0].totalScore == scores[1].totalScore) {
-          ref.showWarning('淘汰赛不允许平局，请决出胜负！');
-          return; // 中断执行
-        }
+      if (scores != null &&
+          scores.length == 2 &&
+          scores[0].totalScore == scores[1].totalScore) {
+        ref.showWarning('淘汰赛不允许平局，请决出胜负！');
+        return false;
       }
     }
+    return true;
+  }
 
-    // 使用全局 navigatorKey，避免 BuildContext 跨越异步边界
+  Future<void> _finalizeScoring({
+    required ScoreState? scoreState,
+    bool closeResultDialogFirst = false,
+  }) async {
+    if (!_canFinalizeCurrentSession(scoreState)) {
+      return;
+    }
+    if (scoreState?.currentSession == null) {
+      ref.showWarning('当前没有正在进行的计分');
+      return;
+    }
+
     final navigator = globalState.navigatorKey.currentState;
-    if (navigator == null) return;
-    // 先关闭计分结果对话框
-    navigator.pop();
-
-    // 根据是否为联赛，调用不同的确认方法
-    if (scoreState?.currentSession?.leagueMatchId != null) {
-      final message =
-          await ref.read(scoreProvider.notifier).confirmLeagueMatchResult();
-
-      if (!mounted) return;
-
-      if (message != null && message.isNotEmpty) {
-        // 如果有消息返回，说明有后续比赛被修改，弹窗提示用户
-        GlobalMsgManager.showMessage(message);
-      }
-      // 无论是否有消息，都重置状态并退出
-      ref.read(scoreProvider.notifier).resetScoreState();
-      // 延迟pop以避免渲染错误
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) navigator.pop();
-      });
-    } else {
-      // 普通比赛的逻辑保持不变
-      await ref.read(scoreProvider.notifier).confirmGameResult();
-      // 退出计分页面
-      // 延迟pop以避免渲染错误
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) navigator.pop();
-      });
+    if (navigator == null) {
+      Log.w('无法获取全局导航器，结束计分操作被中断');
+      return;
     }
+
+    if (closeResultDialogFirst && navigator.canPop()) {
+      navigator.pop();
+    }
+
+    final notifier = ref.read(scoreProvider.notifier);
+    final bool isLeagueMatch =
+        scoreState?.currentSession?.leagueMatchId != null;
+
+    try {
+      if (isLeagueMatch) {
+        final message = await notifier.confirmLeagueMatchResult();
+        if (!mounted) {
+          return;
+        }
+        if (message != null && message.isNotEmpty) {
+          GlobalMsgManager.showMessage(message);
+        } else {
+          GlobalMsgManager.showSuccess('比赛结果已记录');
+        }
+        notifier.resetScoreState();
+      } else {
+        await notifier.confirmGameResult();
+        if (!mounted) {
+          return;
+        }
+        GlobalMsgManager.showSuccess('本次计分已结束');
+      }
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '结束计分失败');
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (navigator.mounted) {
+        navigator.pop();
+      }
+    });
+  }
+
+  /// 封装确认比赛结果并退出的逻辑
+  void _confirmAndExit(BuildContext context, ScoreState? scoreState) async {
+    await _finalizeScoring(
+      scoreState: scoreState,
+      closeResultDialogFirst: true,
+    );
   }
 
   void showResetConfirmation(BuildContext context) {
@@ -1115,6 +1160,19 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
           tooltip: '重置计分',
           enabled: canReset,
           onSelected: () => showResetConfirmation(context),
+        );
+      case ScoreActionType.finishGame:
+        final bool hasSession = scoreState.currentSession != null;
+        final canFinish = !scoreState.isTempMode && hasSession;
+        return ScoreQuickActionConfig(
+          type: type,
+          icon: Icons.flag_circle_outlined,
+          label: '结束计分',
+          tooltip: '结束本次计分并记录结果',
+          enabled: canFinish,
+          visible: !scoreState.isTempMode,
+          onSelected:
+              canFinish ? () => _handleEndScoringQuickAction(scoreState) : null,
         );
       case ScoreActionType.viewTemplateSettings:
         return ScoreQuickActionConfig(
