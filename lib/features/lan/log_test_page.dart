@@ -15,7 +15,9 @@ class LogTestPage extends ConsumerWidget {
     final lanState = ref.watch(lanProvider);
     final lanNotifier = ref.read(lanProvider.notifier);
     final appLogs = ref.watch(logProvider);
+    final networkLogs = ref.watch(networkLogProvider);
     final logNotifier = ref.read(logProvider.notifier);
+    final networkLogNotifier = ref.read(networkLogProvider.notifier);
 
     String modeText = '未知';
     if (lanState.isHost) {
@@ -33,33 +35,42 @@ class LogTestPage extends ConsumerWidget {
       modeText = '模式: 未连接';
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('程序日志'),
-        elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        actions: [
-          // LAN状态显示按钮（显示主机模式、客户端模式、连接状态等）
-          LanStatusButton(),
-          IconButton(
-            icon: const Icon(Icons.delete_sweep_outlined),
-            tooltip: '清空所有日志和消息',
-            onPressed: () {
-              lanNotifier.clearMessages();
-              logNotifier.clearLogs();
-              GlobalMsgManager.showMessage('日志和消息已清空');
-            },
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('程序日志'),
+          elevation: 0,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: '程序日志'),
+              Tab(text: '网络日志'),
+            ],
           ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            // --- 顶部控制区域 ---
-            if (!lanState.isConnected && !lanState.isHost) ...[
-              // IP 显示组件
+          actions: [
+            // LAN状态显示按钮（显示主机模式、客户端模式、连接状态等）
+            const LanStatusButton(),
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: '清空所有日志和消息',
+              onPressed: () {
+                lanNotifier.clearMessages();
+                logNotifier.clearLogs();
+                networkLogNotifier.clearLogs();
+                GlobalMsgManager.showMessage('日志和消息已清空');
+              },
+            ),
+          ],
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            children: [
+              // --- 顶部控制区域 ---
+              if (!lanState.isConnected && !lanState.isHost) ...[
+                // IP 显示组件
               IpDisplayWidget(
                 localIp: lanState.localIp,
                 interfaceName: lanState.interfaceName,
@@ -180,74 +191,94 @@ class LogTestPage extends ConsumerWidget {
             ],
 
             // --- 日志显示区域 (使用 Expanded 填充剩余空间) ---
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('应用日志:',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const Divider(),
-                        Expanded(
-                          child: appLogs.isEmpty
-                              ? const Center(child: Text('暂无应用日志'))
-                              : ListView.builder(
-                                  reverse: true,
-                                  itemCount: appLogs.length,
-                                  itemBuilder: (context, index) {
-                                    String logText = appLogs[index];
-                                    Color? logColor;
-                                    const double smallFontSize = 11.0;
-                                    // 判断日志级别并设置颜色
-                                    if (logText.startsWith('[E]') ||
-                                        logText.startsWith('[WTF]')) {
-                                      logColor = Colors.red;
-                                    } else if (logText.startsWith('[W]')) {
-                                      logColor = Colors.orange;
-                                    } else if (logText.startsWith('[I]')) {
-                                      logColor = Colors.blue;
-                                    } else if (logText.startsWith('[D]')) {
-                                      logColor = Colors.green;
-                                    } else if (logText.startsWith('[V]')) {
-                                      logColor = Colors.grey;
-                                    }
-                                    TextStyle textStyle = TextStyle(
-                                        color: logColor ??
-                                            Theme.of(context)
-                                                .colorScheme
-                                                .onSurface,
-                                        // 使用主题默认颜色作为 fallback
-                                        fontSize: smallFontSize);
-
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 2.0),
-                                      child: Text(
-                                        logText,
-                                        style: textStyle,
-                                      ),
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _LogListView(
+                      logs: appLogs,
+                      emptyText: '暂无应用日志',
                     ),
-                  ),
-                ],
+                    _LogListView(
+                      logs: networkLogs,
+                      emptyText: '暂无网络日志',
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // --- 加载指示器 ---
-            if (lanState.isLoading)
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-          ],
+              // --- 加载指示器 ---
+              if (lanState.isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _LogListView extends ConsumerWidget {
+  final List<String> logs;
+  final String emptyText;
+
+  const _LogListView({
+    required this.logs,
+    required this.emptyText,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (logs.isEmpty) {
+      return Center(child: Text(emptyText));
+    }
+
+    final spans = <InlineSpan>[];
+    for (var i = 0; i < logs.length; i++) {
+      final logText = logs[i];
+      final textStyle = _resolveLogTextStyle(context, logText);
+      spans.add(TextSpan(text: logText, style: textStyle));
+      if (i != logs.length - 1) {
+        spans.add(const TextSpan(text: '\n'));
+      }
+    }
+
+    return Scrollbar(
+      child: SingleChildScrollView(
+        primary: true,
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: SelectionArea(
+          child: Text.rich(
+            TextSpan(children: spans),
+            textAlign: TextAlign.left,
+          ),
+        ),
+      ),
+    );
+  }
+
+  TextStyle _resolveLogTextStyle(BuildContext context, String logText) {
+    const double smallFontSize = 11.0;
+    Color? logColor;
+
+    if (logText.startsWith('[E]') || logText.startsWith('[WTF]')) {
+      logColor = Colors.red;
+    } else if (logText.startsWith('[W]')) {
+      logColor = Colors.orange;
+    } else if (logText.startsWith('[I]')) {
+      logColor = Colors.blue;
+    } else if (logText.startsWith('[D]')) {
+      logColor = Colors.green;
+    } else if (logText.startsWith('[V]')) {
+      logColor = Colors.grey;
+    }
+
+    return TextStyle(
+      color: logColor ?? Theme.of(context).colorScheme.onSurface,
+      fontSize: smallFontSize,
+      height: 1.4,
     );
   }
 }

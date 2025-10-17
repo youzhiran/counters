@@ -10,6 +10,12 @@ final logProvider = StateNotifierProvider<LogNotifier, List<String>>((ref) {
   return LogNotifier();
 });
 
+// 网络日志 Provider
+final networkLogProvider =
+    StateNotifierProvider<NetworkLogNotifier, List<String>>((ref) {
+  return NetworkLogNotifier();
+});
+
 // Verbose级别日志控制Provider
 final verboseLogProvider = StateNotifierProvider<VerboseLogNotifier, bool>((ref) {
   return VerboseLogNotifier();
@@ -24,6 +30,9 @@ class LogNotifier extends StateNotifier<List<String>> {
     // 开始监听全局日志流
     _logSubscription = Log.logStream.listen((logMessage) {
       if (mounted) {
+        if (isNetworkLogMessage(logMessage)) {
+          return; // 网络相关日志默认不显示在程序日志列表中
+        }
         final currentLogs = List<String>.from(state);
         currentLogs.insert(0, logMessage); // 新日志添加到顶部
 
@@ -46,6 +55,35 @@ class LogNotifier extends StateNotifier<List<String>> {
   @override
   void dispose() {
     // 取消监听
+    _logSubscription?.cancel();
+    super.dispose();
+  }
+}
+
+class NetworkLogNotifier extends StateNotifier<List<String>> {
+  StreamSubscription? _logSubscription;
+  final int maxLogCount = 200;
+
+  NetworkLogNotifier() : super([]) {
+    _logSubscription = Log.logStream.listen((logMessage) {
+      if (mounted && isNetworkLogMessage(logMessage)) {
+        final currentLogs = List<String>.from(state);
+        currentLogs.insert(0, logMessage);
+        if (currentLogs.length > maxLogCount) {
+          currentLogs.removeLast();
+        }
+        state = currentLogs;
+      }
+    });
+    state = ['[SYSTEM] 网络日志监听器已启动'];
+  }
+
+  void clearLogs() {
+    state = [];
+  }
+
+  @override
+  void dispose() {
     _logSubscription?.cancel();
     super.dispose();
   }
@@ -94,4 +132,20 @@ class VerboseLogNotifier extends StateNotifier<bool> {
       Log.i('日志级别已设置为 Debug (不包含 Verbose 日志)');
     }
   }
+}
+
+bool isNetworkLogMessage(String message) {
+  const List<String> networkKeywords = [
+    '主机收到客户端消息',
+    '收到来自客户端',
+    '发送消息给特定客户端',
+    '广播消息给',
+    'Ping错误',
+  ];
+  for (final keyword in networkKeywords) {
+    if (message.contains(keyword)) {
+      return true;
+    }
+  }
+  return false;
 }
