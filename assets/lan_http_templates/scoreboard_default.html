@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>得益计分 - 实时比分</title>
+    <style>
+        :root {
+          color-scheme: light dark;
+          font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+        body {
+          margin: 0;
+          padding: 24px;
+          background: #0f172a;
+          color: #f8fafc;
+        }
+        .container {
+          max-width: 1024px;
+          margin: 0 auto;
+        }
+        h1 {
+          font-size: 28px;
+          margin-bottom: 12px;
+        }
+        .meta {
+          margin-bottom: 16px;
+          font-size: 16px;
+          color: #94a3b8;
+        }
+        .status {
+          padding: 12px 16px;
+          border-radius: 8px;
+          margin-bottom: 16px;
+          background: rgba(148, 163, 184, 0.12);
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          background: rgba(15, 23, 42, 0.7);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        thead {
+          background: rgba(30, 41, 59, 0.9);
+        }
+        th, td {
+          padding: 12px 16px;
+          text-align: center;
+        }
+        tbody tr:nth-child(odd) {
+          background: rgba(15, 23, 42, 0.85);
+        }
+        tbody tr:nth-child(even) {
+          background: rgba(30, 41, 59, 0.6);
+        }
+        .rank {
+          font-weight: bold;
+          color: #38bdf8;
+        }
+        .total {
+          font-weight: bold;
+          font-size: 18px;
+          color: #fbbf24;
+        }
+        .footer {
+          margin-top: 24px;
+          font-size: 14px;
+          color: #64748b;
+          text-align: center;
+        }
+        @media (max-width: 768px) {
+          body {
+            padding: 16px;
+          }
+          table {
+            font-size: 14px;
+          }
+          th, td {
+            padding: 10px 8px;
+          }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>得益计分 · 实时比分</h1>
+    <div class="meta" id="meta">加载中...</div>
+    <div class="status" id="status"></div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr id="table-head">
+                <th>名次</th>
+                <th>玩家</th>
+                <th>总分</th>
+            </tr>
+            </thead>
+            <tbody id="table-body">
+            <tr>
+                <td colspan="3">正在载入...</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="footer">
+        浏览器每 2 秒自动刷新一次（若页面未更新，请检查主机是否仍在线）
+    </div>
+</div>
+
+<script>
+    const statusEl = document.getElementById('status');
+    const metaEl = document.getElementById('meta');
+    const headRow = document.getElementById('table-head');
+    const bodyEl = document.getElementById('table-body');
+
+    function renderStatus(text, tone = 'info') {
+      const tones = {
+        info: '#38bdf8',
+        warn: '#fbbf24',
+        error: '#f87171'
+      };
+      statusEl.style.borderLeft = `4px solid ${tones[tone] || tones.info}`;
+      statusEl.textContent = text;
+    }
+
+    function renderScoreboard(data) {
+      if (!data || !data.status) {
+        renderStatus('未能获取到有效的计分数据', 'error');
+        return;
+      }
+
+      if (data.status !== 'ok') {
+        renderStatus(data.message || '计分数据准备中', data.status === 'error' ? 'error' : 'warn');
+        metaEl.textContent = data.meta && data.meta.templateName
+          ? `当前模板：${data.meta.templateName}`
+          : '当前模板：未设置';
+        bodyEl.innerHTML = '<tr><td colspan="3">暂无玩家数据</td></tr>';
+        return;
+      }
+
+      const meta = data.meta || {};
+      const players = data.players || [];
+      const roundCount = meta.roundCount || 0;
+
+      metaEl.textContent = `模板：${meta.templateName || '未设置'} ｜ 当前回合：${meta.currentRound ?? 0} ｜ 刷新时间：${new Date(data.updatedAt).toLocaleTimeString()}`;
+      renderStatus('实时比分刷新成功');
+
+      while (headRow.children.length > 3) {
+        headRow.removeChild(headRow.lastChild);
+      }
+
+      for (let i = 0; i < roundCount; i++) {
+        const th = document.createElement('th');
+        th.textContent = `第${i + 1}轮`;
+        headRow.appendChild(th);
+      }
+
+      bodyEl.innerHTML = '';
+      if (!players.length) {
+        bodyEl.innerHTML = '<tr><td colspan="3">暂无玩家数据</td></tr>';
+        return;
+      }
+
+      players.forEach(player => {
+        const tr = document.createElement('tr');
+
+        const rankTd = document.createElement('td');
+        rankTd.className = 'rank';
+        rankTd.textContent = player.rank ?? '-';
+        tr.appendChild(rankTd);
+
+        const nameTd = document.createElement('td');
+        nameTd.textContent = player.name || '未知玩家';
+        tr.appendChild(nameTd);
+
+        const totalTd = document.createElement('td');
+        totalTd.className = 'total';
+        totalTd.textContent = player.totalScore ?? 0;
+        tr.appendChild(totalTd);
+
+        const rounds = player.roundScores || [];
+        for (let i = 0; i < roundCount; i++) {
+          const td = document.createElement('td');
+          td.textContent = rounds[i] != null ? rounds[i] : '-';
+          tr.appendChild(td);
+        }
+
+        bodyEl.appendChild(tr);
+      });
+    }
+
+    async function fetchScore() {
+      try {
+        const response = await fetch('/api/score');
+        if (!response.ok) {
+          throw new Error('网络请求失败');
+        }
+        const data = await response.json();
+        renderScoreboard(data);
+      } catch (error) {
+        renderStatus('无法获取计分数据，请检查主机是否在线', 'error');
+      }
+    }
+
+    fetchScore();
+    setInterval(fetchScore, 2000);
+</script>
+</body>
+</html>

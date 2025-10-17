@@ -1,4 +1,5 @@
 import 'package:counters/app/state.dart';
+import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/features/home/providers/main_tab_actions.dart';
@@ -669,9 +670,156 @@ class _HostInfoCard extends ConsumerWidget {
               ],
             ),
           ),
+
+          const SizedBox(height: 10),
+
+          // HTTP服务控制
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context)
+                    .colorScheme
+                    .outline
+                    .withValues(alpha: 0.2),
+              ),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.public,
+                  size: 16,
+                  color: lanState.isHttpServerRunning
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '浏览器实时计分',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                      Text(
+                        lanState.isHttpServerRunning
+                            ? '在同一局域网内使用浏览器访问下方地址即可查看实时比分'
+                            : '关闭时无法通过浏览器查看实时比分',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontSize: 12,
+                            ),
+                      ),
+                      if (lanState.isHttpServerRunning)
+                        _HttpServerLink(
+                          localIp: lanState.localIp,
+                          port: lanState.httpServerPort,
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (lanState.isHttpServerStarting)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Transform.scale(
+                    scale: 0.8,
+                    child: Switch(
+                      value: lanState.isHttpServerRunning,
+                      onChanged: (value) {
+                        ref
+                            .read(lanProvider.notifier)
+                            .setHttpServerState(value);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+}
+
+class _HttpServerLink extends ConsumerWidget {
+  final String localIp;
+  final int port;
+
+  const _HttpServerLink({required this.localIp, required this.port});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final url = _buildUrl(localIp, port);
+
+    if (url == null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text(
+          '已启动，正在等待有效的本机IP地址...',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+        ),
+      );
+    }
+
+    final displayUrl = '$url/';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: SelectableText(
+              displayUrl,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontSize: 12,
+                    decoration: TextDecoration.none,
+                  ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy, size: 16),
+            tooltip: '复制链接',
+            color: Theme.of(context).colorScheme.primary,
+            onPressed: () async {
+              try {
+                await Clipboard.setData(ClipboardData(text: displayUrl));
+                ref.showSuccess('已复制链接: $displayUrl');
+              } catch (e, stack) {
+                Log.e('复制HTTP服务链接失败: $e');
+                ErrorHandler.handle(e, stack, prefix: '复制HTTP服务链接失败');
+                ref.showError('复制失败，请稍后重试');
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _buildUrl(String ip, int port) {
+    final trimmed = ip.trim();
+    if (trimmed.isEmpty ||
+        trimmed == '获取中...' ||
+        trimmed == '获取失败' ||
+        trimmed == '未知') {
+      return null;
+    }
+    return 'http://$trimmed:$port';
   }
 }
 

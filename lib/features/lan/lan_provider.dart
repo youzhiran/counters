@@ -16,6 +16,7 @@ import 'package:counters/features/lan/client.dart';
 import 'package:counters/features/lan/lan_discovery_provider.dart';
 import 'package:counters/features/lan/network_manager.dart';
 import 'package:counters/features/lan/ping_provider.dart';
+import 'package:counters/features/lan/score_http_server.dart';
 // 引入 Score Provider 和 消息 Payload 类
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -39,6 +40,9 @@ class LanState {
   final String interfaceName; // 新增：本机网络接口名称
   final int serverPort; // 新增：服务器端口号
   final int discoveryPort; // 新增：广播发现端口号
+  final bool isHttpServerRunning; // 新增：HTTP服务是否启动
+  final bool isHttpServerStarting; // 新增：HTTP服务是否正在启动/停止
+  final int httpServerPort; // 新增：HTTP服务端口号
 
   // 新增：客户端模式状态管理
   final bool isClientMode; // 是否处于客户端模式（即使断开连接也保持）
@@ -63,6 +67,9 @@ class LanState {
     this.interfaceName = '', // 新增：默认空字符串
     this.serverPort = 0, // 新增：默认端口为0
     this.discoveryPort = 0, // 新增：默认广播端口为0
+    this.isHttpServerRunning = false, // 新增：默认未启动HTTP服务
+    this.isHttpServerStarting = false, // 新增：默认未在启动或停止HTTP服务
+    this.httpServerPort = Config.scoreboardHttpPort, // 新增：默认HTTP端口
     // 新增：客户端模式相关状态
     this.isClientMode = false, // 默认不是客户端模式
     this.isConnecting = false, // 默认不在连接建立中
@@ -88,6 +95,9 @@ class LanState {
     String? interfaceName, // 新增
     int? serverPort, // 新增
     int? discoveryPort, // 新增
+    bool? isHttpServerRunning, // 新增
+    bool? isHttpServerStarting, // 新增
+    int? httpServerPort, // 新增
     // 新增：客户端模式相关参数
     bool? isClientMode,
     bool? isConnecting,
@@ -119,6 +129,12 @@ class LanState {
       serverPort: serverPort ?? this.serverPort,
       // 新增
       discoveryPort: discoveryPort ?? this.discoveryPort,
+      // 新增
+      isHttpServerRunning: isHttpServerRunning ?? this.isHttpServerRunning,
+      // 新增
+      isHttpServerStarting: isHttpServerStarting ?? this.isHttpServerStarting,
+      // 新增
+      httpServerPort: httpServerPort ?? this.httpServerPort,
       // 新增
       // 新增：客户端模式相关状态
       isClientMode: isClientMode ?? this.isClientMode,
@@ -177,6 +193,7 @@ class Lan extends _$Lan {
   String _currentBaseTid = '';
   int _currentWsPort = 0;
   String _currentTemplateName = '';
+  ScoreHttpServer? _httpServer; // 新增：HTTP实时计分服务实例
 
   void dispose() {
     _hostIpController.dispose();
@@ -646,7 +663,7 @@ class Lan extends _$Lan {
   Future<void> startHost(int port, String baseTid,
       {String? templateName}) async {
     Log.i('尝试启动主机模式...');
-    disposeManager(); // 确保旧的管理器已清理
+    await disposeManager(); // 确保旧的管理器已清理
     state = state.copyWith(isLoading: true, isHost: true, isConnected: false);
     _currentBaseTid = baseTid;
     _currentTemplateName = templateName ?? '';
@@ -1087,6 +1104,7 @@ class Lan extends _$Lan {
   Future<void> disposeManager() async {
     Log.d('Disposing network manager...');
     _stopDiscoveryBroadcast();
+    await _shutdownHttpServer(silent: true);
 
     // 如果是主机模式且有连接的客户端，发送断开通知
     if (state.isHost &&
@@ -1138,6 +1156,8 @@ class Lan extends _$Lan {
       serverPort: wasHost ? 0 : state.serverPort,
       // 主机模式重置端口，客户端模式保留端口用于重连
       connectedClientIps: [], // 清空客户端列表
+      isHttpServerRunning: false,
+      isHttpServerStarting: false,
     );
   }
 
@@ -1249,6 +1269,97 @@ class Lan extends _$Lan {
     } else {
       _stopDiscoveryBroadcast();
       state = state.copyWith(isBroadcasting: false);
+    }
+  }
+
+  /// 控制HTTP实时计分服务开关
+  Future<void> setHttpServerState(bool shouldEnable) async {
+    if (state.isHttpServerStarting) {
+      Log.w('HTTP实时计分服务正在处理中，忽略重复操作');
+      return;
+    }
+
+    if (shouldEnable) {
+      if (state.isHttpServerRunning) {
+        Log.d('HTTP实时计分服务已开启，跳过重复启动');
+        return;
+      }
+      if (!state.isHost) {
+        GlobalMsgManager.showMessage('请先启动主机模式后再开启HTTP服务');
+        return;
+      }
+
+      state = state.copyWith(isHttpServerStarting: true);
+      final port = state.httpServerPort;
+
+      try {
+        final portOccupied = await PortManager.isTcpPortOccupied(port);
+        if (portOccupied) {
+          final message = 'HTTP实时计分服务无法启动：端口 $port 已被占用\n\n'
+              '建议：\n'
+              '• 关闭占用该端口的其他程序\n'
+              '• 检查是否有未正常退出的旧实例\n'
+              '• 修改配置端口后重试';
+          GlobalMsgManager.showError(message);
+          state = state.copyWith(
+            isHttpServerRunning: false,
+            isHttpServerStarting: false,
+          );
+          return;
+        }
+
+        _httpServer = ScoreHttpServer(
+          scoreStateSupplier: () => ref.read(scoreProvider),
+          port: port,
+        );
+        await _httpServer!.start();
+        state = state.copyWith(
+          isHttpServerRunning: true,
+          isHttpServerStarting: false,
+        );
+        GlobalMsgManager.showSuccess('HTTP实时计分服务已开启');
+      } catch (e, s) {
+        ErrorHandler.handle(e, s, prefix: '启动HTTP实时计分服务失败');
+        state = state.copyWith(
+          isHttpServerRunning: false,
+          isHttpServerStarting: false,
+        );
+        GlobalMsgManager.showError('HTTP实时计分服务启动失败：$e');
+        _httpServer = null;
+      }
+    } else {
+      await _shutdownHttpServer();
+    }
+  }
+
+  /// 停止HTTP实时计分服务
+  Future<void> _shutdownHttpServer({bool silent = false}) async {
+    if (_httpServer == null || !(_httpServer?.isRunning ?? false)) {
+      state = state.copyWith(
+        isHttpServerRunning: false,
+        isHttpServerStarting: false,
+      );
+      _httpServer = null;
+      return;
+    }
+
+    state = state.copyWith(isHttpServerStarting: true);
+    try {
+      await _httpServer?.stop();
+      if (!silent) {
+        GlobalMsgManager.showMessage('HTTP实时计分服务已关闭');
+      }
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '关闭HTTP实时计分服务失败');
+      if (!silent) {
+        GlobalMsgManager.showError('关闭HTTP实时计分服务失败：$e');
+      }
+    } finally {
+      _httpServer = null;
+      state = state.copyWith(
+        isHttpServerRunning: false,
+        isHttpServerStarting: false,
+      );
     }
   }
 

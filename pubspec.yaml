@@ -93,6 +93,7 @@ flutter:
   assets:
     - assets/svg/
     - assets/images/
+    - assets/lan_http_templates/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -15,6 +15,7 @@ import 'package:counters/common/widgets/template_card.dart';
 import 'package:counters/features/history/history_page.dart';
 import 'package:counters/features/lan/lan_discovery_page.dart';
 import 'package:counters/features/lan/lan_provider.dart';
+import 'package:counters/features/lan/widgets/lan_status_button.dart';
 import 'package:counters/features/lan/widgets/lan_status_sheet.dart';
 import 'package:counters/features/league/league_list_page.dart';
 import 'package:counters/features/score/counter/counter_page.dart';
@@ -60,6 +61,9 @@ class HomePage extends ConsumerWidget {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         automaticallyImplyLeading: false,
+        actions: const [
+          LanStatusButton(),
+        ],
       ),
       body: scoreAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
