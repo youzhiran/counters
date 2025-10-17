@@ -99,7 +99,9 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     _ensureScreenWakelockState();
 
     ref.listen(scoreProvider, (previous, next) {
-      if (next.value?.showGameEndDialog == true) {
+      final wasShown = previous?.value?.showGameEndDialog == true;
+      final shouldShow = next.value?.showGameEndDialog == true;
+      if (shouldShow && !wasShown) {
         showGameResult(context);
       }
     });
@@ -295,6 +297,8 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
 
     final scoreState = ref.read(scoreProvider).value;
     final template = scoreState?.template;
+    final lanState = ref.read(lanProvider);
+    final bool isClientLimited = lanState.isClientMode && !lanState.isHost;
 
     if (template == null) {
       globalState.showCommonDialog(
@@ -355,6 +359,14 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
                       color: Colors.blue,
                     )),
               ],
+              if (isClientLimited) ...[
+                SizedBox(height: 16),
+                Text('提示：客户端仅可查看比分，请等待主机结束计分。',
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 12,
+                    )),
+              ],
             ],
           ),
         ),
@@ -364,7 +376,7 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
             child: const Text('确定'),
           ),
           // 修复：始终显示“确认胜负”按钮，除非是临时模式
-          if (scoreState?.isTempMode == false)
+          if (!isClientLimited && scoreState?.isTempMode == false)
             TextButton(
               onPressed: () {
                 // 如果已经分出胜负，则直接确认
@@ -438,6 +450,13 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
     required ScoreState? scoreState,
     bool closeResultDialogFirst = false,
   }) async {
+    final lanState = ref.read(lanProvider);
+    final bool isClientLimited = lanState.isClientMode && !lanState.isHost;
+    if (isClientLimited) {
+      ref.showWarning('客户端模式下无法结束计分，请等待主机执行此操作');
+      return;
+    }
+
     if (!_canFinalizeCurrentSession(scoreState)) {
       return;
     }
@@ -1163,12 +1182,14 @@ abstract class BaseSessionPageState<T extends BaseSessionPage>
         );
       case ScoreActionType.finishGame:
         final bool hasSession = scoreState.currentSession != null;
-        final canFinish = !scoreState.isTempMode && hasSession;
+        final bool isClientLimited = lanState.isClientMode && !lanState.isHost;
+        final canFinish =
+            !scoreState.isTempMode && hasSession && !isClientLimited;
         return ScoreQuickActionConfig(
           type: type,
           icon: Icons.flag_circle_outlined,
           label: '结束计分',
-          tooltip: '结束本次计分并记录结果',
+          tooltip: isClientLimited ? '客户端无法结束计分，请联系主机' : '结束本次计分并记录结果',
           enabled: canFinish,
           visible: !scoreState.isTempMode,
           onSelected:

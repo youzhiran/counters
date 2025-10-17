@@ -60,7 +60,7 @@ extension ScoreActionTypeLabel on ScoreActionType {
       case ScoreActionType.resetGame:
         return Icons.restart_alt_rounded;
       case ScoreActionType.finishGame:
-        return Icons.flag_circle_rounded;
+        return Icons.flag_circle_outlined;
       case ScoreActionType.viewTemplateSettings:
         return Icons.info_outline;
       case ScoreActionType.toggleScreenWakelock:
