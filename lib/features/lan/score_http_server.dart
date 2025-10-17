@@ -18,16 +18,20 @@ class ScoreHttpServer {
   final ScoreStateSupplier _scoreStateSupplier;
   final int _port;
   final String _templateAssetPath;
+  final String _qrAssetPath;
   HttpServer? _server;
   String? _cachedTemplate;
+  String? _cachedQrSvg;
 
   ScoreHttpServer({
     required ScoreStateSupplier scoreStateSupplier,
     required int port,
     String templateAssetPath = ScoreHttpTemplates.defaultTemplateAsset,
+    String qrAssetPath = ScoreHttpTemplates.downloadQrAsset,
   })  : _scoreStateSupplier = scoreStateSupplier,
         _port = port,
-        _templateAssetPath = templateAssetPath;
+        _templateAssetPath = templateAssetPath,
+        _qrAssetPath = qrAssetPath;
 
   /// 判断服务是否已经启动
   bool get isRunning => _server != null;
@@ -88,6 +92,8 @@ class ScoreHttpServer {
         await _serveHtml(request);
       } else if (path == '/api/score') {
         await _serveScoreJson(request);
+      } else if (path == '/assets/qr-download.svg') {
+        await _serveQrSvg(request);
       } else {
         request.response.statusCode = HttpStatus.notFound;
         request.response.write('未找到资源');
@@ -115,6 +121,24 @@ class ScoreHttpServer {
     await response.close();
   }
 
+  Future<void> _serveQrSvg(HttpRequest request) async {
+    try {
+      final response = request.response;
+      response.headers.contentType =
+          ContentType('image', 'svg+xml', charset: 'utf-8');
+      final svg = await _getQrSvg();
+      response.write(svg);
+      await response.close();
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '加载HTTP二维码资源失败');
+      try {
+        request.response.statusCode = HttpStatus.notFound;
+        request.response.write('资源未找到');
+        await request.response.close();
+      } catch (_) {}
+    }
+  }
+
   /// 返回JSON格式的比分数据
   Future<void> _serveScoreJson(HttpRequest request) async {
     final response = request.response;
@@ -124,6 +148,21 @@ class ScoreHttpServer {
     final payload = _buildScorePayload();
     response.write(jsonEncode(payload));
     await response.close();
+  }
+
+  Future<String> _getQrSvg() async {
+    if (_cachedQrSvg != null) {
+      return _cachedQrSvg!;
+    }
+
+    try {
+      final svgString = await rootBundle.loadString(_qrAssetPath);
+      _cachedQrSvg = svgString;
+      return svgString;
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '加载二维码资源失败');
+      rethrow;
+    }
   }
 
   /// 加载模板 HTML 内容（带缓存）

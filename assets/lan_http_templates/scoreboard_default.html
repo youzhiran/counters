@@ -1,210 +1,905 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>得益计分 - 实时比分</title>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>得益计分 · 实时比分</title>
     <style>
         :root {
           color-scheme: light dark;
           font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+          --rank-col-width: 72px;
+          --player-col-width: 160px;
         }
-        body {
-          margin: 0;
-          padding: 24px;
-          background: #0f172a;
-          color: #f8fafc;
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      background: #f8fafc;
+      color: #0f172a;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    body[data-theme="dark"] {
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .container {
+      position: relative;
+      width: min(1080px, 100% - 40px);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 20px 16px;
+      box-sizing: border-box;
+      gap: 16px;
+    }
+
+    header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .header-main {
+      flex: 1 1 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
+
+        .title-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 12px;
         }
-        .container {
-          max-width: 1024px;
-          margin: 0 auto;
-        }
+
         h1 {
+          margin: 0;
           font-size: 28px;
-          margin-bottom: 12px;
+          font-weight: 600;
         }
-        .meta {
-          margin-bottom: 16px;
+
+        .controls {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+        }
+
+        .icon-button {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 1px solid rgba(15, 23, 42, 0.12);
+          background: rgba(15, 23, 42, 0.06);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s ease, border 0.2s ease, transform 0.2s ease;
           font-size: 16px;
-          color: #94a3b8;
+          user-select: none;
         }
-        .status {
-          padding: 12px 16px;
-          border-radius: 8px;
-          margin-bottom: 16px;
-          background: rgba(148, 163, 184, 0.12);
+
+        body[data-theme="dark"] .icon-button {
+          border-color: rgba(148, 163, 184, 0.3);
+          background: rgba(148, 163, 184, 0.14);
         }
+
+        .icon-button:hover {
+          transform: translateY(-1px);
+          background: rgba(37, 99, 235, 0.18);
+          border-color: rgba(37, 99, 235, 0.3);
+        }
+
+        .meta {
+          font-size: 15px;
+          color: rgba(15, 23, 42, 0.7);
+        }
+
+        body[data-theme="dark"] .meta {
+          color: rgba(226, 232, 240, 0.7);
+        }
+
+    .status {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      min-width: 220px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border-left: 4px solid #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      color: #0369a1;
+      display: none;
+      align-items: center;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+      z-index: 1000;
+    }
+
+    body[data-theme="dark"] .status {
+      background: rgba(56, 189, 248, 0.16);
+      color: #e0f2fe;
+    }
+
+    .status.show {
+      display: flex;
+    }
+
+    .status.warn {
+      border-left-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.12);
+      color: #92400e;
+    }
+
+    body[data-theme="dark"] .status.warn {
+      color: #fde68a;
+      background: rgba(251, 191, 36, 0.18);
+    }
+
+    .status.error {
+      border-left-color: #f87171;
+      background-color: #fee2e2;
+      color: #7f1d1d;
+    }
+
+    body[data-theme="dark"] .status.error {
+      background-color: #7f1d1d;
+      color: #fee2e2;
+      border-left-color: #fca5a5;
+    }
+
+    .scoreboard-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-radius: 16px;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.03);
+      border: 1px solid rgba(15, 23, 42, 0.05);
+      box-sizing: border-box;
+      min-height: 0;
+    }
+
+    body[data-theme="dark"] .scoreboard-card {
+      background: rgba(15, 23, 42, 0.45);
+      border-color: rgba(148, 163, 184, 0.12);
+    }
+
+    .table-wrapper {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .table-scroll {
+      flex: 1;
+      overflow: auto;
+      min-height: 0;
+      position: relative;
+    }
+
+    .total-summary {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(37, 99, 235, 0.08);
+      border: 1px solid rgba(37, 99, 235, 0.14);
+      display: none;
+    }
+
+    body[data-theme="dark"] .total-summary {
+      background: rgba(37, 99, 235, 0.18);
+      border-color: rgba(148, 163, 184, 0.25);
+    }
+
+    .total-summary h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .summary-item {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    body[data-theme="dark"] .summary-item {
+      background: rgba(15, 23, 42, 0.32);
+    }
+
+    .summary-name {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    .summary-score {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2563eb;
+    }
+
+    body[data-theme="dark"] .summary-score {
+      color: #93c5fd;
+    }
+
         table {
           width: 100%;
-          border-collapse: collapse;
-          background: rgba(15, 23, 42, 0.7);
+          border-collapse: separate;
+          border-spacing: 0;
           border-radius: 12px;
-          overflow: hidden;
+          box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+          background: inherit;
         }
-        thead {
-          background: rgba(30, 41, 59, 0.9);
+
+        .table-scroll thead th {
+          position: sticky;
+          top: 0;
+          z-index: 3;
+          background-color: #e2e8f0;
+          color: #0f172a;
+          border-top: none;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.35);
         }
-        th, td {
+
+        body[data-theme="dark"] .table-scroll thead th {
+          background-color: #475569;
+          color: #f8fafc;
+          border-bottom: 1px solid rgba(30, 41, 59, 0.65);
+        }
+
+        .table-scroll thead th:first-child {
+          border-top-left-radius: 12px;
+        }
+
+        .table-scroll thead th:last-child {
+          border-top-right-radius: 12px;
+        }
+
+        th,
+        td {
           padding: 12px 16px;
           text-align: center;
-        }
-        tbody tr:nth-child(odd) {
-          background: rgba(15, 23, 42, 0.85);
-        }
-        tbody tr:nth-child(even) {
-          background: rgba(30, 41, 59, 0.6);
-        }
-        .rank {
-          font-weight: bold;
-          color: #38bdf8;
-        }
-        .total {
-          font-weight: bold;
-          font-size: 18px;
-          color: #fbbf24;
-        }
-        .footer {
-          margin-top: 24px;
           font-size: 14px;
-          color: #64748b;
-          text-align: center;
         }
-        @media (max-width: 768px) {
-          body {
-            padding: 16px;
-          }
-          table {
-            font-size: 14px;
-          }
-          th, td {
-            padding: 10px 8px;
-          }
+
+        .table-scroll tbody tr:last-child td:first-child {
+          border-bottom-left-radius: 12px;
         }
+
+        .table-scroll tbody tr:last-child td:last-child {
+          border-bottom-right-radius: 12px;
+        }
+
+    tbody tr:nth-child(odd) {
+      background: rgba(15, 23, 42, 0.04);
+    }
+
+    body[data-theme="dark"] tbody tr:nth-child(odd) {
+      background: rgba(71, 85, 105, 0.2);
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(15, 23, 42, 0.02);
+    }
+
+    body[data-theme="dark"] tbody tr:nth-child(even) {
+      background: rgba(71, 85, 105, 0.12);
+    }
+
+    .rank {
+      font-weight: 700;
+      color: #0ea5e9;
+    }
+
+    body[data-theme="dark"] .rank {
+      color: #38bdf8;
+    }
+
+
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: rgba(15, 23, 42, 0.5);
+      margin-top: 12px;
+    }
+
+    body[data-theme="dark"] .footer {
+      color: rgba(226, 232, 240, 0.5);
+    }
+
+    .layout-tip {
+      font-size: 13px;
+      color: rgba(15, 23, 42, 0.6);
+    }
+
+    body[data-theme="dark"] .layout-tip {
+      color: rgba(226, 232, 240, 0.6);
+    }
+
+    body[data-layout="horizontal"] .scoreboard-card table {
+      min-width: 720px;
+    }
+
+    body[data-layout="vertical"] .table-scroll {
+      overflow-x: auto;
+    }
+
+    body[data-layout="vertical"] .table-scroll table {
+      width: auto;
+      min-width: 100%;
+    }
+
+    body[data-layout="vertical"] .table-scroll th,
+    body[data-layout="vertical"] .table-scroll td {
+      white-space: nowrap;
+    }
+
+    body[data-layout="vertical"] .table-scroll th.sticky-col,
+    body[data-layout="vertical"] .table-scroll td.sticky-col {
+      position: sticky;
+      background-color: #e2e8f0;
+      color: #0f172a;
+      z-index: 2;
+      border-right: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    body[data-theme="dark"][data-layout="vertical"] .table-scroll th.sticky-col,
+    body[data-theme="dark"][data-layout="vertical"] .table-scroll td.sticky-col {
+      background-color: #475569;
+      color: #f8fafc;
+      border-right: 1px solid rgba(30, 41, 59, 0.65);
+    }
+
+    body[data-layout="vertical"] .table-scroll th.sticky-col-rank,
+    body[data-layout="vertical"] .table-scroll td.sticky-col-rank {
+      left: 0;
+      min-width: var(--rank-col-width);
+      width: var(--rank-col-width);
+      z-index: 3;
+    }
+
+    body[data-layout="vertical"] .table-scroll th.sticky-col-player,
+    body[data-layout="vertical"] .table-scroll td.sticky-col-player {
+      left: calc(var(--rank-col-width));
+      min-width: var(--player-col-width);
+      width: var(--player-col-width);
+      z-index: 2;
+    }
+
+    body[data-layout="vertical"] .table-scroll thead th.sticky-col {
+      z-index: 4;
+    }
+
+    .promo-card {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+      max-width: 360px;
+    }
+
+    body[data-theme="dark"] .promo-card {
+      background: rgba(37, 99, 235, 0.24);
+      border-color: rgba(148, 163, 184, 0.38);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.28);
+    }
+
+    .promo-qr {
+      flex-shrink: 0;
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: #ffffff;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    body[data-theme="dark"] .promo-qr {
+      border-color: rgba(148, 163, 184, 0.42);
+      background: rgba(226, 232, 240, 0.05);
+    }
+
+    .promo-qr img {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      object-fit: cover;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    .promo-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12.5px;
+    }
+
+    .promo-text strong {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .promo-text span {
+      color: rgba(15, 23, 42, 0.72);
+      line-height: 1.4;
+    }
+
+    body[data-theme="dark"] .promo-text span {
+      color: rgba(226, 232, 240, 0.7);
+    }
+
+    .promo-text a {
+      color: #1d4ed8;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    body[data-theme="dark"] .promo-text a {
+      color: #bfdbfe;
+    }
+
+    @media (max-width: 768px) {
+      html,
+      body {
+        height: auto;
+        min-height: 100%;
+        overflow-y: auto;
+      }
+
+      .container {
+        height: auto;
+        padding: 20px 16px 48px;
+      }
+
+      header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+      }
+
+      .scoreboard-card {
+        padding: 16px;
+        flex: none;
+        min-height: auto;
+      }
+
+      th,
+      td {
+        padding: 10px 8px;
+        font-size: 13px;
+      }
+
+      .table-wrapper {
+        flex: none;
+        min-height: auto;
+      }
+
+      .table-scroll {
+        max-height: none;
+        overflow-x: auto;
+      }
+
+      .promo-card {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 14px;
+        margin-top: 12px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+      }
+
+      .promo-qr {
+        width: 82px;
+        height: 82px;
+      }
+
+      .promo-text {
+        width: 100%;
+      }
+
+      .promo-text a {
+        word-break: break-all;
+      }
+    }
     </style>
 </head>
-<body>
+<body data-layout="vertical" data-theme="light">
 <div class="container">
-    <h1>得益计分 · 实时比分</h1>
-    <div class="meta" id="meta">加载中...</div>
-    <div class="status" id="status"></div>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-            <tr id="table-head">
-                <th>名次</th>
-                <th>玩家</th>
-                <th>总分</th>
-            </tr>
-            </thead>
-            <tbody id="table-body">
-            <tr>
-                <td colspan="3">正在载入...</td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
-    <div class="footer">
+    <header>
+        <div class="header-main">
+            <div class="title-row">
+                <h1>得益计分 · 实时比分</h1>
+                <div class="controls">
+                    <button aria-label="切换主题" class="icon-button" id="themeToggle"
+                            title="切换主题">
+                        🌞
+                    </button>
+                    <button aria-label="切换布局" class="icon-button" id="layoutToggle"
+                            title="切换布局">🔁
+                    </button>
+                </div>
+            </div>
+            <div class="meta" id="meta">加载中...</div>
+            <div class="layout-tip" id="layoutTip">竖向布局：每名玩家一行，轮次以列显示</div>
+            <div class="status" id="status"></div>
+        </div>
+        <div class="promo-card">
+            <div class="promo-text">
+                <strong>下载得益计分APP</strong>
+                <span>支持多种计分与联赛管理，还可局域网实时联机</span>
+                <a href="https://counters.devyi.com/download/?ref=lan" rel="noopener"
+                   target="_blank">
+                    counters.devyi.com/download
+                </a>
+            </div>
+            <div class="promo-qr">
+                <img
+                        alt="得益计分下载二维码"
+                        src="/assets/qr-download.svg"
+                />
+            </div>
+        </div>
+    </header>
+
+    <section class="scoreboard-card">
+        <div class="table-wrapper">
+            <div class="table-scroll" id="scoreboardContent"></div>
+        </div>
+        <div class="total-summary" id="totalSummary"></div>
+        <div class="footer">
         浏览器每 2 秒自动刷新一次（若页面未更新，请检查主机是否仍在线）
-    </div>
+        </div>
+    </section>
 </div>
 
+
+
 <script>
-    const statusEl = document.getElementById('status');
-    const metaEl = document.getElementById('meta');
-    const headRow = document.getElementById('table-head');
-    const bodyEl = document.getElementById('table-body');
+    (function () {
+      const statusEl = document.getElementById('status');
+      const metaEl = document.getElementById('meta');
+      const contentEl = document.getElementById('scoreboardContent');
+      const layoutTip = document.getElementById('layoutTip');
+      const themeToggle = document.getElementById('themeToggle');
+      const layoutToggle = document.getElementById('layoutToggle');
+      const summaryEl = document.getElementById('totalSummary');
 
-    function renderStatus(text, tone = 'info') {
-      const tones = {
-        info: '#38bdf8',
-        warn: '#fbbf24',
-        error: '#f87171'
+      const state = {
+        theme: localStorage.getItem('scoreboardTheme') || 'light',
+        layout: localStorage.getItem('scoreboardLayout') || 'vertical',
       };
-      statusEl.style.borderLeft = `4px solid ${tones[tone] || tones.info}`;
-      statusEl.textContent = text;
-    }
+      // 记录不同布局下最近的数据签名
+      // 缓存不同布局下的最新数据签名
+      const lastSignatures = {
+        vertical: null,
+        horizontal: null,
+      };
+      // 记录最近一次渲染使用的数据，用于布局切换即时重绘
+      let lastScorePayload = null;
 
-    function renderScoreboard(data) {
-      if (!data || !data.status) {
-        renderStatus('未能获取到有效的计分数据', 'error');
-        return;
+      function applyTheme() {
+        document.body.dataset.theme = state.theme;
+        themeToggle.textContent = state.theme === 'light' ? '🌞' : '🌙';
+        themeToggle.title = state.theme === 'light' ? '切换到暗色模式' : '切换到亮色模式';
       }
 
-      if (data.status !== 'ok') {
-        renderStatus(data.message || '计分数据准备中', data.status === 'error' ? 'error' : 'warn');
-        metaEl.textContent = data.meta && data.meta.templateName
-          ? `当前模板：${data.meta.templateName}`
-          : '当前模板：未设置';
-        bodyEl.innerHTML = '<tr><td colspan="3">暂无玩家数据</td></tr>';
-        return;
+      function applyLayout() {
+        document.body.dataset.layout = state.layout;
+        layoutToggle.title = state.layout === 'vertical' ? '切换为横向布局' : '切换为竖向布局';
+        layoutTip.textContent =
+          state.layout === 'vertical'
+            ? '竖向布局：每名玩家一行，轮次以列显示'
+            : '横向布局：每轮数据为一行，玩家以列显示';
       }
 
-      const meta = data.meta || {};
-      const players = data.players || [];
-      const roundCount = meta.roundCount || 0;
-
-      metaEl.textContent = `模板：${meta.templateName || '未设置'} ｜ 当前回合：${meta.currentRound ?? 0} ｜ 刷新时间：${new Date(data.updatedAt).toLocaleTimeString()}`;
-      renderStatus('实时比分刷新成功');
-
-      while (headRow.children.length > 3) {
-        headRow.removeChild(headRow.lastChild);
-      }
-
-      for (let i = 0; i < roundCount; i++) {
-        const th = document.createElement('th');
-        th.textContent = `第${i + 1}轮`;
-        headRow.appendChild(th);
-      }
-
-      bodyEl.innerHTML = '';
-      if (!players.length) {
-        bodyEl.innerHTML = '<tr><td colspan="3">暂无玩家数据</td></tr>';
-        return;
-      }
-
-      players.forEach(player => {
-        const tr = document.createElement('tr');
-
-        const rankTd = document.createElement('td');
-        rankTd.className = 'rank';
-        rankTd.textContent = player.rank ?? '-';
-        tr.appendChild(rankTd);
-
-        const nameTd = document.createElement('td');
-        nameTd.textContent = player.name || '未知玩家';
-        tr.appendChild(nameTd);
-
-        const totalTd = document.createElement('td');
-        totalTd.className = 'total';
-        totalTd.textContent = player.totalScore ?? 0;
-        tr.appendChild(totalTd);
-
-        const rounds = player.roundScores || [];
-        for (let i = 0; i < roundCount; i++) {
-          const td = document.createElement('td');
-          td.textContent = rounds[i] != null ? rounds[i] : '-';
-          tr.appendChild(td);
-        }
-
-        bodyEl.appendChild(tr);
+      themeToggle.addEventListener('click', () => {
+        state.theme = state.theme === 'light' ? 'dark' : 'light';
+        localStorage.setItem('scoreboardTheme', state.theme);
+        applyTheme();
       });
-    }
 
-    async function fetchScore() {
-      try {
-        const response = await fetch('/api/score');
-        if (!response.ok) {
-          throw new Error('网络请求失败');
+      layoutToggle.addEventListener('click', () => {
+        state.layout = state.layout === 'vertical' ? 'horizontal' : 'vertical';
+        localStorage.setItem('scoreboardLayout', state.layout);
+        applyLayout();
+        resetSignatures();
+        if (lastScorePayload) {
+          renderScoreboard(lastScorePayload);
+        } else {
+          scrollToLatestAfterLayoutChange();
         }
-        const data = await response.json();
-        renderScoreboard(data);
-      } catch (error) {
-        renderStatus('无法获取计分数据，请检查主机是否在线', 'error');
-      }
-    }
+        fetchScore();
+      });
 
-    fetchScore();
-    setInterval(fetchScore, 2000);
+      applyTheme();
+      applyLayout();
+
+      function renderStatus(text, type = 'info') {
+        statusEl.textContent = text;
+        statusEl.classList.remove('warn', 'error');
+        if (type === 'warn') {
+          statusEl.classList.add('warn');
+        } else if (type === 'error') {
+          statusEl.classList.add('error');
+        }
+      }
+
+      function renderScoreboard(data) {
+        if (!data || !data.status) {
+          renderStatus('未能获取到有效的计分数据', 'error');
+          contentEl.innerHTML = '';
+          summaryEl.innerHTML = '';
+          summaryEl.style.display = 'none';
+          resetSignatures();
+          lastScorePayload = null;
+          return;
+        }
+
+        if (data.status !== 'ok') {
+          renderStatus(data.message || '计分数据准备中', data.status === 'error' ? 'error' : 'warn');
+          metaEl.textContent = data.meta && data.meta.templateName
+            ? `当前模板：${data.meta.templateName}`
+            : '当前模板：未设置';
+          contentEl.innerHTML = '';
+          summaryEl.innerHTML = '';
+          summaryEl.style.display = 'none';
+          resetSignatures();
+          lastScorePayload = data;
+          return;
+        }
+
+        const meta = data.meta || {};
+        const players = data.players || [];
+        const roundCount = meta.roundCount || 0;
+
+        metaEl.textContent =
+          `模板：${meta.templateName || '未设置'} ｜ 当前回合：${meta.currentRound ?? 0} ｜ 刷新时间：${new Date(data.updatedAt).toLocaleTimeString()}`;
+        statusEl.classList.remove('show', 'warn', 'error');
+
+        if (!players.length) {
+          statusEl.textContent = '暂无玩家数据';
+          statusEl.classList.add('show', 'warn');
+          contentEl.innerHTML = '';
+          summaryEl.innerHTML = '';
+          summaryEl.style.display = 'none';
+          resetSignatures();
+          lastScorePayload = data;
+          return;
+        }
+
+        lastScorePayload = data;
+
+        const builder = state.layout === 'vertical'
+          ? buildVerticalView
+          : buildHorizontalView;
+
+        const layoutKey = state.layout === 'vertical' ? 'vertical' : 'horizontal';
+        const previousSignature = lastSignatures[layoutKey];
+
+        const scoreSignature = createScoreSignature(players, roundCount);
+        const isInitialRender = previousSignature == null;
+        const dataChanged =
+          previousSignature != null && previousSignature !== scoreSignature;
+        const shouldScroll = isInitialRender || dataChanged;
+        const useSmoothScroll = !isInitialRender;
+
+        const { tableHtml, summaryHtml } = builder(players, roundCount);
+        contentEl.innerHTML = tableHtml;
+        summaryEl.innerHTML = summaryHtml;
+        summaryEl.style.display = summaryHtml.trim().length ? 'block' : 'none';
+
+        if (shouldScroll && layoutKey === 'horizontal') {
+          requestAnimationFrame(() => {
+            scrollToBottomEdge(contentEl, { smooth: useSmoothScroll });
+          });
+        } else if (shouldScroll && layoutKey === 'vertical') {
+          requestAnimationFrame(() => {
+            scrollToRightEdge(contentEl, { smooth: useSmoothScroll });
+          });
+        }
+
+        lastSignatures[layoutKey] = scoreSignature;
+      }
+
+      function buildVerticalView(players, roundCount) {
+        const roundHeaders = Array.from({ length: roundCount }, (_, i) => `<th>第${i + 1}轮</th>`).join('');
+
+        const rows = players.map(player => {
+          const roundScores = Array.from({ length: roundCount }, (_, idx) => {
+            const scores = player.roundScores ?? [];
+            return `<td>${scores[idx] != null ? scores[idx] : '-'}</td>`;
+          }).join('');
+          return `
+            <tr>
+              <td class="rank sticky-col sticky-col-rank">${player.rank ?? '-'}</td>
+              <td class="sticky-col sticky-col-player">${player.name ?? '未知玩家'}</td>
+              ${roundScores}
+            </tr>
+          `;
+        }).join('');
+
+        const tableHtml = `
+          <table>
+            <thead>
+              <tr>
+                <th class="sticky-col sticky-col-rank">名次</th>
+                <th class="sticky-col sticky-col-player">玩家</th>
+                ${roundHeaders}
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+
+        return {
+          tableHtml,
+          summaryHtml: buildSummaryHtml(players),
+        };
+      }
+
+      function buildHorizontalView(players, roundCount) {
+        const roundHeaders = players.map((p, index) => `<th>${p.name ?? '玩家' + (index + 1)}</th>`).join('');
+
+        const bodyRows = Array.from({ length: roundCount }, (_, roundIdx) => {
+          const cells = players.map(player => {
+            const scores = player.roundScores ?? [];
+            const score = scores[roundIdx];
+            return `<td>${score != null ? score : '-'}</td>`;
+          }).join('');
+
+          return `
+            <tr>
+              <td>第${roundIdx + 1}轮</td>
+              ${cells}
+            </tr>
+          `;
+        }).join('');
+
+        const tableHtml = `
+          <table>
+            <thead>
+              <tr>
+                <th>回合</th>
+                ${roundHeaders}
+              </tr>
+            </thead>
+            <tbody>
+              ${bodyRows}
+            </tbody>
+          </table>
+        `;
+
+        return {
+          tableHtml,
+          summaryHtml: buildSummaryHtml(players),
+        };
+      }
+
+      // 将当前玩家轮次数据序列化为签名，便于检测数据是否发生变化
+      function createScoreSignature(players, roundCount) {
+        return JSON.stringify({
+          roundCount,
+          players: players.map(player => ({
+            id: player.id ?? player.name ?? '',
+            scores: Array.isArray(player.roundScores) ? player.roundScores : [],
+            total: player.totalScore ?? 0,
+          })),
+        });
+      }
+
+      // 滚动容器到最右侧，保证最新一列可见
+      function scrollToRightEdge(element, { smooth = true } = {}) {
+        const maxScrollLeft = Math.max(element.scrollWidth - element.clientWidth, 0);
+        element.scrollTo({
+          left: maxScrollLeft,
+          behavior: smooth ? 'smooth' : 'auto',
+        });
+      }
+
+      // 滚动容器到底部，保证最新一行可见
+      function scrollToBottomEdge(element, { smooth = true } = {}) {
+        const maxScrollTop = Math.max(element.scrollHeight - element.clientHeight, 0);
+        element.scrollTo({
+          top: maxScrollTop,
+          behavior: smooth ? 'smooth' : 'auto',
+        });
+      }
+
+      function resetSignatures() {
+        lastSignatures.vertical = null;
+        lastSignatures.horizontal = null;
+      }
+
+      function scrollToLatestAfterLayoutChange() {
+        requestAnimationFrame(() => {
+          if (state.layout === 'vertical') {
+            scrollToRightEdge(contentEl, { smooth: false });
+          } else {
+            scrollToBottomEdge(contentEl, { smooth: false });
+          }
+        });
+      }
+
+      function buildSummaryHtml(players) {
+        const sorted = [...players].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
+        const items = sorted.map(player => `
+          <div class="summary-item">
+            <div class="summary-name">${player.name ?? '未知玩家'}</div>
+            <div class="summary-score">${player.totalScore ?? 0}</div>
+          </div>
+        `).join('');
+
+        return `
+          <h2>总分概览</h2>
+          <div class="summary-grid">
+            ${items}
+          </div>
+        `;
+      }
+
+      async function fetchScore() {
+        try {
+          const response = await fetch('/api/score');
+          if (!response.ok) {
+            throw new Error('网络请求失败');
+          }
+          const data = await response.json();
+          renderScoreboard(data);
+        } catch (error) {
+          statusEl.textContent = '无法获取计分数据，请检查主机是否在线';
+          statusEl.classList.add('show', 'error');
+          summaryEl.innerHTML = '';
+          summaryEl.style.display = 'none';
+          contentEl.innerHTML = '';
+          resetSignatures();
+          lastScorePayload = null;
+          console.error(error);
+        }
+      }
+
+      fetchScore();
+      setInterval(fetchScore, 2000);
+    })();
 </script>
 </body>
 </html>

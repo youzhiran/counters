@@ -5,6 +5,9 @@ class ScoreHttpTemplates {
   static const String defaultTemplateAsset =
       'assets/lan_http_templates/scoreboard_default.html';
 
+  /// 下载二维码资源路径
+  static const String downloadQrAsset = 'assets/svg/qr-download.svg';
+
   /// 当资源加载失败时使用的回退HTML
   static const String fallbackHtml = '''
 <!DOCTYPE html>
