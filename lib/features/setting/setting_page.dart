@@ -12,6 +12,7 @@ import 'package:counters/common/widgets/setting_list_tile.dart';
 import 'package:counters/common/widgets/update_dialog.dart';
 import 'package:counters/features/backup/backup_page.dart';
 import 'package:counters/features/dev/port_test_page.dart';
+import 'package:counters/features/lan/lan_provider.dart';
 import 'package:counters/features/score/models/score_action_type.dart';
 import 'package:counters/features/score/providers/score_action_order_provider.dart';
 import 'package:counters/features/setting/about_page.dart'; // 导入新的关于应用页面
@@ -297,7 +298,7 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                 SettingListTile(
                   icon: Icons.settings_ethernet,
                   title: '端口配置',
-                  subtitle: '配置局域网服务和广播端口',
+                  subtitle: '配置局域网广播、服务与HTTP端口',
                   onTap: _showPortConfigDialog,
                 ),
                 SettingListTile(
@@ -1313,6 +1314,44 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // HTTP端口配置
+                  Text(
+                    '浏览器实时计分HTTP端口',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: portConfig.isLoading
+                        ? null
+                        : () {
+                            _showScoreboardHttpPortMenu(context, ref);
+                          },
+                    onTapDown: (details) {
+                      _lastTapPosition = details.globalPosition;
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                              '${portConfig.scoreboardHttpPort}${portConfig.scoreboardHttpPort == Config.scoreboardHttpPort ? ' (默认)' : ''}'),
+                          Icon(Icons.arrow_drop_down,
+                              color: Colors.grey.shade600),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   if (portConfig.error != null) ...[
                     const SizedBox(height: 12),
                     Container(
@@ -1334,9 +1373,11 @@ class _SettingPageState extends ConsumerState<SettingPage> {
 
                   const SizedBox(height: 12),
                   Text(
-                    '注意：\n①无特殊情况请不要修改端口设置。\n' 
-                    '②修改端口后需重启局域网服务才能生效。\n' 
-                    '③修改端口后主机和客户端端口设置需保持一致方可正常联机。',
+                    '注意：\n'
+                    '①无特殊情况请不要修改端口设置。\n'
+                    '②修改端口后需重新启动对应服务才能生效（HTTP服务需重新开关）。\n'
+                    '③修改端口后主机和客户端端口设置需保持一致方可正常联机。\n'
+                    '④HTTP端口修改后，请告知访问者使用新的浏览器地址。',
                     style: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 12,
@@ -1349,8 +1390,11 @@ class _SettingPageState extends ConsumerState<SettingPage> {
               TextButton(
                 onPressed: portConfig.isLoading
                     ? null
-                    : () {
-                        portConfigNotifier.resetToDefaults();
+                    : () async {
+                        await portConfigNotifier.resetToDefaults();
+                        await ref
+                            .read(lanProvider.notifier)
+                            .refreshHttpServerPort();
                       },
                 child: const Text('重置默认'),
               ),
@@ -1411,6 +1455,29 @@ class _SettingPageState extends ConsumerState<SettingPage> {
     ).then((value) {
       if (value != null) {
         portConfigNotifier.setWebSocketPort(value);
+      }
+    });
+  }
+
+  void _showScoreboardHttpPortMenu(BuildContext context, WidgetRef ref) {
+    final portConfig = ref.read(portConfigProvider);
+    final portConfigNotifier = ref.read(portConfigProvider.notifier);
+
+    PopupMenuUtils.showSelectionMenu<int>(
+      context: context,
+      globalPosition: _lastTapPosition,
+      items: portConfig.scoreboardHttpPortOptions.map((port) {
+        return PopupMenuUtils.createPortMenuItem(
+          port: port,
+          defaultPort: Config.scoreboardHttpPort,
+          currentPort: portConfig.scoreboardHttpPort,
+          context: context,
+        );
+      }).toList(),
+    ).then((value) async {
+      if (value != null) {
+        await portConfigNotifier.setScoreboardHttpPort(value);
+        await ref.read(lanProvider.notifier).refreshHttpServerPort();
       }
     });
   }

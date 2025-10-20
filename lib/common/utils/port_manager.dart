@@ -1,6 +1,7 @@
 // common/utils/port_manager.dart
 
 import 'dart:io';
+
 import 'package:counters/app/config.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,7 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PortManager {
   static const String _keyCustomDiscoveryPort = 'custom_discovery_port';
   static const String _keyCustomWebSocketPort = 'custom_websocket_port';
-  
+  static const String _keyCustomScoreboardHttpPort =
+      'custom_scoreboard_http_port';
+
   /// 检测端口是否被占用 (UDP)
   static Future<bool> isUdpPortOccupied(int port) async {
     try {
@@ -58,6 +61,18 @@ class PortManager {
     }
   }
 
+  /// 获取当前配置的HTTP实时计分端口
+  /// 优先使用用户自定义端口，否则使用默认端口
+  static Future<int> getCurrentScoreboardHttpPort() async {
+    try {
+      final customPort = await getCustomScoreboardHttpPort();
+      return customPort ?? Config.scoreboardHttpPort;
+    } catch (e) {
+      Log.e('获取当前HTTP端口失败: $e');
+      return Config.scoreboardHttpPort;
+    }
+  }
+
   /// 获取用户自定义的广播端口
   static Future<int?> getCustomDiscoveryPort() async {
     try {
@@ -84,6 +99,21 @@ class PortManager {
       return null;
     } catch (e) {
       Log.e('获取自定义服务端口失败: $e');
+      return null;
+    }
+  }
+
+  /// 获取用户自定义的HTTP实时计分端口
+  static Future<int?> getCustomScoreboardHttpPort() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final port = prefs.getInt(_keyCustomScoreboardHttpPort);
+      if (port != null && port > 0 && port <= 65535) {
+        return port;
+      }
+      return null;
+    } catch (e) {
+      Log.e('获取自定义HTTP端口失败: $e');
       return null;
     }
   }
@@ -132,6 +162,28 @@ class PortManager {
     }
   }
 
+  /// 设置用户自定义的HTTP实时计分端口
+  static Future<bool> setCustomScoreboardHttpPort(int? port) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (port == null) {
+        await prefs.remove(_keyCustomScoreboardHttpPort);
+        Log.i('已清除自定义HTTP端口设置');
+      } else {
+        if (port <= 0 || port > 65535) {
+          Log.e('无效的端口号: $port');
+          return false;
+        }
+        await prefs.setInt(_keyCustomScoreboardHttpPort, port);
+        Log.i('已设置自定义HTTP端口: $port');
+      }
+      return true;
+    } catch (e) {
+      Log.e('设置自定义HTTP端口失败: $e');
+      return false;
+    }
+  }
+
   /// 验证端口号是否有效
   static bool isValidPort(int port) {
     return port > 0 && port <= 65535;
@@ -147,9 +199,21 @@ class PortManager {
     return port >= Config.webSocketPortMin && port <= Config.webSocketPortMax;
   }
 
+  /// 检查HTTP端口是否在推荐范围内
+  static bool isScoreboardHttpPortInRecommendedRange(int port) {
+    return port >= Config.scoreboardHttpPortMin &&
+        port <= Config.scoreboardHttpPortMax;
+  }
+
   /// 获取端口占用错误的用户友好描述
-  static String getPortOccupiedErrorMessage(int port, {bool isWebSocket = false}) {
-    final portType = isWebSocket ? '局域网服务端口' : '局域网广播端口';
+  static String getPortOccupiedErrorMessage(
+    int port, {
+    bool isWebSocket = false,
+    bool isHttpServer = false,
+  }) {
+    assert(!(isWebSocket && isHttpServer), '端口类型参数冲突：同一时间只能指定一种端口类型');
+    final portType =
+        isHttpServer ? 'HTTP实时计分端口' : (isWebSocket ? '局域网服务端口' : '局域网广播端口');
     return '端口 $port 已被其他程序占用\n\n'
         '解决方案：\n'
         '• 关闭可能占用该端口的其他应用程序\n'

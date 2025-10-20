@@ -30,6 +30,8 @@ class Config {
   static const int discoveryPortMax = 8109; // 广播端口最大值
   static const int webSocketPortMin = 8080; // WebSocket 端口最小值
   static const int webSocketPortMax = 8090; // WebSocket 端口最大值
+  static const int scoreboardHttpPortMin = 8700; // 局域网HTTP端口最小值
+  static const int scoreboardHttpPortMax = 8800; // 局域网HTTP端口最大值
 
   // 常量字符串列表 - 回退字体
   static const List<String> chineseFontFallbacks = [

@@ -15,8 +15,10 @@ class PortTestPage extends ConsumerStatefulWidget {
 class _PortTestPageState extends ConsumerState<PortTestPage> {
   int? _customDiscoveryPort;
   int? _customWebSocketPort;
+  int? _customHttpPort;
   int? _availableDiscoveryPort;
   int? _availableWebSocketPort;
+  int? _availableHttpPort;
   bool _isLoading = false;
   final List<String> _testResults = [];
 
@@ -30,9 +32,11 @@ class _PortTestPageState extends ConsumerState<PortTestPage> {
     try {
       final discoveryPort = await PortManager.getCustomDiscoveryPort();
       final webSocketPort = await PortManager.getCustomWebSocketPort();
+      final httpPort = await PortManager.getCustomScoreboardHttpPort();
       setState(() {
         _customDiscoveryPort = discoveryPort;
         _customWebSocketPort = webSocketPort;
+        _customHttpPort = httpPort;
       });
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '加载端口设置失败');
@@ -54,6 +58,12 @@ class _PortTestPageState extends ConsumerState<PortTestPage> {
       final defaultWebSocketAvailable = !await PortManager.isTcpPortOccupied(Config.webSocketPort);
       _testResults.add('默认服务端口 ${Config.webSocketPort}: ${defaultWebSocketAvailable ? "可用" : "被占用"}');
 
+      // 测试默认HTTP端口
+      final defaultHttpAvailable =
+          !await PortManager.isTcpPortOccupied(Config.scoreboardHttpPort);
+      _testResults.add(
+          '默认HTTP端口 ${Config.scoreboardHttpPort}: ${defaultHttpAvailable ? "可用" : "被占用"}');
+
       // 测试自定义端口
       if (_customDiscoveryPort != null) {
         final customDiscoveryAvailable = !await PortManager.isUdpPortOccupied(_customDiscoveryPort!);
@@ -65,17 +75,27 @@ class _PortTestPageState extends ConsumerState<PortTestPage> {
         _testResults.add('自定义服务端口 $_customWebSocketPort: ${customWebSocketAvailable ? "可用" : "被占用"}');
       }
 
+      if (_customHttpPort != null) {
+        final customHttpAvailable =
+            !await PortManager.isTcpPortOccupied(_customHttpPort!);
+        _testResults.add(
+            '自定义HTTP端口 $_customHttpPort: ${customHttpAvailable ? "可用" : "被占用"}');
+      }
+
       // 获取当前配置的端口
       final currentDiscoveryPort = await PortManager.getCurrentDiscoveryPort();
       final currentWebSocketPort = await PortManager.getCurrentWebSocketPort();
+      final currentHttpPort = await PortManager.getCurrentScoreboardHttpPort();
 
       setState(() {
         _availableDiscoveryPort = currentDiscoveryPort;
         _availableWebSocketPort = currentWebSocketPort;
+        _availableHttpPort = currentHttpPort;
       });
 
       _testResults.add('当前配置的广播端口: $currentDiscoveryPort');
       _testResults.add('当前配置的服务端口: $currentWebSocketPort');
+      _testResults.add('当前配置的HTTP端口: $currentHttpPort');
 
       // 测试广播端口范围内的所有端口
       _testResults.add('\n广播端口范围测试:');
@@ -91,6 +111,14 @@ class _PortTestPageState extends ConsumerState<PortTestPage> {
         _testResults.add('TCP端口 $port: ${isOccupied ? "被占用" : "可用"}');
       }
 
+      // 测试HTTP端口范围
+      _testResults.add('\nHTTP端口范围测试:');
+      for (int port = Config.scoreboardHttpPortMin;
+          port <= Config.scoreboardHttpPortMax;
+          port++) {
+        final isOccupied = await PortManager.isTcpPortOccupied(port);
+        _testResults.add('HTTP端口 $port: ${isOccupied ? "被占用" : "可用"}');
+      }
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '端口测试失败');
     } finally {
@@ -140,7 +168,14 @@ class _PortTestPageState extends ConsumerState<PortTestPage> {
                     Text('自定义服务端口: ${_customWebSocketPort ?? "未设置"}'),
                     Text('当前配置的服务端口: ${_availableWebSocketPort ?? "未检测"}'),
                     const SizedBox(height: 8),
+                    Text('默认HTTP端口: ${Config.scoreboardHttpPort}'),
+                    Text(
+                        'HTTP端口范围: ${Config.scoreboardHttpPortMin}-${Config.scoreboardHttpPortMax}'),
+                    Text('自定义HTTP端口: ${_customHttpPort ?? "未设置"}'),
+                    Text('当前配置的HTTP端口: ${_availableHttpPort ?? "未检测"}'),
+                    const SizedBox(height: 8),
                     Text('Provider状态: 广播端口=${portConfig.discoveryPort}, 服务端口=${portConfig.webSocketPort}'),
+                    Text('Provider状态: HTTP端口=${portConfig.scoreboardHttpPort}'),
                   ],
                 ),
               ),

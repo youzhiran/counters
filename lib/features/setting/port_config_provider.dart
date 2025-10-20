@@ -1,18 +1,20 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:counters/app/config.dart';
-import 'package:counters/common/utils/port_manager.dart';
 import 'package:counters/common/utils/error_handler.dart';
+import 'package:counters/common/utils/port_manager.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 端口配置状态类
 class PortConfigState {
   final int discoveryPort;
   final int webSocketPort;
+  final int scoreboardHttpPort;
   final bool isLoading;
   final String? error;
 
   const PortConfigState({
     this.discoveryPort = Config.discoveryPort,
     this.webSocketPort = Config.webSocketPort,
+    this.scoreboardHttpPort = Config.scoreboardHttpPort,
     this.isLoading = false,
     this.error,
   });
@@ -20,12 +22,14 @@ class PortConfigState {
   PortConfigState copyWith({
     int? discoveryPort,
     int? webSocketPort,
+    int? scoreboardHttpPort,
     bool? isLoading,
     String? error,
   }) {
     return PortConfigState(
       discoveryPort: discoveryPort ?? this.discoveryPort,
       webSocketPort: webSocketPort ?? this.webSocketPort,
+      scoreboardHttpPort: scoreboardHttpPort ?? this.scoreboardHttpPort,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -36,6 +40,10 @@ class PortConfigState {
 
   /// 是否使用默认服务端口
   bool get isUsingDefaultWebSocketPort => webSocketPort == Config.webSocketPort;
+
+  /// 是否使用默认HTTP端口
+  bool get isUsingDefaultScoreboardHttpPort =>
+      scoreboardHttpPort == Config.scoreboardHttpPort;
 
   /// 获取广播端口选项列表
   List<int> get discoveryPortOptions {
@@ -53,6 +61,36 @@ class PortConfigState {
       options.add(port);
     }
     return options;
+  }
+
+  /// 获取HTTP端口选项列表
+  List<int> get scoreboardHttpPortOptions {
+    final options = <int>{Config.scoreboardHttpPort};
+    int offset = 1;
+
+    while (options.length < 10) {
+      final lower = Config.scoreboardHttpPort - offset;
+      final upper = Config.scoreboardHttpPort + offset;
+
+      if (lower >= Config.scoreboardHttpPortMin) {
+        options.add(lower);
+      }
+      if (options.length >= 10) {
+        break;
+      }
+      if (upper <= Config.scoreboardHttpPortMax) {
+        options.add(upper);
+      }
+
+      if (lower < Config.scoreboardHttpPortMin &&
+          upper > Config.scoreboardHttpPortMax) {
+        break;
+      }
+      offset++;
+    }
+
+    final sorted = options.toList()..sort();
+    return sorted;
   }
 }
 
@@ -85,10 +123,13 @@ class PortConfigNotifier extends Notifier<PortConfigState> {
 
       final discoveryPort = await PortManager.getCustomDiscoveryPort() ?? Config.discoveryPort;
       final webSocketPort = await PortManager.getCustomWebSocketPort() ?? Config.webSocketPort;
+      final httpPort = await PortManager.getCustomScoreboardHttpPort() ??
+          Config.scoreboardHttpPort;
 
       state = state.copyWith(
         discoveryPort: discoveryPort,
         webSocketPort: webSocketPort,
+        scoreboardHttpPort: httpPort,
         isLoading: false,
         error: null,
       );
@@ -167,6 +208,38 @@ class PortConfigNotifier extends Notifier<PortConfigState> {
     }
   }
 
+  /// 设置HTTP端口
+  Future<void> setScoreboardHttpPort(int port) async {
+    await _ensureInitialized();
+    try {
+      state = state.copyWith(isLoading: true);
+
+      if (!PortManager.isValidPort(port)) {
+        throw Exception('无效的端口号: $port');
+      }
+
+      final success = await PortManager.setCustomScoreboardHttpPort(
+        port == Config.scoreboardHttpPort ? null : port,
+      );
+
+      if (!success) {
+        throw Exception('保存HTTP端口配置失败');
+      }
+
+      state = state.copyWith(
+        scoreboardHttpPort: port,
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      ErrorHandler.handle(e, StackTrace.current, prefix: '设置HTTP端口失败');
+      state = state.copyWith(
+        isLoading: false,
+        error: '设置HTTP端口失败: $e',
+      );
+    }
+  }
+
   /// 重置为默认端口
   Future<void> resetToDefaults() async {
     await _ensureInitialized();
@@ -175,10 +248,12 @@ class PortConfigNotifier extends Notifier<PortConfigState> {
 
       await PortManager.setCustomDiscoveryPort(null);
       await PortManager.setCustomWebSocketPort(null);
+      await PortManager.setCustomScoreboardHttpPort(null);
 
       state = state.copyWith(
         discoveryPort: Config.discoveryPort,
         webSocketPort: Config.webSocketPort,
+        scoreboardHttpPort: Config.scoreboardHttpPort,
         isLoading: false,
         error: null,
       );
@@ -192,10 +267,14 @@ class PortConfigNotifier extends Notifier<PortConfigState> {
   }
 
   /// 检查端口可用性
-  Future<bool> checkPortAvailability(int port, {bool isWebSocket = false}) async {
+  Future<bool> checkPortAvailability(
+    int port, {
+    bool isWebSocket = false,
+    bool isHttpServer = false,
+  }) async {
     await _ensureInitialized();
     try {
-      if (isWebSocket) {
+      if (isHttpServer || isWebSocket) {
         return !await PortManager.isTcpPortOccupied(port);
       } else {
         return !await PortManager.isUdpPortOccupied(port);
@@ -216,6 +295,10 @@ class PortConfigNotifier extends Notifier<PortConfigState> {
     return await PortManager.getCurrentWebSocketPort();
   }
 
+  /// 获取当前配置的HTTP端口
+  Future<int> getCurrentScoreboardHttpPort() async {
+    return await PortManager.getCurrentScoreboardHttpPort();
+  }
 }
 
 /// 端口配置Provider实例

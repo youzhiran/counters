@@ -159,6 +159,7 @@ class Lan extends _$Lan {
   LanState build() {
     // 延迟执行IP获取，避免在build中直接修改state
     Future.microtask(() => _fetchLocalIp());
+    Future.microtask(() => _refreshScoreboardHttpPort());
     return const LanState();
   }
 
@@ -168,6 +169,7 @@ class Lan extends _$Lan {
     disposeManager();
     state = const LanState();
     Future.microtask(() => _fetchLocalIp());
+    Future.microtask(() => _refreshScoreboardHttpPort());
   }
 
   late final TextEditingController _hostIpController = TextEditingController();
@@ -215,6 +217,23 @@ class Lan extends _$Lan {
       ErrorHandler.handle(e, StackTrace.current, prefix: '获取本地IP失败');
       state = state.copyWith(localIp: '获取失败', interfaceName: '');
     }
+  }
+
+  Future<void> _refreshScoreboardHttpPort() async {
+    try {
+      final httpPort = await PortManager.getCurrentScoreboardHttpPort();
+      state = state.copyWith(httpServerPort: httpPort);
+    } catch (e, s) {
+      ErrorHandler.handle(e, s, prefix: '刷新HTTP端口配置失败');
+    }
+  }
+
+  Future<void> refreshHttpServerPort() async {
+    if (state.isHttpServerRunning) {
+      GlobalMsgManager.showMessage('HTTP实时计分服务正在运行，端口将在下次开启时生效');
+      return;
+    }
+    await _refreshScoreboardHttpPort();
   }
 
   Future<void> refreshLocalIp() async {
@@ -1290,16 +1309,16 @@ class Lan extends _$Lan {
       }
 
       state = state.copyWith(isHttpServerStarting: true);
-      final port = state.httpServerPort;
+      final port = await PortManager.getCurrentScoreboardHttpPort();
+      state = state.copyWith(httpServerPort: port);
 
       try {
         final portOccupied = await PortManager.isTcpPortOccupied(port);
         if (portOccupied) {
-          final message = 'HTTP实时计分服务无法启动：端口 $port 已被占用\n\n'
-              '建议：\n'
-              '• 关闭占用该端口的其他程序\n'
-              '• 检查是否有未正常退出的旧实例\n'
-              '• 修改配置端口后重试';
+          final message = PortManager.getPortOccupiedErrorMessage(
+            port,
+            isHttpServer: true,
+          );
           GlobalMsgManager.showError(message);
           state = state.copyWith(
             isHttpServerRunning: false,
@@ -1360,6 +1379,7 @@ class Lan extends _$Lan {
         isHttpServerRunning: false,
         isHttpServerStarting: false,
       );
+      await _refreshScoreboardHttpPort();
     }
   }
 
