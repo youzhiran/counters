@@ -5,8 +5,44 @@ class ScoreHttpTemplates {
   static const String defaultTemplateAsset =
       'assets/lan_http_templates/scoreboard_default.html';
 
+  /// Poker50 模板页面资源路径
+  static const String poker50TemplateAsset =
+      'assets/lan_http_templates/scoreboard_poker50.html';
+
+  /// 麻将模板页面资源路径
+  static const String mahjongTemplateAsset =
+      'assets/lan_http_templates/scoreboard_mahjong.html';
+
+  /// 计数器模板页面资源路径
+  static const String counterTemplateAsset =
+      'assets/lan_http_templates/scoreboard_counter.html';
+
+  /// 斗地主模板页面资源路径
+  static const String landlordsTemplateAsset =
+      'assets/lan_http_templates/scoreboard_landlords.html';
+
+  /// 模板类型与资源路径映射
+  static const Map<String, String> templateAssetByType = {
+    'poker50': poker50TemplateAsset,
+    'mahjong': mahjongTemplateAsset,
+    'counter': counterTemplateAsset,
+    'landlords': landlordsTemplateAsset,
+  };
+
   /// 下载二维码资源路径
   static const String downloadQrAsset = 'assets/svg/qr-download.svg';
+
+  /// 根据模板类型解析对应的资源路径，找不到时回退到默认模板
+  static String resolveTemplateAsset(
+    String? templateType, {
+    String? defaultAssetPath,
+  }) {
+    final fallback = defaultAssetPath ?? defaultTemplateAsset;
+    if (templateType == null || templateType.isEmpty) {
+      return fallback;
+    }
+    return templateAssetByType[templateType] ?? fallback;
+  }
 
   /// 当资源加载失败时使用的回退HTML
   static const String fallbackHtml = '''

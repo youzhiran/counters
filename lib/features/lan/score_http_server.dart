@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
+import 'package:counters/common/model/player_score.dart';
 import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/features/lan/resources/score_http_templates.dart';
@@ -20,7 +21,7 @@ class ScoreHttpServer {
   final String _templateAssetPath;
   final String _qrAssetPath;
   HttpServer? _server;
-  String? _cachedTemplate;
+  final Map<String, String> _templateCache = {};
   String? _cachedQrSvg;
 
   ScoreHttpServer({
@@ -167,18 +168,40 @@ class ScoreHttpServer {
 
   /// 加载模板 HTML 内容（带缓存）
   Future<String> _getScoreboardHtml() async {
-    if (_cachedTemplate != null) {
-      return _cachedTemplate!;
+    final asyncScoreState = _scoreStateSupplier();
+    final templateType = asyncScoreState.valueOrNull?.template?.templateType;
+    final resolvedAsset = ScoreHttpTemplates.resolveTemplateAsset(
+      templateType,
+      defaultAssetPath: _templateAssetPath,
+    );
+
+    final resolvedHtml = await _loadTemplateFromAsset(resolvedAsset);
+    if (resolvedHtml != null) {
+      return resolvedHtml;
+    }
+
+    final fallbackHtml = await _loadTemplateFromAsset(_templateAssetPath);
+    if (fallbackHtml != null) {
+      return fallbackHtml;
+    }
+
+    // 所有资源加载均失败时返回内置回退模板
+    return ScoreHttpTemplates.fallbackHtml;
+  }
+
+  /// 按路径加载模板并缓存结果
+  Future<String?> _loadTemplateFromAsset(String assetPath) async {
+    if (_templateCache.containsKey(assetPath)) {
+      return _templateCache[assetPath];
     }
 
     try {
-      final template = await rootBundle.loadString(_templateAssetPath);
-      _cachedTemplate = template;
+      final template = await rootBundle.loadString(assetPath);
+      _templateCache[assetPath] = template;
       return template;
     } catch (e, s) {
-      ErrorHandler.handle(e, s, prefix: '加载HTTP计分模板失败');
-      _cachedTemplate = ScoreHttpTemplates.fallbackHtml;
-      return _cachedTemplate!;
+      ErrorHandler.handle(e, s, prefix: '加载HTTP计分模板失败[$assetPath]');
+      return null;
     }
   }
 
@@ -213,22 +236,56 @@ class ScoreHttpServer {
 
     final session = scoreState.currentSession;
     final players = scoreState.players;
-    final templateName = scoreState.template?.templateName ?? '未选择模板';
+    final template = scoreState.template;
+    final templateName = template?.templateName ?? '未选择模板';
+    final templateType = template?.templateType;
 
-    final preparedPlayers = players.map((player) {
-      final sessionScore = session?.scores
-          .firstWhereOrNull((item) => item.playerId == player.pid);
+    final List<Map<String, dynamic>> preparedPlayers = [];
+
+    for (var index = 0; index < players.length; index++) {
+      final player = players[index];
+      final sessionScores = session?.scores ?? const <PlayerScore>[];
+      final sessionScore =
+          sessionScores.firstWhereOrNull((item) => item.playerId == player.pid);
+
       final roundScores =
           List<int?>.from(sessionScore?.roundScores ?? const <int?>[]);
-      final totalScore = sessionScore?.totalScore ?? 0;
+      final roundExtendedFields = sessionScore?.roundExtendedFields ??
+          const <int, Map<String, dynamic>>{};
 
-      return {
+      final maxRoundFromExtended = roundExtendedFields.keys.isEmpty
+          ? 0
+          : roundExtendedFields.keys.reduce(math.max);
+      final normalizedRoundLength =
+          math.max(roundScores.length, maxRoundFromExtended);
+
+      if (normalizedRoundLength > roundScores.length) {
+        roundScores.addAll(List<int?>.filled(
+            normalizedRoundLength - roundScores.length, null));
+      }
+
+      final roundExtended = List<Map<String, dynamic>?>.generate(
+        roundScores.length,
+        (idx) {
+          final data = roundExtendedFields[idx + 1];
+          return data != null ? Map<String, dynamic>.from(data) : null;
+        },
+      );
+
+      final totalScore = sessionScore?.totalScore ??
+          roundScores.fold<int>(0, (sum, score) => sum + (score ?? 0));
+
+      preparedPlayers.add({
         'playerId': player.pid,
         'name': player.name,
+        'avatar': player.avatar,
+        'avatarColor': player.avatarColor,
+        'order': index,
         'totalScore': totalScore,
         'roundScores': roundScores,
-      };
-    }).toList();
+        'roundExtended': roundExtended,
+      });
+    }
 
     // 若没有玩家信息，返回提示
     if (preparedPlayers.isEmpty) {
@@ -237,6 +294,7 @@ class ScoreHttpServer {
         'message': '当前模板未配置玩家，请在主机端添加玩家后重试',
         'meta': {
           'templateName': templateName,
+          'templateType': templateType,
         },
         'updatedAt': DateTime.now().toIso8601String(),
       };
@@ -247,31 +305,64 @@ class ScoreHttpServer {
         (previousValue, element) =>
             math.max(previousValue, (element['roundScores'] as List).length));
 
-    final sortedPlayers = List<Map<String, dynamic>>.from(preparedPlayers)
+    final sortedPlayers = preparedPlayers
+        .map((player) => Map<String, dynamic>.from(player))
+        .toList()
       ..sort(
           (a, b) => (b['totalScore'] as int).compareTo(a['totalScore'] as int));
 
     int currentRank = 0;
     int? previousScore;
+    final Map<String, int> rankMap = {};
     for (var i = 0; i < sortedPlayers.length; i++) {
       final score = sortedPlayers[i]['totalScore'] as int;
       if (previousScore == null || score != previousScore) {
         currentRank = i + 1;
         previousScore = score;
       }
-      sortedPlayers[i]['rank'] = currentRank;
+      final playerEntry = Map<String, dynamic>.from(sortedPlayers[i]);
+      playerEntry['rank'] = currentRank;
+      sortedPlayers[i] = playerEntry;
+      final playerId = playerEntry['playerId'] as String?;
+      if (playerId != null) {
+        rankMap[playerId] = currentRank;
+      }
     }
+
+    final playersOrdered = preparedPlayers.map((player) {
+      final entry = Map<String, dynamic>.from(player);
+      final playerId = entry['playerId'] as String?;
+      if (playerId != null && rankMap.containsKey(playerId)) {
+        entry['rank'] = rankMap[playerId];
+      }
+      return entry;
+    }).toList();
+
+    final otherSettingsRaw = template?.otherSet;
+    final Map<String, dynamic> otherSettings =
+        otherSettingsRaw == null || otherSettingsRaw.isEmpty
+            ? const <String, dynamic>{}
+            : Map<String, dynamic>.from(otherSettingsRaw);
 
     return {
       'status': 'ok',
       'meta': {
         'templateName': templateName,
+        'templateType': templateType,
+        'targetScore': template?.targetScore,
+        'playerCount': players.length,
         'currentRound': scoreState.currentRound,
         'roundCount': roundCount,
         'isCompleted': session?.isCompleted ?? false,
         'sessionId': session?.sid,
+        'reverseWinRule': template?.reverseWinRule ?? false,
+        'disableVictoryScoreCheck': template?.disableVictoryScoreCheck ?? false,
+        'checkVictoryOnScoreChange':
+            template?.checkVictoryOnScoreChange ?? false,
+        'otherSettings': otherSettings,
       },
       'players': sortedPlayers,
+      'playersOrdered': playersOrdered,
       'updatedAt': DateTime.now().toIso8601String(),
     };
   }
