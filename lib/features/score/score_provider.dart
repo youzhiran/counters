@@ -104,6 +104,7 @@ class Score extends _$Score {
   ScoreState? _clientModeLocalBackup;
   // 临时计分模式下的本地状态备份：用于在退出临时计分后恢复首页“继续对局”等提示
   ScoreState? _tempModeLocalBackup;
+  bool _playerListenerInitialized = false;
 
   List<GameSession> _upsertOngoingSession(
       List<GameSession> sessions, GameSession updatedSession) {
@@ -119,6 +120,7 @@ class Score extends _$Score {
   @override
   Future<ScoreState> build() async {
     Log.d('ScoreNotifier: build() called.');
+    _ensurePlayerListener();
 
     // 修复：如果状态已经初始化，直接返回当前状态，防止不必要的重建
     final currentState = state.valueOrNull;
@@ -229,6 +231,61 @@ class Score extends _$Score {
         isInitialized: true,
         players: [],
         isTempMode: false);
+  }
+
+  // 监听全局玩家列表变化，确保计分页面的玩家头像和名称保持同步
+  void _ensurePlayerListener() {
+    if (_playerListenerInitialized) return;
+    _playerListenerInitialized = true;
+    ref.listen<AsyncValue<PlayerState>>(
+      playerProvider,
+      (previous, next) {
+        if (!next.hasValue) return;
+        _handleGlobalPlayersChanged(next.value!.players);
+      },
+    );
+  }
+
+  void _handleGlobalPlayersChanged(List<PlayerInfo> globalPlayers) {
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+
+    final globalMap = <String, PlayerInfo>{
+      for (final player in globalPlayers) player.pid: player
+    };
+
+    final updatedActivePlayers = currentState.players
+        .map((player) => globalMap[player.pid] ?? player)
+        .toList();
+    final activeChanged = !const ListEquality<PlayerInfo>()
+        .equals(currentState.players, updatedActivePlayers);
+
+    BaseTemplate? updatedTemplate = currentState.template;
+    bool templateChanged = false;
+    if (currentState.template != null &&
+        currentState.template!.players.isNotEmpty) {
+      final templatePlayers = currentState.template!.players;
+      final updatedTemplatePlayers = templatePlayers
+          .map((player) => globalMap[player.pid] ?? player)
+          .toList();
+      templateChanged = !const ListEquality<PlayerInfo>()
+          .equals(templatePlayers, updatedTemplatePlayers);
+      if (templateChanged) {
+        updatedTemplate =
+            currentState.template!.copyWith(players: updatedTemplatePlayers);
+      }
+    }
+
+    if (!activeChanged && !templateChanged) {
+      return;
+    }
+
+    state = AsyncData(
+      currentState.copyWith(
+        players: activeChanged ? updatedActivePlayers : currentState.players,
+        template: updatedTemplate,
+      ),
+    );
   }
 
   void backupLocalStateForClientMode() {

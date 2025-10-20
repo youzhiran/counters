@@ -1,11 +1,13 @@
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:counters/app/state.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/common/widgets/message_overlay.dart';
 import 'package:counters/common/widgets/player_widget.dart';
+import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/player/player_select_dialog.dart';
 import 'package:counters/features/score/score_provider.dart';
 import 'package:counters/features/template/template_provider.dart';
@@ -64,6 +66,14 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
         .map((p) => TextEditingController(text: p.name))
         .toList();
     players = List.from(widget.oriTemplate.players);
+    final initialPlayerState = ref.read(playerProvider).valueOrNull;
+    if (initialPlayerState != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _handleGlobalPlayersChanged(initialPlayerState.players);
+        }
+      });
+    }
 
     // 初始化胜利规则设置
     _reverseWinRule = widget.oriTemplate.reverseWinRule;
@@ -75,6 +85,17 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
       _checkHistoryTemp();
       _checkRedundantData();
     });
+  }
+
+  @override
+  void dispose() {
+    templateNameController.dispose();
+    playerCountController.dispose();
+    targetScoreController.dispose();
+    for (final controller in nameControllers) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _checkRedundantData() async {
@@ -110,6 +131,45 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
     }
 
     return current?.templateName ?? '系统模板';
+  }
+
+  void _handleGlobalPlayersChanged(List<PlayerInfo> globalPlayers) {
+    if (!mounted) return;
+    final globalMap = {
+      for (final player in globalPlayers) player.pid: player,
+    };
+
+    final updatedPlayers = players
+        .map((player) => globalMap[player.pid] ?? player)
+        .toList(growable: false);
+
+    if (const ListEquality<PlayerInfo>().equals(players, updatedPlayers)) {
+      return;
+    }
+
+    setState(() {
+      players = updatedPlayers;
+      _syncNameControllers(updatedPlayers);
+    });
+  }
+
+  void _syncNameControllers(List<PlayerInfo> updatedPlayers) {
+    if (nameControllers.length != updatedPlayers.length) {
+      for (final controller in nameControllers) {
+        controller.dispose();
+      }
+      nameControllers = updatedPlayers
+          .map((player) => TextEditingController(text: player.name))
+          .toList();
+      return;
+    }
+    for (var i = 0; i < nameControllers.length; i++) {
+      final controller = nameControllers[i];
+      final newName = updatedPlayers[i].name;
+      if (controller.text != newName) {
+        controller.text = newName;
+      }
+    }
   }
 
   /// 获取模板描述信息
@@ -290,6 +350,13 @@ abstract class BaseConfigPageState<T extends BaseConfigPage>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<PlayerState>>(
+      playerProvider,
+      (previous, next) {
+        if (!mounted || !next.hasValue) return;
+        _handleGlobalPlayersChanged(next.value!.players);
+      },
+    );
     final isSystem = widget.oriTemplate.isSystemTemplate;
 
     return Scaffold(

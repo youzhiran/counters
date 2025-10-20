@@ -6,7 +6,7 @@ part of 'template_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$templatesHash() => r'46c8023be1b3b3e2ed343e3479cd0f704870fa8a';
+String _$templatesHash() => r'1808e721a951b54047959fcf4e1366fe91cace57';
 
 /// See also [Templates].
 @ProviderFor(Templates)

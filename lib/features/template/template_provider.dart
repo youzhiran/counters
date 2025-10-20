@@ -1,8 +1,10 @@
 import 'package:collection/collection.dart';
 import 'package:counters/common/model/base_template.dart';
 import 'package:counters/common/model/game_session.dart';
+import 'package:counters/common/model/player_info.dart';
 import 'package:counters/common/utils/log.dart';
 import 'package:counters/features/lan/lan_provider.dart';
+import 'package:counters/features/player/player_provider.dart';
 import 'package:counters/features/template/template_dao.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -38,9 +40,11 @@ class _ClientModeTemplateCache {
 @Riverpod(keepAlive: true)
 class Templates extends _$Templates {
   final _templateDao = TemplateDao();
+  bool _playerListenerInitialized = false;
 
   @override
   Future<List<BaseTemplate>> build() async {
+    _ensurePlayerListener();
     // 修复：检查是否为客户端模式，如果是且已有缓存数据，则不重新加载数据库
     final lanState = ref.read(lanProvider);
     final isClientMode = lanState.isConnected && !lanState.isHost;
@@ -65,6 +69,62 @@ class Templates extends _$Templates {
     }
 
     return templates;
+  }
+
+  void _ensurePlayerListener() {
+    if (_playerListenerInitialized) return;
+    _playerListenerInitialized = true;
+    ref.listen<AsyncValue<PlayerState>>(
+      playerProvider,
+      (previous, next) {
+        if (!next.hasValue) return;
+        _syncTemplatesWithPlayers(next.value!.players);
+      },
+    );
+  }
+
+  void _syncTemplatesWithPlayers(List<PlayerInfo> globalPlayers) {
+    final currentTemplates = state.valueOrNull;
+    if (currentTemplates == null || currentTemplates.isEmpty) {
+      return;
+    }
+
+    final globalMap = {
+      for (final player in globalPlayers) player.pid: player,
+    };
+
+    bool hasChanges = false;
+    final updatedTemplates = <BaseTemplate>[];
+
+    for (final template in currentTemplates) {
+      if (template.players.isEmpty) {
+        updatedTemplates.add(template);
+        continue;
+      }
+
+      final updatedPlayers = template.players
+          .map((player) => globalMap[player.pid] ?? player)
+          .toList(growable: false);
+
+      if (const ListEquality<PlayerInfo>()
+          .equals(template.players, updatedPlayers)) {
+        updatedTemplates.add(template);
+        continue;
+      }
+
+      hasChanges = true;
+      updatedTemplates.add(template.copyWith(players: updatedPlayers));
+    }
+
+    if (!hasChanges) {
+      return;
+    }
+
+    if (_isClientMode()) {
+      _ClientModeTemplateCache.setTemplates(updatedTemplates, true);
+    }
+
+    state = AsyncData(updatedTemplates);
   }
 
   Future<BaseTemplate?> getTemplateAsync(String tid) async {
