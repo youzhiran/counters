@@ -14,12 +14,34 @@ import 'package:url_launcher/url_launcher.dart';
 class UpdateChecker {
   static String latestReleaseUrl = '';
   static String latestReleaseBody = '';
+  static String? _currentVersionOverride;
+  static final Uri _changelogUri =
+      Uri.parse('https://counters.devyi.com/changelog');
+  static final Uri _downloadUri =
+      Uri.parse('https://counters.devyi.com/download');
 
   String versionExtra = '';
 
   static Future<String> getCurrentVersion() async {
+    final overrideVersion = _currentVersionOverride;
+    if (overrideVersion != null) {
+      // 开发者测试场景下允许指定本地版本号
+      Log.d('使用覆盖的应用版本号: $overrideVersion');
+      return overrideVersion;
+    }
+
     final packageInfo = await PackageInfo.fromPlatform();
     return packageInfo.version; // 格式如：1.0.0
+  }
+
+  /// 设置或清空当前版本号的覆盖值，用于测试更新流程
+  static void setCurrentVersionOverride(String? version) {
+    _currentVersionOverride = version;
+    if (version != null) {
+      Log.i('已启用版本覆盖: $version');
+    } else {
+      Log.i('已清除版本覆盖设定');
+    }
   }
 
   static Future<String?> getLatestVersion(
@@ -27,13 +49,15 @@ class UpdateChecker {
     try {
       final response = await http.get(Uri.parse(Config.urlReleases));
       if (response.statusCode == 200) {
-        final releases = json.decode(response.body) as List;
+        final releases = json.decode(response.body) as List<dynamic>;
         if (releases.isEmpty) return null;
-        final filtered = includePrereleases
-            ? releases
-            : releases.where((r) => r['name'].toString().contains('rc'));
+        final filtered = (includePrereleases
+                ? releases
+                : releases.where((r) => r is Map && r['prerelease'] != true))
+            .toList();
         if (filtered.isEmpty) return null;
-        final latestRelease = filtered.first;
+        final latestRelease =
+            Map<String, dynamic>.from(filtered.first as Map<dynamic, dynamic>);
         latestReleaseUrl = latestRelease['html_url'].toString();
         latestReleaseBody = latestRelease['body'].toString();
         return latestRelease['name'].toString().replaceAll('v', '');
@@ -106,6 +130,26 @@ class UpdateChecker {
     return result;
   }
 
+  /// 根据版本类型打开合适的更新下载页面
+  static Future<void> openUpdateLink({
+    required bool useChangelog,
+  }) async {
+    final target = useChangelog ? _changelogUri : _downloadUri;
+    if (await canLaunchUrl(target)) {
+      await launchUrl(target);
+      return;
+    }
+    Log.w('无法打开 ${target.toString()}，尝试回退到发行页面');
+
+    final releaseUri = Uri.tryParse(latestReleaseUrl);
+    if (releaseUri != null && await canLaunchUrl(releaseUri)) {
+      await launchUrl(releaseUri);
+      return;
+    }
+
+    throw Exception('未找到可用的更新下载链接');
+  }
+
   static void showUpdateResultDialog(String versionInfo, bool hasUpdate) {
     globalState.showCommonDialog(
       child: AlertDialog(
@@ -120,12 +164,18 @@ class UpdateChecker {
           ),
           if (hasUpdate)
             TextButton(
+              onPressed: () => openUpdateLink(useChangelog: false),
+              child: const Text('官网下载'),
+            ),
+          if (hasUpdate)
+            TextButton(
               onPressed: () async {
-                if (await canLaunchUrl(
-                    Uri.parse(UpdateChecker.latestReleaseUrl))) {
-                  await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
+                try {
+                  await openUpdateLink(useChangelog: false);
+                  globalState.navigatorKey.currentState?.pop();
+                } catch (e, stackTrace) {
+                  ErrorHandler.handle(e, stackTrace, prefix: '打开更新链接失败');
                 }
-                globalState.navigatorKey.currentState?.pop();
               },
               child: Text('立即更新'),
             ),
@@ -136,10 +186,21 @@ class UpdateChecker {
 }
 
 /// 显示手动检查更新对话框
-void checkUpdate() {
-  globalState.showCommonDialog(
-    child: const UpdateCheckerDialog(),
-  );
+Future<void> checkUpdate({String? currentVersionOverride}) async {
+  if (currentVersionOverride != null) {
+    UpdateChecker.setCurrentVersionOverride(currentVersionOverride);
+  }
+
+  try {
+    final future = globalState.showCommonDialog(
+      child: const UpdateCheckerDialog(),
+    );
+    await future;
+  } finally {
+    if (currentVersionOverride != null) {
+      UpdateChecker.setCurrentVersionOverride(null);
+    }
+  }
 }
 
 class ApiChecker {

@@ -3,7 +3,6 @@ import 'package:counters/common/utils/error_handler.dart';
 import 'package:counters/common/utils/net.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// 手动检查更新对话框（从设置页面调用）
 class UpdateCheckerDialog extends StatefulWidget {
@@ -46,14 +45,15 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CheckboxListTile(
+          SwitchListTile.adaptive(
             title: const Text('包含测试版本'),
+            contentPadding: EdgeInsets.zero,
             value: checkBeta,
             onChanged: isLoading
                 ? null
                 : (v) {
                     setState(() {
-                      checkBeta = v ?? false;
+                      checkBeta = v;
                       isLoading = true;
                       versionInfo = '';
                     });
@@ -81,6 +81,11 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
           TextButton(
             onPressed: () => globalState.navigatorKey.currentState?.pop(),
             child: Text(hasUpdate ? '稍后再说' : '关闭'),
+          ),
+        if (hasUpdate)
+          TextButton(
+            onPressed: () => _openChangelog(),
+            child: const Text('官网下载'),
           ),
         if (hasUpdate)
           TextButton(
@@ -171,16 +176,20 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   /// 启动更新
   Future<void> _launchUpdate() async {
     try {
-      final navigatorState = Navigator.of(context);
-      if (await canLaunchUrl(Uri.parse(UpdateChecker.latestReleaseUrl))) {
-        await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
-      }
+      await UpdateChecker.openUpdateLink(
+        useChangelog: checkBeta,
+      );
       if (mounted) {
-        navigatorState.pop();
+        Navigator.of(context).pop();
       }
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '启动更新失败');
     }
+  }
+
+  /// 打开官网更新日志页面，方便用户手动下载
+  Future<void> _openChangelog() async {
+    await UpdateChecker.openUpdateLink(useChangelog: checkBeta);
   }
 }
 
@@ -267,6 +276,11 @@ class _StartupUpdateDialogState extends State<StartupUpdateDialog> {
           onPressed: () => _ignoreThisVersion(),
           child: const Text('忽略本次更新'),
         ),
+        if (widget.hasUpdate)
+          TextButton(
+            onPressed: () => _openChangelog(),
+            child: const Text('官网下载'),
+          ),
         TextButton(
           onPressed: () => globalState.navigatorKey.currentState?.pop(),
           child: const Text('稍后再说'),
@@ -345,17 +359,19 @@ class _StartupUpdateDialogState extends State<StartupUpdateDialog> {
   /// 启动更新
   Future<void> _launchUpdate() async {
     try {
-      final navigatorState = Navigator.of(context);
-      if (await canLaunchUrl(Uri.parse(UpdateChecker.latestReleaseUrl))) {
-        await launchUrl(Uri.parse(UpdateChecker.latestReleaseUrl));
-      }
+      await UpdateChecker.openUpdateLink(
+        useChangelog: false,
+      );
       if (mounted) {
-        navigatorState.pop();
+        Navigator.of(context).pop();
       }
     } catch (e) {
       ErrorHandler.handle(e, StackTrace.current, prefix: '启动更新失败');
     }
   }
 
-
+  /// 打开官网更新日志，便于用户自行下载安装
+  Future<void> _openChangelog() async {
+    await UpdateChecker.openUpdateLink(useChangelog: false);
+  }
 }

@@ -393,6 +393,12 @@ class _SettingPageState extends ConsumerState<SettingPage> {
                     },
                   ),
                   SettingListTile(
+                    icon: Icons.system_update_alt,
+                    title: '测试更新弹窗',
+                    subtitle: '模拟当前版本为 0.0.1',
+                    onTap: () => _testUpdateDialog(),
+                  ),
+                  SettingListTile(
                     icon: Icons.clear_all,
                     title: '清除忽略的更新',
                     subtitle: '清除所有被忽略的更新版本记录',
@@ -1201,6 +1207,15 @@ class _SettingPageState extends ConsumerState<SettingPage> {
         ],
       ),
     );
+  }
+
+  /// 打开更新弹窗并模拟应用版本为 0.0.1，便于开发者验证更新流程
+  Future<void> _testUpdateDialog() async {
+    try {
+      await checkUpdate(currentVersionOverride: '0.0.1');
+    } catch (e, stackTrace) {
+      ErrorHandler.handle(e, stackTrace, prefix: '测试更新弹窗失败');
+    }
   }
 
   Widget _buildSectionHeader(String title) {
