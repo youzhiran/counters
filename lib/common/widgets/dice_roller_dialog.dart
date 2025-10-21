@@ -951,10 +951,30 @@ class _HistoryTile extends StatelessWidget {
   }
 }
 
-class _HistoryDialog extends StatelessWidget {
+class _HistoryDialog extends StatefulWidget {
   const _HistoryDialog({required this.history});
 
   final List<_RollHistoryEntry> history;
+
+  @override
+  State<_HistoryDialog> createState() => _HistoryDialogState();
+}
+
+class _HistoryDialogState extends State<_HistoryDialog> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    // 使用独立的滚动控制器，让 Scrollbar 和 ListView 共用同一滚动状态
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -993,12 +1013,14 @@ class _HistoryDialog extends StatelessWidget {
               const SizedBox(height: 16),
               Expanded(
                 child: Scrollbar(
+                  controller: _scrollController,
                   child: ListView.separated(
-                    itemCount: history.length,
+                    controller: _scrollController,
+                    itemCount: widget.history.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: 10),
                     itemBuilder: (context, index) =>
-                        _HistoryTile(entry: history[index]),
+                        _HistoryTile(entry: widget.history[index]),
                   ),
                 ),
               ),
